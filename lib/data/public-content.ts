@@ -8,11 +8,6 @@ type DbPrayerRow = {
   notes: string | null;
 };
 
-type DbHalachaRow = {
-  title: string;
-  content: string;
-};
-
 export async function getPublicHomeData() {
   const today = getTodayIsoDate();
 
