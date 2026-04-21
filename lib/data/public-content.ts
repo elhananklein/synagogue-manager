@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import { dailyHalacha, getTodayIsoDate, todayPrayerSchedule, type PrayerSlot } from "@/lib/data/mock-content";
 
 type DbPrayerRow = {
@@ -10,6 +10,14 @@ type DbPrayerRow = {
 
 export async function getPublicHomeData() {
   const today = getTodayIsoDate();
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    return {
+      schedule: todayPrayerSchedule,
+      halacha: dailyHalacha
+    };
+  }
 
   const [prayerResult, halachaResult] = await Promise.all([
     supabase
