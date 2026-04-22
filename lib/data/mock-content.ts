@@ -18,5 +18,8 @@ export const dailyHalacha = {
 };
 
 export function getTodayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
+  // Keep "today" aligned with local synagogue timezone instead of UTC.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem"
+  }).format(new Date());
 }

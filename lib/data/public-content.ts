@@ -5,6 +5,7 @@ type DbPrayerRow = {
   id: string;
   prayer_type: string;
   prayer_time: string;
+  minyan_label: string | null;
   notes: string | null;
 };
 
@@ -22,7 +23,7 @@ export async function getPublicHomeData() {
   const [prayerResult, halachaResult] = await Promise.all([
     supabase
       .from("prayer_schedules")
-      .select("id, prayer_type, prayer_time, notes")
+      .select("id, prayer_type, prayer_time, minyan_label, notes")
       .eq("schedule_date", today)
       .eq("published", true)
       .order("prayer_time", { ascending: true }),
@@ -39,7 +40,7 @@ export async function getPublicHomeData() {
       ? todayPrayerSchedule
       : (prayerResult.data as DbPrayerRow[]).map((row, index) => ({
           id: index + 1,
-          prayerName: row.prayer_type,
+          prayerName: row.minyan_label ? `${row.prayer_type} (${row.minyan_label})` : row.prayer_type,
           time: row.prayer_time.slice(0, 5),
           notes: row.notes ?? undefined
         }));
