@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase";
 import { dailyHalacha, getTodayIsoDate, todayPrayerSchedule, type PrayerSlot } from "@/lib/data/mock-content";
+import { unstable_noStore as noStore } from "next/cache";
 
 type DbPrayerRow = {
   id: string;
@@ -10,6 +11,9 @@ type DbPrayerRow = {
 };
 
 export async function getPublicHomeData() {
+  // Supabase reads should always be fresh on page refresh (avoid Route Cache).
+  noStore();
+
   const today = getTodayIsoDate();
   const supabase = getSupabaseClient();
 
