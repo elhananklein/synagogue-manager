@@ -4,17 +4,26 @@ import { unstable_noStore as noStore } from "next/cache";
 
 type DbPrayerRow = {
   id: string;
+  schedule_date?: string;
   prayer_type: string;
   prayer_time: string;
   minyan_label: string | null;
   notes: string | null;
 };
 
+function getIsoDateUtc(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 export async function getPublicHomeData() {
   // Supabase reads should always be fresh on page refresh (avoid Route Cache).
   noStore();
 
-  const today = getTodayIsoDate();
+  const todayJerusalem = getTodayIsoDate();
+  const now = new Date();
+  const todayUtc = getIsoDateUtc(now);
+  const yesterdayUtc = getIsoDateUtc(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+  const candidateDates = Array.from(new Set([todayJerusalem, todayUtc, yesterdayUtc]));
   const supabase = getSupabaseClient();
 
   if (!supabase) {
@@ -27,15 +36,18 @@ export async function getPublicHomeData() {
   const [prayerResult, halachaResult] = await Promise.all([
     supabase
       .from("prayer_schedules")
-      .select("id, prayer_type, prayer_time, minyan_label, notes")
-      .eq("schedule_date", today)
+      .select("id, schedule_date, prayer_type, prayer_time, minyan_label, notes")
+      .in("schedule_date", candidateDates)
       .eq("published", true)
+      .order("schedule_date", { ascending: false })
       .order("prayer_time", { ascending: true }),
     supabase
       .from("daily_halacha")
       .select("title, content")
-      .eq("halacha_date", today)
+      .in("halacha_date", candidateDates)
       .eq("published", true)
+      .order("halacha_date", { ascending: false })
+      .limit(1)
       .maybeSingle()
   ]);
 
