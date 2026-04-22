@@ -4,6 +4,8 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { getPublicHomeData } from "@/lib/data/public-content";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const { schedule, halacha } = await getPublicHomeData();
 
