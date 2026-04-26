@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 function formatClock(now: Date) {
   return new Intl.DateTimeFormat("he-IL", {
@@ -12,7 +13,7 @@ function formatClock(now: Date) {
   }).format(now);
 }
 
-export function LiveClock() {
+export function LiveClock({ className }: { className?: string }) {
   // Keep server/client initial render identical to avoid hydration mismatch.
   const [timeText, setTimeText] = useState("--:--:--");
 
@@ -26,7 +27,7 @@ export function LiveClock() {
   }, []);
 
   return (
-    <p className="text-5xl font-bold tracking-wide md:text-7xl" suppressHydrationWarning>
+    <p className={cn("display-clock-text", className)} suppressHydrationWarning>
       {timeText}
     </p>
   );

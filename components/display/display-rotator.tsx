@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LiveClock } from "@/components/display/live-clock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,11 @@ type PrayerSlot = {
   details: string;
 };
 
+type TimeSection = {
+  title: string;
+  items: Array<{ label: string; time: string; details?: string; kind: "zman" | "prayer" }>;
+};
+
 type Snapshot = {
   hebrewDate: string;
   gregorianDate: string;
@@ -30,33 +35,9 @@ type Snapshot = {
   zmanim: Array<{ label: string; time: string }>;
   rainText: string;
   blessingText: string;
+  omerText: string | null;
   showYaalehVeyavo: boolean;
 };
-
-function styleTokens(style: DisplayStyle) {
-  if (style === "modern") {
-    return {
-      page: "min-h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 text-white",
-      card: "border-indigo-300/40 bg-indigo-500/15 text-slate-100 backdrop-blur",
-      row: "border-indigo-300/40 bg-indigo-900/40",
-      accent: "text-indigo-100"
-    };
-  }
-  if (style === "minimal") {
-    return {
-      page: "min-h-screen bg-white text-slate-900",
-      card: "border-slate-200 bg-white shadow-none",
-      row: "border-slate-300 bg-slate-50",
-      accent: "text-slate-500"
-    };
-  }
-  return {
-    page: "min-h-screen bg-slate-950 text-slate-100",
-    card: "border-slate-700 bg-slate-900",
-    row: "border-slate-700 bg-slate-800/60",
-    accent: "text-slate-300"
-  };
-}
 
 export function DisplayRotator({
   style,
@@ -65,7 +46,8 @@ export function DisplayRotator({
   screens,
   snapshot,
   halacha,
-  prayerSchedule
+  prayerSchedule,
+  timeSections
 }: {
   style: DisplayStyle;
   synagogueName: string;
@@ -74,11 +56,12 @@ export function DisplayRotator({
   snapshot: Snapshot;
   halacha: { title: string; text: string };
   prayerSchedule: PrayerSlot[];
+  timeSections: TimeSection[];
 }) {
   const router = useRouter();
   const enabledScreens = useMemo(() => screens.filter((s) => s.enabled), [screens]);
   const [index, setIndex] = useState(0);
-  const tokens = styleTokens(style);
+  const timesScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!enabledScreens.length) return;
@@ -118,133 +101,203 @@ export function DisplayRotator({
     };
   }, [router]);
 
-  if (!enabledScreens.length) {
-    return <main className={tokens.page}>אין מסכים פעילים לתצוגה</main>;
-  }
-
-  const currentScreen = enabledScreens[index % enabledScreens.length].screenKey;
+  const currentScreen = enabledScreens.length ? enabledScreens[index % enabledScreens.length].screenKey : null;
   const nowJerusalem = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
   const nowMinutes = nowJerusalem.getHours() * 60 + nowJerusalem.getMinutes();
-  const mergedTimes = [
+  const todaySectionItems = timeSections[0]?.items ?? [
     ...snapshot.zmanim.map((row) => ({ label: row.label, time: row.time, kind: "zman" as const })),
     ...prayerSchedule.map((row) => ({ label: row.label, time: row.time, details: row.details, kind: "prayer" as const }))
-  ]
+  ];
+  const todayMergedTimes = todaySectionItems
     .map((row) => {
       const [h, m] = row.time.split(":").map(Number);
       return { ...row, totalMinutes: h * 60 + m };
     })
     .sort((a, b) => a.totalMinutes - b.totalMinutes);
-  const nextIndex = mergedTimes.findIndex((item) => item.totalMinutes >= nowMinutes);
+  const nextIndex = todayMergedTimes.findIndex((item) => item.totalMinutes >= nowMinutes);
   const nextSlotIndex = nextIndex === -1 ? 0 : nextIndex;
+  const todayPrayerTimes = todayMergedTimes.filter((item) => item.kind === "prayer");
+  const nextPrayer = (() => {
+    if (!todayPrayerTimes.length) return null;
+    const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= nowMinutes);
+    return idx === -1 ? todayPrayerTimes[0] : todayPrayerTimes[idx];
+  })();
+  const hasOmer = Boolean(snapshot.omerText);
+  const hasYaaleh = snapshot.showYaalehVeyavo;
+  const hasBothExtraAdditions = hasOmer && hasYaaleh;
+  const shouldAutoScroll = currentScreen === "main" && timeSections.length > 0;
 
   return (
-    <main className={tokens.page}>
-      <div className="mx-auto my-[1.5vh] h-[97vh] w-[97vw] max-w-[97vw] overflow-hidden rounded-2xl border p-4 md:p-6">
-        <header className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b pb-4">
-          <div>
-            <h1 className="text-2xl font-bold md:text-4xl">{synagogueName}</h1>
-            {minyanName ? <p className={`text-base md:text-lg ${tokens.accent}`}>מניין: {minyanName}</p> : null}
+    <main className={`display display--${style}`}>
+      {!enabledScreens.length ? (
+        <div className="display-empty">אין מסכים פעילים לתצוגה</div>
+      ) : (
+      <div className="display-frame">
+        <header className="display-header">
+          <div className="display-header-clock">
+            <LiveClock />
           </div>
-          <p className={`text-sm md:text-base ${tokens.accent}`}>
+          <h1 className="display-title">
+            {minyanName ? `${synagogueName} - ${minyanName}` : synagogueName}
+          </h1>
+          <p className="display-counter">
             מסך {index + 1}/{enabledScreens.length}
           </p>
         </header>
 
         {currentScreen === "clock" ? (
-          <section className={`rounded-2xl border p-10 text-center ${tokens.card}`}>
+          <section className="display-clock-screen display-card">
             <LiveClock />
-            <p className="mt-5 text-3xl font-semibold md:text-5xl">{snapshot.hebrewDate}</p>
-            <p className={`mt-3 text-lg md:text-2xl ${tokens.accent}`}>{snapshot.gregorianDate}</p>
+            <p className="display-date-hebrew">{snapshot.hebrewDate}</p>
+            <p className="display-date-gregorian">{snapshot.gregorianDate}</p>
           </section>
         ) : null}
 
         {currentScreen === "halacha" ? (
-          <Card className={tokens.card}>
+          <Card className="display-card">
             <CardHeader>
-              <CardTitle className="text-2xl md:text-4xl">{halacha.title}</CardTitle>
+              <CardTitle className="display-halacha-title">{halacha.title}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-xl leading-relaxed md:text-3xl">{halacha.text}</p>
+              <p className="display-halacha-text">{halacha.text}</p>
             </CardContent>
           </Card>
         ) : null}
 
         {currentScreen === "main" ? (
-          <>
-            <section className="grid h-[calc(97vh-170px)] gap-4 md:grid-cols-3">
-              <div className="space-y-4">
-                <Card className={tokens.card}>
-                  <CardHeader>
-                    <CardTitle className="text-2xl">פרשת השבוע</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-2xl font-semibold">{snapshot.parasha}</p>
-                    <div className={`rounded-md border px-3 py-2 ${tokens.row}`}>כניסת שבת: {snapshot.candleLighting ?? "לא זמין"}</div>
-                    <div className={`rounded-md border px-3 py-2 ${tokens.row}`}>יציאת שבת: {snapshot.havdalah ?? "לא זמין"}</div>
+          <section className="display-main-grid">
+            <div className="display-main-primary">
+              <div className="display-main-primary-stack">
+                <Card className="display-card display-main-date-card">
+                  <CardContent className="display-main-date-content">
+                    <p className="display-parasha">{snapshot.parasha}</p>
+                    <p className="display-hebrew-date">{snapshot.hebrewDate}</p>
+                    <p className="display-gregorian-date">{snapshot.gregorianDate}</p>
                   </CardContent>
                 </Card>
-                <Card className={tokens.card}>
-                  <CardHeader>
-                    <CardTitle className="text-2xl">תאריך</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-3xl font-bold">{snapshot.hebrewDate}</p>
-                    <p className={`mt-2 text-lg ${tokens.accent}`}>{snapshot.gregorianDate}</p>
-                  </CardContent>
-                </Card>
-                <Card className={tokens.card}>
-                  <CardHeader>
-                    <CardTitle className="text-2xl">דף יומי</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xl font-semibold">{snapshot.dafYomi}</p>
+
+                <div className="display-main-additions">
+                  <Card className="display-card">
+                    <CardContent className="display-addition-content">
+                      <p className="display-addition-text">{snapshot.rainText}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="display-card">
+                    <CardContent className="display-addition-content">
+                      <p className="display-addition-text">{snapshot.blessingText}</p>
+                    </CardContent>
+                  </Card>
+                  {snapshot.omerText ? (
+                    <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
+                      <CardContent className="display-addition-content">
+                        <p className="display-addition-text">{snapshot.omerText}</p>
+                      </CardContent>
+                    </Card>
+                  ) : null}
+                  {snapshot.showYaalehVeyavo ? (
+                    <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
+                      <CardContent className="display-addition-content">
+                        <p className="display-addition-text">יעלה ויבוא</p>
+                      </CardContent>
+                    </Card>
+                  ) : null}
+                </div>
+
+                <Card className="display-card display-daf-card">
+                  <CardContent className="display-daf-content">
+                    <div className="display-daf-yomi">
+                      דף יומי: <span className="display-accent">{snapshot.dafYomi}</span>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
+            </div>
 
-              <div className="space-y-4">
-                <Card className={tokens.card}>
-                  <CardContent className="grid gap-2 pt-6">
-                    <div className={`rounded-md border px-3 py-3 text-xl ${tokens.row}`}>{snapshot.rainText}</div>
-                    <div className={`rounded-md border px-3 py-3 text-xl ${tokens.row}`}>{snapshot.blessingText}</div>
-                    {snapshot.showYaalehVeyavo ? <div className="rounded-md border border-amber-500 bg-amber-500/20 px-3 py-3 text-xl font-bold">יעלה ויבוא</div> : null}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card className={tokens.card}>
-                <CardHeader>
-                  <CardTitle className="text-2xl">זמני היום ותפילות</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {mergedTimes.map((item, idx) => {
-                    const isNext = idx === nextSlotIndex;
-                    const isPrayer = item.kind === "prayer";
-                    return (
-                      <div
-                        key={`${item.kind}-${item.label}-${item.time}-${idx}`}
-                        className={`rounded-md border px-3 py-2 ${tokens.row} ${
-                          isPrayer ? "border-l-4 border-l-emerald-400" : ""
-                        } ${isNext ? "scale-[1.02] border-2 border-yellow-300 bg-yellow-300/20" : ""}`}
-                      >
-                        <div className="flex items-center justify-between text-lg">
-                          <span className={isPrayer ? "font-bold" : ""}>{item.label}</span>
-                          <span className={`font-bold ${isNext ? "text-yellow-200" : ""}`}>{item.time}</span>
-                        </div>
-                        {"details" in item && item.details ? <div className={`text-sm ${tokens.accent}`}>{item.details}</div> : null}
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            </section>
-
-            <footer className="mt-3 flex justify-center border-t pt-3">
-              <LiveClock />
-            </footer>
-          </>
+            <Card className="display-card display-main-times-card">
+              <CardHeader>
+                <CardTitle className="display-times-title">זמני היום ותפילות</CardTitle>
+                {nextPrayer ? (
+                  <p className="display-next-prayer">
+                    התפילה הבאה: {nextPrayer.label} - {nextPrayer.time}
+                  </p>
+                ) : null}
+              </CardHeader>
+              <CardContent className="display-times-content">
+                <div ref={timesScrollRef} className="display-times-list">
+                  <div className={shouldAutoScroll ? "display-times-track display-times-track--auto" : "display-times-track"}>
+                  {timeSections.map((section, sectionIndex) => (
+                    <div key={`section-${sectionIndex}`} className="display-time-section">
+                      <div className="display-time-section-title">{section.title}</div>
+                      {section.items
+                        .map((row) => {
+                          const [h, m] = row.time.split(":").map(Number);
+                          return { ...row, totalMinutes: h * 60 + m };
+                        })
+                        .sort((a, b) => a.totalMinutes - b.totalMinutes)
+                        .map((item, idx) => {
+                          const isTodaySection = sectionIndex === 0;
+                          const isNext = isTodaySection && idx === nextSlotIndex;
+                          const isPrayer = item.kind === "prayer";
+                          return (
+                            <div
+                              key={`${sectionIndex}-${item.kind}-${item.label}-${item.time}-${idx}`}
+                              className={`display-time-row ${isPrayer ? "display-time-row--prayer" : ""} ${isNext ? "display-time-row--next" : ""}`}
+                            >
+                              <div className="display-time-main">
+                                <span className={isPrayer ? "display-time-label display-time-label--prayer" : "display-time-label"}>
+                                  {item.label}
+                                  {isPrayer ? <span className="display-prayer-badge">תפילה</span> : null}
+                                </span>
+                                <span className={isNext ? "display-time-value display-time-value--next" : "display-time-value"}>{item.time}</span>
+                              </div>
+                              {"details" in item && item.details ? <div className="display-time-details">{item.details}</div> : null}
+                            </div>
+                          );
+                        })}
+                      {sectionIndex === 0 ? <div className="display-times-section-gap" /> : null}
+                    </div>
+                  ))}
+                  {shouldAutoScroll ? <div className="display-times-loop-gap" /> : null}
+                  {shouldAutoScroll ? timeSections.map((section, sectionIndex) => (
+                    <div key={`dup-section-${sectionIndex}`} className="display-time-section">
+                      <div className="display-time-section-title">{section.title}</div>
+                      {section.items
+                        .map((row) => {
+                          const [h, m] = row.time.split(":").map(Number);
+                          return { ...row, totalMinutes: h * 60 + m };
+                        })
+                        .sort((a, b) => a.totalMinutes - b.totalMinutes)
+                        .map((item, idx) => {
+                          const isTodaySection = sectionIndex === 0;
+                          const isNext = isTodaySection && idx === nextSlotIndex;
+                          const isPrayer = item.kind === "prayer";
+                          return (
+                            <div
+                              key={`dup-${sectionIndex}-${item.kind}-${item.label}-${item.time}-${idx}`}
+                              className={`display-time-row ${isPrayer ? "display-time-row--prayer" : ""} ${isNext ? "display-time-row--next" : ""}`}
+                            >
+                              <div className="display-time-main">
+                                <span className={isPrayer ? "display-time-label display-time-label--prayer" : "display-time-label"}>
+                                  {item.label}
+                                  {isPrayer ? <span className="display-prayer-badge">תפילה</span> : null}
+                                </span>
+                                <span className={isNext ? "display-time-value display-time-value--next" : "display-time-value"}>{item.time}</span>
+                              </div>
+                              {"details" in item && item.details ? <div className="display-time-details">{item.details}</div> : null}
+                            </div>
+                          );
+                        })}
+                      {sectionIndex === 0 ? <div className="display-times-section-gap" /> : null}
+                    </div>
+                  )) : null}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
         ) : null}
       </div>
+      )}
     </main>
   );
 }

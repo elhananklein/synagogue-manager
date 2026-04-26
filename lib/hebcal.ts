@@ -33,11 +33,54 @@ export type DisplaySnapshot = {
   zmanimSourceTimes: Record<string, string>;
   rainText: string;
   blessingText: string;
+  omerText: string | null;
   showYaalehVeyavo: boolean;
   sourceEvents: string[];
 };
 
 const HEBREW_MONTHS_WINTER = new Set(["Kislev", "Tevet", "Sh'vat", "Adar", "Adar I", "Adar II"]);
+const DAF_YOMI_MASECHTOT_HEBREW: Record<string, string> = {
+  Berakhot: "ברכות",
+  Shabbat: "שבת",
+  Eruvin: "עירובין",
+  Pesachim: "פסחים",
+  Shekalim: "שקלים",
+  Yoma: "יומא",
+  Sukkah: "סוכה",
+  Beitzah: "ביצה",
+  RoshHashanah: "ראש השנה",
+  Taanit: "תענית",
+  Megillah: "מגילה",
+  MoedKatan: "מועד קטן",
+  Chagigah: "חגיגה",
+  Yevamot: "יבמות",
+  Ketubot: "כתובות",
+  Nedarim: "נדרים",
+  Nazir: "נזיר",
+  Sotah: "סוטה",
+  Gittin: "גיטין",
+  Kiddushin: "קידושין",
+  BavaKamma: "בבא קמא",
+  BavaMetzia: "בבא מציעא",
+  BavaBatra: "בבא בתרא",
+  Sanhedrin: "סנהדרין",
+  Makkot: "מכות",
+  Shevuot: "שבועות",
+  AvodahZarah: "עבודה זרה",
+  Horayot: "הוריות",
+  Zevachim: "זבחים",
+  Menachot: "מנחות",
+  Chullin: "חולין",
+  Bekhorot: "בכורות",
+  Arakhin: "ערכין",
+  Temurah: "תמורה",
+  Keritot: "כריתות",
+  Meilah: "מעילה",
+  Kinnim: "קינים",
+  Tamid: "תמיד",
+  Middot: "מידות",
+  Niddah: "נידה"
+};
 
 function formatHmTime(iso: string) {
   const date = new Date(iso);
@@ -70,6 +113,16 @@ function hasYaalehVeyavo(events: string[]) {
   return events.some((event) => holidayKeywords.some((keyword) => event.includes(keyword)));
 }
 
+function extractOmerText(events: string[]) {
+  const omerEvent = events.find((event) => /day of the Omer/i.test(event));
+  if (!omerEvent) return null;
+  const match = omerEvent.match(/(\d+)\w*\s+day of the Omer/i);
+  if (!match?.[1]) return null;
+  const day = Number(match[1]);
+  if (Number.isNaN(day) || day <= 0) return null;
+  return `היום ${day} ימים לעומר`;
+}
+
 function toIsoDateJerusalem(now = new Date()) {
   const ymd = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jerusalem",
@@ -80,14 +133,77 @@ function toIsoDateJerusalem(now = new Date()) {
   return ymd;
 }
 
-export async function getDisplaySnapshot(): Promise<DisplaySnapshot> {
+function addDaysIsoDate(isoDate: string, days: number) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function stripHebrewNiqqud(text: string) {
+  return text.replace(/[\u0591-\u05C7]/g, "");
+}
+
+function numberToHebrew(num: number) {
+  if (num <= 0) return String(num);
+  if (num === 15) return 'ט"ו';
+  if (num === 16) return 'ט"ז';
+
+  const hundreds = ["", "ק", "ר"];
+  const tens = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"];
+  const ones = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"];
+  const chars: string[] = [];
+
+  const h = Math.floor(num / 100);
+  const remainderAfterHundreds = num % 100;
+  if (h > 0) {
+    if (h < hundreds.length) {
+      chars.push(hundreds[h]);
+    } else {
+      chars.push("ק".repeat(h));
+    }
+  }
+
+  const t = Math.floor(remainderAfterHundreds / 10);
+  const o = remainderAfterHundreds % 10;
+  if (t > 0) chars.push(tens[t]);
+  if (o > 0) chars.push(ones[o]);
+
+  const raw = chars.join("");
+  if (!raw) return String(num);
+  if (raw.length === 1) return `${raw}'`;
+  return `${raw.slice(0, -1)}"${raw.slice(-1)}`;
+}
+
+function normalizeDafYomiHebrew(raw: string) {
+  const cleaned = raw.replaceAll("/", "").trim();
+  const match = cleaned.match(/^([A-Za-z' ]+?)[\s._-]+(\d+)([ab])?$/i);
+  if (!match) return raw;
+
+  const masechetKey = match[1].replaceAll(" ", "");
+  const dafNumber = Number(match[2]);
+  const amud = match[3]?.toLowerCase();
+  const masechetHebrew = DAF_YOMI_MASECHTOT_HEBREW[masechetKey];
+  if (!masechetHebrew || Number.isNaN(dafNumber)) return raw;
+
+  const dafHebrew = numberToHebrew(dafNumber);
+  if (!amud) {
+    return `${masechetHebrew} ${dafHebrew}`;
+  }
+  return `${masechetHebrew} ${dafHebrew} עמוד ${amud === "a" ? "א" : "ב"}`;
+}
+
+export async function getDisplaySnapshot(targetIsoDate?: string): Promise<DisplaySnapshot> {
   const now = new Date();
-  const dateIso = toIsoDateJerusalem(now);
+  const dateIso = targetIsoDate ?? toIsoDateJerusalem(now);
   const [year, month, day] = dateIso.split("-").map(Number);
 
   const converterUrl = `https://www.hebcal.com/converter?cfg=json&g2h=1&gy=${year}&gm=${month}&gd=${day}`;
   const shabbatUrl = "https://www.hebcal.com/shabbat?cfg=json&geo=city&city=IL-Jerusalem&M=on";
-  const zmanimUrl = "https://www.hebcal.com/zmanim?cfg=json&geo=city&city=IL-Jerusalem";
+  const zmanimUrl = `https://www.hebcal.com/zmanim?cfg=json&geo=city&city=IL-Jerusalem&date=${dateIso}`;
   const learningUrl = "https://www.hebcal.com/learning?cfg=json&geo=city&city=IL-Jerusalem";
 
   const [converterRes, shabbatRes, zmanimRes, learningRes] = await Promise.all([
@@ -133,18 +249,20 @@ export async function getDisplaySnapshot(): Promise<DisplaySnapshot> {
 
   const events = converter.events ?? [];
   const winter = isWinterSeason(converter.hm, converter.hd);
+  const omerText = extractOmerText(events);
 
   let dafYomi = "לא זמין";
   if (learningRes.ok) {
     const learningHtml = await learningRes.text();
     const match = learningHtml.match(/Daf Yomi[\s\S]*?sefaria\.org\/([^"?]+)\?lang=bi/i);
     if (match?.[1]) {
-      dafYomi = decodeURIComponent(match[1]).replaceAll("_", " ");
+      const decoded = decodeURIComponent(match[1]).replaceAll("_", " ");
+      dafYomi = normalizeDafYomiHebrew(decoded);
     }
   }
 
   return {
-    hebrewDate: converter.hebrew,
+    hebrewDate: stripHebrewNiqqud(converter.hebrew),
     gregorianDate: new Intl.DateTimeFormat("he-IL", {
       weekday: "long",
       year: "numeric",
@@ -160,8 +278,13 @@ export async function getDisplaySnapshot(): Promise<DisplaySnapshot> {
     zmanimSourceTimes: zmanim.times ?? {},
     rainText: winter ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
     blessingText: winter ? "ותן טל ומטר לברכה" : "ותן ברכה",
+    omerText,
     showYaalehVeyavo: hasYaalehVeyavo(events),
     sourceEvents: events
   };
+}
+
+export function getTomorrowIsoDateFrom(baseIsoDate: string) {
+  return addDaysIsoDate(baseIsoDate, 1);
 }
 

@@ -3,6 +3,7 @@
 
 # next
 /.next
+/.next-dev
 /out
 
 # production
