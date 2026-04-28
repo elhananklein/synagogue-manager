@@ -55,7 +55,7 @@ export function DisplayRotator({
   minyanName: string | null;
   screens: RotatorScreen[];
   snapshot: Snapshot;
-  halacha: { title: string; text: string };
+  halacha: { title: string; text: string; source?: string };
   prayerSchedule: PrayerSlot[];
   timeSections: TimeSection[];
 }) {
@@ -187,7 +187,7 @@ export function DisplayRotator({
             <CardHeader>
               <CardTitle className="display-halacha-title display-halacha-title-row">
                 <span>{halacha.title}</span>
-                <span className="display-halacha-source">(ילקוט יוסף)</span>
+                {halacha.source ? <span className="display-halacha-source">({halacha.source})</span> : null}
               </CardTitle>
             </CardHeader>
             <CardContent>

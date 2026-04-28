@@ -35,14 +35,22 @@ create index if not exists idx_prayer_schedules_date on public.prayer_schedules 
 -- Daily halacha content shown publicly
 create table if not exists public.daily_halacha (
   id uuid primary key default gen_random_uuid(),
-  halacha_date date not null unique,
+  display_day integer not null,
   title text not null,
   content text not null,
+  full_text text,
+  summary_text text,
+  source_key text not null default 'manual',
   source text,
+  book_name text,
+  chapter_number integer,
+  section_number integer,
+  topic text,
   published boolean not null default false,
   created_by uuid references public.members(id),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (source_key, display_day)
 );
 
 -- Torah lessons and events
@@ -133,13 +141,14 @@ values
   (current_date, 'ערבית', '19:10', 'יומי', null, true)
 on conflict do nothing;
 
-insert into public.daily_halacha (halacha_date, title, content, source, published)
+insert into public.daily_halacha (display_day, title, content, source_key, source, published)
 values
   (
-    current_date,
+    1,
     'הלכה יומית - ברכות הנהנין',
     'לפני אכילת עוגה מברכים מזונות, ולאחריה - על המחיה, אם אכלו כשיעור.',
+    'manual',
     'שולחן ערוך אורח חיים',
     true
   )
-on conflict (halacha_date) do nothing;
+on conflict (source_key, display_day) do nothing;

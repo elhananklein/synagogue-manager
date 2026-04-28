@@ -19,6 +19,15 @@ create table if not exists public.minyanim (
 
 create index if not exists idx_minyanim_synagogue_id on public.minyanim(synagogue_id);
 
+create table if not exists public.synagogue_halacha_settings (
+  synagogue_id text primary key references public.synagogues(id) on delete cascade,
+  start_date date not null default current_date,
+  source_key text not null default 'kitzur_shulchan_arukh',
+  display_mode text not null default 'summary' check (display_mode in ('summary', 'full')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.minyan_prayer_settings (
   id uuid primary key default gen_random_uuid(),
   minyan_id uuid not null references public.minyanim(id) on delete cascade,
@@ -54,6 +63,7 @@ create table if not exists public.minyan_prayers (
   fixed_time time,
   zman_anchor text,
   offset_minutes integer,
+  round_mode text not null default 'none' check (round_mode in ('none', 'up', 'down')),
   sort_order integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -67,6 +77,11 @@ for each row execute function public.set_updated_at();
 drop trigger if exists trg_minyanim_updated_at on public.minyanim;
 create trigger trg_minyanim_updated_at
 before update on public.minyanim
+for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_synagogue_halacha_settings_updated_at on public.synagogue_halacha_settings;
+create trigger trg_synagogue_halacha_settings_updated_at
+before update on public.synagogue_halacha_settings
 for each row execute function public.set_updated_at();
 
 drop trigger if exists trg_minyan_prayer_settings_updated_at on public.minyan_prayer_settings;

@@ -19,6 +19,7 @@ type PrayerSetting = {
   fixedTime: string | null;
   zmanAnchor: string | null;
   offsetMinutes: number | null;
+  roundMode: "none" | "up" | "down";
 };
 
 type ScreenSetting = {
@@ -34,6 +35,12 @@ type MinyanModel = {
   displayStyle: DisplayStyle;
   prayerSettings: PrayerSetting[];
   screens: ScreenSetting[];
+};
+
+type HalachaSettingsModel = {
+  startDate: string;
+  sourceKey: "kitzur_shulchan_arukh";
+  displayMode: "summary" | "full";
 };
 
 const WEEKDAY_PRAYERS: PrayerType[] = ["שחרית", "מנחה", "ערבית"];
@@ -67,7 +74,8 @@ function createPrayer(category: PrayerCategory): PrayerSetting {
     mode: "fixed",
     fixedTime: "08:30",
     zmanAnchor: "sunset",
-    offsetMinutes: 0
+    offsetMinutes: 0,
+    roundMode: "none"
   };
 }
 
@@ -88,6 +96,11 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
   const [synagogueId, setSynagogueId] = useState("");
   const [synagogueName, setSynagogueName] = useState("");
   const [minyanim, setMinyanim] = useState<MinyanModel[]>([]);
+  const [halachaSettings, setHalachaSettings] = useState<HalachaSettingsModel>({
+    startDate: new Date().toISOString().slice(0, 10),
+    sourceKey: "kitzur_shulchan_arukh",
+    displayMode: "summary"
+  });
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -105,7 +118,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
     const response = await fetch(`/api/admin/gabbai/${id}`, { cache: "no-store" });
     const payload = (await response.json()) as {
       ok: boolean;
-      data?: { synagogue: { id: string; name: string }; minyanim: MinyanModel[] };
+      data?: { synagogue: { id: string; name: string }; minyanim: MinyanModel[]; halachaSettings: HalachaSettingsModel };
       error?: string;
     };
     if (!payload.ok || !payload.data) {
@@ -114,6 +127,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
     }
     setSynagogueName(payload.data.synagogue.name);
     setMinyanim(payload.data.minyanim.length ? payload.data.minyanim : [createDefaultMinyan()]);
+    setHalachaSettings(payload.data.halachaSettings);
   }
 
   useEffect(() => {
@@ -164,7 +178,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
       const response = await fetch(`/api/admin/gabbai/${synagogueId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ synagogueName, minyanim })
+        body: JSON.stringify({ synagogueName, minyanim, halachaSettings })
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!payload.ok) {
@@ -193,6 +207,54 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
           <label className="block text-sm font-medium">שם בית הכנסת</label>
           <input className="h-10 w-full rounded-md border border-border bg-background px-3" value={synagogueName} onChange={(e) => setSynagogueName(e.target.value)} />
           <p className="text-sm text-muted-foreground">השם ישמש בכותרת המערכת (לפי בית הכנסת הפעיל).</p>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>הגדרות הלכה יומית</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium">תאריך התחלה</label>
+            <input
+              type="date"
+              className="h-10 w-full rounded-md border border-border bg-background px-3"
+              value={halachaSettings.startDate}
+              onChange={(e) => setHalachaSettings((prev) => ({ ...prev, startDate: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">מקור הלכה</label>
+            <select
+              className="h-10 w-full rounded-md border border-border bg-background px-3"
+              value={halachaSettings.sourceKey}
+              onChange={(e) =>
+                setHalachaSettings((prev) => ({
+                  ...prev,
+                  sourceKey: e.target.value as "kitzur_shulchan_arukh"
+                }))
+              }
+            >
+              <option value="kitzur_shulchan_arukh">קיצור שולחן ערוך</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">אופן תצוגה</label>
+            <select
+              className="h-10 w-full rounded-md border border-border bg-background px-3"
+              value={halachaSettings.displayMode}
+              onChange={(e) =>
+                setHalachaSettings((prev) => ({
+                  ...prev,
+                  displayMode: e.target.value as "summary" | "full"
+                }))
+              }
+            >
+              <option value="summary">תקציר</option>
+              <option value="full">מלא</option>
+            </select>
+          </div>
         </CardContent>
       </Card>
 
@@ -375,7 +437,13 @@ function PrayerEditor({
 
   return (
     <div className="mb-3 rounded-md border border-border p-3">
-      <div className="grid gap-2 md:grid-cols-5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-muted-foreground">הגדרת תפילה</span>
+        <Button type="button" variant="outline" onClick={onDelete}>
+          מחק תפילה
+        </Button>
+      </div>
+      <div className="grid gap-2 md:grid-cols-6">
         <select className="h-10 rounded-md border border-border bg-background px-3" value={setting.prayerType} onChange={(e) => onChange({ ...setting, prayerType: e.target.value as PrayerType })}>
           {prayerOptions.map((option) => (
             <option key={option} value={option}>
@@ -424,11 +492,22 @@ function PrayerEditor({
               }
               placeholder="מספר דקות"
             />
+            <select
+              className="h-10 rounded-md border border-border bg-background px-3"
+              value={setting.roundMode ?? "none"}
+              onChange={(e) =>
+                onChange({
+                  ...setting,
+                  roundMode: e.target.value as "none" | "up" | "down"
+                })
+              }
+            >
+              <option value="none">ללא עיגול</option>
+              <option value="up">עיגול למעלה (5 דק')</option>
+              <option value="down">עיגול למטה (5 דק')</option>
+            </select>
           </>
         )}
-        <Button type="button" variant="outline" onClick={onDelete}>
-          מחק
-        </Button>
       </div>
       {showDaysOfWeek ? (
         <div className="mt-2 flex flex-wrap gap-2">

@@ -11,6 +11,7 @@ create table if not exists public.minyan_prayers (
   fixed_time time,
   zman_anchor text,
   offset_minutes integer,
+  round_mode text not null default 'none' check (round_mode in ('none', 'up', 'down')),
   sort_order integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

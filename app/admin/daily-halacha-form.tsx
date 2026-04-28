@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type HalachaFormState = {
-  halachaDate: string;
+  displayDay: number;
   title: string;
   content: string;
   published: boolean;
 };
 
 const INITIAL_FORM: HalachaFormState = {
-  halachaDate: new Date().toISOString().slice(0, 10),
+  displayDay: 1,
   title: "",
   content: "",
   published: true
@@ -22,6 +22,7 @@ export function DailyHalachaForm() {
   const [form, setForm] = useState<HalachaFormState>(INITIAL_FORM);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +35,7 @@ export function DailyHalachaForm() {
         const payload = (await response.json()) as {
           ok: boolean;
           data?: {
-            halacha_date: string;
+            display_day: number;
             title: string;
             content: string;
             published: boolean;
@@ -51,7 +52,7 @@ export function DailyHalachaForm() {
 
         if (payload.data) {
           setForm({
-            halachaDate: payload.data.halacha_date,
+            displayDay: payload.data.display_day,
             title: payload.data.title,
             content: payload.data.content,
             published: payload.data.published
@@ -101,6 +102,39 @@ export function DailyHalachaForm() {
     }
   }
 
+  async function generateKitzurBatch() {
+    setIsGenerating(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/daily-halacha", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generateBatch: true, batchSize: 10 })
+      });
+      const payload = (await response.json()) as {
+        ok: boolean;
+        inserted?: number;
+        startDisplayDay?: number;
+        endDisplayDay?: number;
+        error?: string;
+      };
+
+      if (!payload.ok) {
+        setError(payload.error ?? "משיכת הלכות נכשלה");
+        return;
+      }
+
+      setMessage(
+        `נמשכו ${payload.inserted ?? 0} הלכות מקיצור שולחן ערוך (יום ${payload.startDisplayDay ?? "?"} עד יום ${payload.endDisplayDay ?? "?"}).`
+      );
+    } catch {
+      setError("משיכת הלכות נכשלה");
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -113,14 +147,15 @@ export function DailyHalachaForm() {
         ) : (
           <form className="space-y-4" onSubmit={onSubmit}>
             <div className="space-y-1">
-              <label className="block text-sm font-medium" htmlFor="halachaDate">
-                תאריך
+              <label className="block text-sm font-medium" htmlFor="displayDay">
+                יום להצגה
               </label>
               <input
-                id="halachaDate"
-                type="date"
-                value={form.halachaDate}
-                onChange={(event) => setForm((prev) => ({ ...prev, halachaDate: event.target.value }))}
+                id="displayDay"
+                type="number"
+                min={1}
+                value={form.displayDay}
+                onChange={(event) => setForm((prev) => ({ ...prev, displayDay: Number(event.target.value) }))}
                 className="h-10 w-full rounded-md border border-border bg-background px-3"
                 required
               />
@@ -165,6 +200,9 @@ export function DailyHalachaForm() {
             <div className="flex items-center gap-3">
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? "שומר..." : "שמור הלכה"}
+              </Button>
+              <Button type="button" variant="outline" disabled={isGenerating || isSaving} onClick={generateKitzurBatch}>
+                {isGenerating ? "מושך 10 הלכות..." : "משוך 10 הלכות מקיצור שו\"ע"}
               </Button>
               {message ? <p className="text-sm text-green-600">{message}</p> : null}
               {error ? <p className="text-sm text-red-600">{error}</p> : null}

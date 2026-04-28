@@ -10,6 +10,7 @@ type PrayerSettingInput = {
   fixedTime: string | null;
   zmanAnchor: string | null;
   offsetMinutes: number | null;
+  roundMode: "none" | "up" | "down";
 };
 
 type ScreenInput = {
@@ -25,6 +26,12 @@ type MinyanInput = {
   displayStyle: "classic" | "modern" | "minimal" | "woodSilver";
   prayerSettings: PrayerSettingInput[];
   screens: ScreenInput[];
+};
+
+type HalachaSettingsInput = {
+  startDate: string;
+  sourceKey: "kitzur_shulchan_arukh";
+  displayMode: "summary" | "full";
 };
 
 export const dynamic = "force-dynamic";
@@ -52,7 +59,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     minyanIds.length
       ? supabase
           .from("minyan_prayers")
-          .select("id, minyan_id, category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, sort_order")
+          .select("id, minyan_id, category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order")
           .in("minyan_id", minyanIds)
       : Promise.resolve({ data: [], error: null }),
     minyanIds.length
@@ -62,8 +69,13 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
           .in("minyan_id", minyanIds)
       : Promise.resolve({ data: [], error: null })
   ]);
+  const halachaSettingsRes = await supabase
+    .from("synagogue_halacha_settings")
+    .select("start_date, source_key, display_mode")
+    .eq("synagogue_id", synagogueId)
+    .maybeSingle();
 
-  if (minyanRes.error || prayerRes.error || screensRes.error) {
+  if (minyanRes.error || prayerRes.error || screensRes.error || halachaSettingsRes.error) {
     return NextResponse.json({ ok: false, error: "failed_loading_settings" }, { status: 500 });
   }
 
@@ -82,7 +94,8 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
         mode: p.mode,
         fixedTime: p.fixed_time,
         zmanAnchor: p.zman_anchor,
-        offsetMinutes: p.offset_minutes
+        offsetMinutes: p.offset_minutes,
+        roundMode: p.round_mode ?? "none"
       })),
     screens: (screensRes.data ?? [])
       .filter((s) => s.minyan_id === minyan.id)
@@ -94,12 +107,18 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
         enabled: s.enabled
       }))
   }));
+  const halachaSettings = {
+    startDate: halachaSettingsRes.data?.start_date ?? new Date().toISOString().slice(0, 10),
+    sourceKey: (halachaSettingsRes.data?.source_key as "kitzur_shulchan_arukh") ?? "kitzur_shulchan_arukh",
+    displayMode: (halachaSettingsRes.data?.display_mode as "summary" | "full") ?? "summary"
+  };
 
   return NextResponse.json({
     ok: true,
     data: {
       synagogue: synagogueRes.data,
-      minyanim: mappedMinyanim
+      minyanim: mappedMinyanim,
+      halachaSettings
     }
   });
 }
@@ -114,6 +133,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
   const payload = (await request.json()) as {
     synagogueName: string;
     minyanim: MinyanInput[];
+    halachaSettings?: HalachaSettingsInput;
   };
 
   const synagogueName = payload.synagogueName?.trim();
@@ -127,6 +147,11 @@ export async function POST(request: Request, context: { params: Promise<{ synago
   }
 
   const incomingMinyanim = payload.minyanim ?? [];
+  const halachaSettings = payload.halachaSettings ?? {
+    startDate: new Date().toISOString().slice(0, 10),
+    sourceKey: "kitzur_shulchan_arukh",
+    displayMode: "summary"
+  };
   const existingMinyanRes = await supabase.from("minyanim").select("id").eq("synagogue_id", synagogueId);
   if (existingMinyanRes.error) {
     return NextResponse.json({ ok: false, error: existingMinyanRes.error.message }, { status: 500 });
@@ -182,6 +207,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           fixed_time: p.mode === "fixed" ? p.fixedTime : null,
           zman_anchor: p.mode === "relative" ? p.zmanAnchor : null,
           offset_minutes: p.mode === "relative" ? p.offsetMinutes : null,
+          round_mode: p.mode === "relative" ? (p.roundMode ?? "none") : "none",
           sort_order: index + 1
         }))
       );
@@ -202,6 +228,19 @@ export async function POST(request: Request, context: { params: Promise<{ synago
       );
       if (insertScreenError) return NextResponse.json({ ok: false, error: insertScreenError.message }, { status: 500 });
     }
+  }
+
+  const { error: halachaSettingsError } = await supabase.from("synagogue_halacha_settings").upsert(
+    {
+      synagogue_id: synagogueId,
+      start_date: halachaSettings.startDate,
+      source_key: halachaSettings.sourceKey,
+      display_mode: halachaSettings.displayMode
+    },
+    { onConflict: "synagogue_id" }
+  );
+  if (halachaSettingsError) {
+    return NextResponse.json({ ok: false, error: halachaSettingsError.message }, { status: 500 });
   }
 
   const cookieStore = await cookies();

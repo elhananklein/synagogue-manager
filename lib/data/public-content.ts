@@ -1,6 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase";
-import { dailyHalacha, getTodayIsoDate, todayPrayerSchedule, type PrayerSlot } from "@/lib/data/mock-content";
-import { getSefariaDailyHalachaSummary } from "@/lib/data/sefaria-halacha";
+import { getTodayIsoDate, todayPrayerSchedule, type PrayerSlot } from "@/lib/data/mock-content";
 import { unstable_noStore as noStore } from "next/cache";
 
 type DbPrayerRow = {
@@ -16,7 +15,13 @@ function getIsoDateUtc(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-export async function getPublicHomeData() {
+function diffDays(aIso: string, bIso: string) {
+  const a = new Date(`${aIso}T00:00:00.000Z`).getTime();
+  const b = new Date(`${bIso}T00:00:00.000Z`).getTime();
+  return Math.floor((a - b) / (24 * 60 * 60 * 1000));
+}
+
+export async function getPublicHomeData(synagogueId?: string | null) {
   // Supabase reads should always be fresh on page refresh (avoid Route Cache).
   noStore();
 
@@ -28,14 +33,17 @@ export async function getPublicHomeData() {
   const supabase = getSupabaseClient();
 
   if (!supabase) {
-    const sefariaHalacha = await getSefariaDailyHalachaSummary();
     return {
       schedule: todayPrayerSchedule,
-      halacha: sefariaHalacha ?? dailyHalacha
+      halacha: {
+        title: "הלכה יומית",
+        text: "אין חיבור למסד נתונים ולכן לא ניתן להציג הלכה ממקור מוגדר.",
+        source: "אין מקור זמין"
+      }
     };
   }
 
-  const [prayerResult, halachaResult, sefariaHalacha] = await Promise.all([
+  const [prayerResult, halachaSettingsRes] = await Promise.all([
     supabase
       .from("prayer_schedules")
       .select("id, schedule_date, prayer_type, prayer_time, minyan_label, notes")
@@ -44,15 +52,18 @@ export async function getPublicHomeData() {
       .order("schedule_date", { ascending: false })
       .order("prayer_time", { ascending: true }),
     supabase
-      .from("daily_halacha")
-      .select("title, content")
-      .in("halacha_date", candidateDates)
-      .eq("published", true)
-      .order("halacha_date", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    getSefariaDailyHalachaSummary()
+      .from("synagogue_halacha_settings")
+      .select("start_date, source_key, display_mode")
+      .eq("synagogue_id", synagogueId ?? "")
+      .maybeSingle()
   ]);
+  const selectedSourceKey = halachaSettingsRes.data?.source_key ?? "kitzur_shulchan_arukh";
+  const halachaResult = await supabase
+    .from("daily_halacha")
+    .select("title, content, full_text, summary_text, display_day, source_key, chapter_number, section_number")
+    .eq("source_key", selectedSourceKey)
+    .eq("published", true)
+    .order("display_day", { ascending: true });
 
   const schedule: PrayerSlot[] =
     prayerResult.error || !prayerResult.data?.length
@@ -64,15 +75,32 @@ export async function getPublicHomeData() {
           notes: row.notes ?? undefined
         }));
 
-  const dbHalacha =
-    halachaResult.error || !halachaResult.data
-      ? null
-      : {
-          title: halachaResult.data.title,
-          text: halachaResult.data.content
-        };
+  const dbHalacha = await (async () => {
+    if (halachaResult.error || !halachaResult.data?.length) return null;
+    const startDate = halachaSettingsRes.data?.start_date ?? todayJerusalem;
+    const displayMode = halachaSettingsRes.data?.display_mode ?? "summary";
+    const daysFromStart = Math.max(0, diffDays(todayJerusalem, startDate));
+    const targetDisplayDay = daysFromStart + 1;
+    const chosen =
+      halachaResult.data.find((row) => Number(row.display_day) === targetDisplayDay) ??
+      halachaResult.data[halachaResult.data.length - 1];
+    if (!chosen) return null;
+    const text =
+      displayMode === "full"
+        ? (chosen.full_text?.trim() || "אין טקסט מלא זמין להלכה זו.")
+        : (chosen.summary_text ?? chosen.content);
+    return {
+      title: chosen.title,
+      text,
+      source: selectedSourceKey === "kitzur_shulchan_arukh" ? "קיצור שולחן ערוך" : "מקור פנימי"
+    };
+  })();
 
-  const halacha = sefariaHalacha ?? dbHalacha ?? dailyHalacha;
+  const halacha = dbHalacha ?? {
+    title: "הלכה יומית",
+    text: "לא נמצאה הלכה זמינה למקור וליום שהוגדרו. יש למשוך הלכות למקור הנבחר.",
+    source: "אין הלכה זמינה"
+  };
 
   return { schedule, halacha };
 }

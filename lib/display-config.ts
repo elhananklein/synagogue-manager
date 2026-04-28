@@ -12,6 +12,7 @@ export type PrayerSetting = {
   fixedTime: string | null;
   zmanAnchor: string | null;
   offsetMinutes: number | null;
+  roundMode: "none" | "up" | "down";
 };
 
 export type ScreenSetting = {
@@ -79,7 +80,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanId?: s
       .eq("minyan_id", chosenMinyan.id),
     supabase
       .from("minyan_prayers")
-      .select("category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, sort_order")
+      .select("category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order")
       .eq("minyan_id", chosenMinyan.id)
   ]);
 
@@ -107,7 +108,8 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanId?: s
             mode: row.mode as "fixed" | "relative",
             fixedTime: row.fixed_time,
             zmanAnchor: row.zman_anchor,
-            offsetMinutes: row.offset_minutes
+            offsetMinutes: row.offset_minutes,
+            roundMode: (row.round_mode as "none" | "up" | "down") ?? "none"
           }));
 
   return {

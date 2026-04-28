@@ -5,15 +5,30 @@ import { getPublicHomeData } from "@/lib/data/public-content";
 
 export const dynamic = "force-dynamic";
 
-function formatWithOffset(baseIso: string, offsetMinutes: number) {
+function roundToFiveMinutes(date: Date, mode: "none" | "up" | "down") {
+  if (mode === "none") return date;
+  const rounded = new Date(date);
+  const minutes = rounded.getMinutes();
+  const remainder = minutes % 5;
+  if (remainder === 0) return rounded;
+  if (mode === "up") {
+    rounded.setMinutes(minutes + (5 - remainder), 0, 0);
+    return rounded;
+  }
+  rounded.setMinutes(minutes - remainder, 0, 0);
+  return rounded;
+}
+
+function formatWithOffset(baseIso: string, offsetMinutes: number, roundMode: "none" | "up" | "down") {
   const date = new Date(baseIso);
   date.setMinutes(date.getMinutes() + offsetMinutes);
+  const rounded = roundToFiveMinutes(date, roundMode);
   return new Intl.DateTimeFormat("he-IL", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
     timeZone: "Asia/Jerusalem"
-  }).format(date);
+  }).format(rounded);
 }
 
 function buildPrayerSchedule(prayerSettings: PrayerSetting[], zmanimSourceTimes: Record<string, string>) {
@@ -56,9 +71,10 @@ function buildPrayerScheduleForDay(
       if (setting.mode === "relative" && setting.zmanAnchor && setting.zmanAnchor in zmanimSourceTimes) {
         const anchorTime = zmanimSourceTimes[setting.zmanAnchor];
         const offsetMinutes = setting.offsetMinutes ?? 0;
+        const roundMode = setting.roundMode ?? "none";
         return {
           label: setting.prayerType,
-          time: formatWithOffset(anchorTime, offsetMinutes),
+          time: formatWithOffset(anchorTime, offsetMinutes, roundMode),
           details: ""
         };
       }
@@ -91,7 +107,7 @@ export default async function DisplayPage({
   const [snapshot, tomorrowSnapshot, publicData] = await Promise.all([
     getDisplaySnapshot(todayIsoDate),
     getDisplaySnapshot(tomorrowIsoDate),
-    getPublicHomeData()
+    getPublicHomeData(params.synagogueId ?? null)
   ]);
   const displayConfig = await getDisplayConfig(params.synagogueId ?? null, params.minyanId ?? null);
   const prayerSchedule = buildPrayerSchedule(displayConfig.prayerSettings, snapshot.zmanimSourceTimes);
@@ -132,7 +148,7 @@ export default async function DisplayPage({
       minyanName={displayConfig.minyanName}
       screens={displayConfig.screens}
       snapshot={displaySnapshot}
-      halacha={{ title: publicData.halacha.title, text: publicData.halacha.text }}
+      halacha={{ title: publicData.halacha.title, text: publicData.halacha.text, source: publicData.halacha.source }}
       prayerSchedule={prayerSchedule}
       timeSections={timeSections}
     />

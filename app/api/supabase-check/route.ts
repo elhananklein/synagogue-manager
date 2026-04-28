@@ -38,17 +38,17 @@ export async function GET() {
       .limit(20),
     supabase
       .from("daily_halacha")
-      .select("id, halacha_date, title, published")
-      .in("halacha_date", candidateDates)
+      .select("id, source_key, display_day, title, published")
+      .eq("source_key", "kitzur_shulchan_arukh")
       .eq("published", true)
-      .order("halacha_date", { ascending: false })
+      .order("display_day", { ascending: false })
       .limit(1)
       .maybeSingle(),
     supabase
       .from("daily_halacha")
-      .select("id, halacha_date, title, published")
+      .select("id, source_key, display_day, title, published")
       .eq("published", true)
-      .order("halacha_date", { ascending: false })
+      .order("display_day", { ascending: false })
       .limit(1)
       .maybeSingle()
   ]);
