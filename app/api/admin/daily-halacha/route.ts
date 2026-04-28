@@ -30,19 +30,21 @@ function getSupabaseAdminClient() {
   return createClient(url, key);
 }
 
-async function getNextDisplayDay(supabase: ReturnType<typeof createClient>, sourceKey: string) {
-  const { data } = await supabase
+type AdminSupabaseClient = NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
+
+async function getNextDisplayDay(supabase: AdminSupabaseClient, sourceKey: string) {
+  const { data } = (await supabase
     .from("daily_halacha")
     .select("display_day")
     .eq("source_key", sourceKey)
     .order("display_day", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle()) as { data: { display_day: number } | null };
   return (data?.display_day ?? 0) + 1;
 }
 
-async function getLastKitzurCursor(supabase: ReturnType<typeof createClient>) {
-  const { data } = await supabase
+async function getLastKitzurCursor(supabase: AdminSupabaseClient) {
+  const { data } = (await supabase
     .from("daily_halacha")
     .select("chapter_number, section_number")
     .eq("book_name", "קיצור שולחן ערוך")
@@ -50,7 +52,7 @@ async function getLastKitzurCursor(supabase: ReturnType<typeof createClient>) {
     .not("section_number", "is", null)
     .order("display_day", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle()) as { data: { chapter_number: number; section_number: number } | null };
   return {
     chapterNumber: data?.chapter_number ?? 1,
     sectionNumber: data?.section_number ?? 0
