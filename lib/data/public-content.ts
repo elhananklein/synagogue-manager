@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { getTodayIsoDate, todayPrayerSchedule, type PrayerSlot } from "@/lib/data/mock-content";
 import { unstable_noStore as noStore } from "next/cache";
 
@@ -30,7 +30,7 @@ export async function getPublicHomeData(synagogueId?: string | null) {
   const todayUtc = getIsoDateUtc(now);
   const yesterdayUtc = getIsoDateUtc(new Date(now.getTime() - 24 * 60 * 60 * 1000));
   const candidateDates = Array.from(new Set([todayJerusalem, todayUtc, yesterdayUtc]));
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdminClient();
 
   if (!supabase) {
     return {
@@ -38,7 +38,9 @@ export async function getPublicHomeData(synagogueId?: string | null) {
       halacha: {
         title: "הלכה יומית",
         text: "אין חיבור למסד נתונים ולכן לא ניתן להציג הלכה ממקור מוגדר.",
-        source: "אין מקור זמין"
+        source: "אין מקור זמין",
+        chapterNumber: undefined,
+        sectionNumber: undefined
       }
     };
   }
@@ -92,14 +94,18 @@ export async function getPublicHomeData(synagogueId?: string | null) {
     return {
       title: chosen.title,
       text,
-      source: selectedSourceKey === "kitzur_shulchan_arukh" ? "קיצור שולחן ערוך" : "מקור פנימי"
+      source: selectedSourceKey === "kitzur_shulchan_arukh" ? "קיצור שולחן ערוך" : "מקור פנימי",
+      chapterNumber: chosen.chapter_number ?? undefined,
+      sectionNumber: chosen.section_number ?? undefined
     };
   })();
 
   const halacha = dbHalacha ?? {
     title: "הלכה יומית",
     text: "לא נמצאה הלכה זמינה למקור וליום שהוגדרו. יש למשוך הלכות למקור הנבחר.",
-    source: "אין הלכה זמינה"
+    source: "אין הלכה זמינה",
+    chapterNumber: undefined,
+    sectionNumber: undefined
   };
 
   return { schedule, halacha };

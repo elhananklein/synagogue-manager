@@ -40,6 +40,35 @@ type Snapshot = {
   showYaalehVeyavo: boolean;
 };
 
+function toHebrewNumber(num: number) {
+  if (!Number.isInteger(num) || num <= 0) return "";
+  const ones = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"];
+  const tens = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"];
+  const hundreds = ["", "ק", "ר", "ש", "ת"];
+
+  let n = num;
+  let out = "";
+
+  while (n >= 400) {
+    out += "ת";
+    n -= 400;
+  }
+  if (n >= 100) {
+    const h = Math.floor(n / 100);
+    out += hundreds[h];
+    n %= 100;
+  }
+  if (n === 15) return `${out}טו`;
+  if (n === 16) return `${out}טז`;
+  if (n >= 10) {
+    const t = Math.floor(n / 10);
+    out += tens[t];
+    n %= 10;
+  }
+  if (n > 0) out += ones[n];
+  return out;
+}
+
 export function DisplayRotator({
   style,
   synagogueName,
@@ -55,7 +84,7 @@ export function DisplayRotator({
   minyanName: string | null;
   screens: RotatorScreen[];
   snapshot: Snapshot;
-  halacha: { title: string; text: string; source?: string };
+  halacha: { title: string; text: string; source?: string; chapterNumber?: number; sectionNumber?: number };
   prayerSchedule: PrayerSlot[];
   timeSections: TimeSection[];
 }) {
@@ -150,6 +179,12 @@ export function DisplayRotator({
     if (!intro || !body) return { intro: null, body: normalized, closingLine: closingLineMatch };
     return { intro, body, closingLine: closingLineMatch };
   })();
+  const chapterHebrew = halacha.chapterNumber ? toHebrewNumber(halacha.chapterNumber) : "";
+  const sectionHebrew = halacha.sectionNumber ? toHebrewNumber(halacha.sectionNumber) : "";
+  const halachaHeaderLabel =
+    chapterHebrew && sectionHebrew
+      ? `פרק ${chapterHebrew} הלכה ${sectionHebrew}`
+      : halacha.title;
 
   return (
     <main className={`display display--${style}`}>
@@ -186,7 +221,7 @@ export function DisplayRotator({
           <Card className="display-card">
             <CardHeader>
               <CardTitle className="display-halacha-title display-halacha-title-row">
-                <span>{halacha.title}</span>
+                <span>{halachaHeaderLabel}</span>
                 {halacha.source ? <span className="display-halacha-source">({halacha.source})</span> : null}
               </CardTitle>
             </CardHeader>
