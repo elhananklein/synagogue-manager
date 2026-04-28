@@ -503,8 +503,8 @@ function PrayerEditor({
               }
             >
               <option value="none">ללא עיגול</option>
-              <option value="up">עיגול למעלה (5 דק')</option>
-              <option value="down">עיגול למטה (5 דק')</option>
+              <option value="up">עיגול למעלה (5 דק&#39;)</option>
+              <option value="down">עיגול למטה (5 דק&#39;)</option>
             </select>
           </>
         )}
