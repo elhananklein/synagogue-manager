@@ -31,6 +31,8 @@ export type DisplaySnapshot = {
   dafYomi: string;
   zmanim: Array<{ label: string; time: string }>;
   zmanimSourceTimes: Record<string, string>;
+  /** צאת הכוכבים ליום האזרחי של הזמנים — לרענון כשהיום העברי מתקדם (לא חצות). */
+  halachicDayRollIso: string | null;
   rainText: string;
   blessingText: string;
   omerText: string | null;
@@ -98,6 +100,10 @@ function isWinterSeason(hm: string, hd: number) {
   return HEBREW_MONTHS_WINTER.has(hm);
 }
 
+function stripHebrewNiqqud(text: string) {
+  return text.replace(/[\u0591-\u05C7]/g, "");
+}
+
 function hasYaalehVeyavo(events: string[]) {
   const holidayKeywords = [
     "Rosh Chodesh",
@@ -109,17 +115,105 @@ function hasYaalehVeyavo(events: string[]) {
     "Shemini Atzeret",
     "Simchat Torah"
   ];
+  const holidayKeywordsHe = [
+    "ראש חודש",
+    "סוכות",
+    "פסח",
+    "שבועות",
+    "ראש השנה",
+    "יום כיפור",
+    "שמיני עצרת",
+    "שמחת תורה"
+  ];
 
-  return events.some((event) => holidayKeywords.some((keyword) => event.includes(keyword)));
+  return events.some((event) => {
+    const plain = stripHebrewNiqqud(event);
+    return (
+      holidayKeywords.some((keyword) => event.includes(keyword)) ||
+      holidayKeywordsHe.some((keyword) => plain.includes(keyword))
+    );
+  });
+}
+
+const HEBREW_LETTER_GEMATRIA: Record<string, number> = {
+  א: 1,
+  ב: 2,
+  ג: 3,
+  ד: 4,
+  ה: 5,
+  ו: 6,
+  ז: 7,
+  ח: 8,
+  ט: 9,
+  י: 10,
+  ך: 20,
+  כ: 20,
+  ל: 30,
+  ם: 40,
+  מ: 40,
+  ן: 50,
+  נ: 50,
+  ס: 60,
+  ע: 70,
+  ף: 80,
+  פ: 80,
+  ץ: 90,
+  צ: 90,
+  ק: 100,
+  ר: 200,
+  ש: 300,
+  ת: 400
+};
+
+function hebrewLettersGematraSum(lettersOnly: string): number {
+  let sum = 0;
+  for (const ch of lettersOnly) {
+    sum += HEBREW_LETTER_GEMATRIA[ch] ?? 0;
+  }
+  return sum;
+}
+
+/** Hebcal: English ordinals / "13. day", Hebrew "כ״ד בעומר", or Lag BaOmer. */
+function extractOmerDayFromEvents(events: string[]): number | null {
+  for (const raw of events) {
+    if (typeof raw !== "string") continue;
+    const e = stripHebrewNiqqud(raw).replace(/\u00A0/g, " ").normalize("NFC");
+    if (/Lag\s*B['\u2019]?Omer/i.test(e) || /לג\s*בעומר/.test(e)) {
+      return 33;
+    }
+
+    const en =
+      e.match(/(\d+)\s*(?:st|nd|rd|th|\.)?\s+day\s+of\s+the\s+Omer/i) ??
+      e.match(/(\d+)\s+day\s+of\s+the\s+Omer/i);
+    if (en?.[1]) {
+      const day = Number(en[1]);
+      if (!Number.isNaN(day) && day >= 1 && day <= 49) return day;
+    }
+
+    const he = e.match(/([\u05D0-\u05EA\u05F3\u05F4״"]+)\s*בעומר/);
+    if (he?.[1]) {
+      const letters = he[1].replace(/[\u05F3\u05F4״"]/g, "");
+      const day = hebrewLettersGematraSum(letters);
+      if (day >= 1 && day <= 49) return day;
+    }
+
+    const omerIdx = e.indexOf("בעומר");
+    if (omerIdx > 0) {
+      const before = e.slice(0, omerIdx).trimEnd();
+      const tail = before.match(/([\u05D0-\u05EA\u05F3\u05F4״"]+)$/);
+      if (tail?.[1]) {
+        const letters = tail[1].replace(/[\u05F3\u05F4״"]/g, "");
+        const day = hebrewLettersGematraSum(letters);
+        if (day >= 1 && day <= 49) return day;
+      }
+    }
+  }
+  return null;
 }
 
 function extractOmerText(events: string[]) {
-  const omerEvent = events.find((event) => /day of the Omer/i.test(event));
-  if (!omerEvent) return null;
-  const match = omerEvent.match(/(\d+)\w*\s+day of the Omer/i);
-  if (!match?.[1]) return null;
-  const day = Number(match[1]);
-  if (Number.isNaN(day) || day <= 0) return null;
+  const day = extractOmerDayFromEvents(events);
+  if (day == null) return null;
   return `היום ${day} ימים לעומר`;
 }
 
@@ -143,8 +237,15 @@ function addDaysIsoDate(isoDate: string, days: number) {
   return `${y}-${m}-${d}`;
 }
 
-function stripHebrewNiqqud(text: string) {
-  return text.replace(/[\u0591-\u05C7]/g, "");
+/** Civil (Gregorian) day to pass to Hebcal converter for Hebrew date, Omer, holidays — rolls at tzeit, not civil midnight. */
+function halachicCivilIsoForConverter(civilIso: string, now: Date, tzeitIso?: string) {
+  const jerusalemToday = toIsoDateJerusalem(now);
+  if (civilIso !== jerusalemToday) return civilIso;
+  if (!tzeitIso) return civilIso;
+  const tzeitMs = new Date(tzeitIso).getTime();
+  if (Number.isNaN(tzeitMs)) return civilIso;
+  if (now.getTime() >= tzeitMs) return addDaysIsoDate(civilIso, 1);
+  return civilIso;
 }
 
 function numberToHebrew(num: number) {
@@ -178,6 +279,12 @@ function numberToHebrew(num: number) {
   return `${raw.slice(0, -1)}"${raw.slice(-1)}`;
 }
 
+/** תצוגה ציבורית: לא למטמון Data Cache של Next (מניע תשובות ישנות בלי עומר / תאריך מעודכן). */
+const hebcalDisplayFetch: RequestInit = {
+  cache: "no-store",
+  headers: { "Accept-Language": "en-US,en;q=0.9" }
+};
+
 function normalizeDafYomiHebrew(raw: string) {
   const cleaned = raw.replaceAll("/", "").trim();
   const match = cleaned.match(/^([A-Za-z' ]+?)[\s._-]+(\d+)([ab])?$/i);
@@ -185,41 +292,51 @@ function normalizeDafYomiHebrew(raw: string) {
 
   const masechetKey = match[1].replaceAll(" ", "");
   const dafNumber = Number(match[2]);
-  const amud = match[3]?.toLowerCase();
   const masechetHebrew = DAF_YOMI_MASECHTOT_HEBREW[masechetKey];
   if (!masechetHebrew || Number.isNaN(dafNumber)) return raw;
 
   const dafHebrew = numberToHebrew(dafNumber);
-  if (!amud) {
-    return `${masechetHebrew} ${dafHebrew}`;
-  }
-  return `${masechetHebrew} ${dafHebrew} עמוד ${amud === "a" ? "א" : "ב"}`;
+  return `${masechetHebrew} ${dafHebrew}`;
 }
 
 export async function getDisplaySnapshot(targetIsoDate?: string): Promise<DisplaySnapshot> {
   const now = new Date();
-  const dateIso = targetIsoDate ?? toIsoDateJerusalem(now);
-  const [year, month, day] = dateIso.split("-").map(Number);
-
-  const converterUrl = `https://www.hebcal.com/converter?cfg=json&g2h=1&gy=${year}&gm=${month}&gd=${day}`;
+  const civilIso = targetIsoDate ?? toIsoDateJerusalem(now);
+  const zmanimUrl = `https://www.hebcal.com/zmanim?cfg=json&geo=city&city=IL-Jerusalem&date=${civilIso}`;
   const shabbatUrl = "https://www.hebcal.com/shabbat?cfg=json&geo=city&city=IL-Jerusalem&M=on";
-  const zmanimUrl = `https://www.hebcal.com/zmanim?cfg=json&geo=city&city=IL-Jerusalem&date=${dateIso}`;
-  const learningUrl = "https://www.hebcal.com/learning?cfg=json&geo=city&city=IL-Jerusalem";
 
-  const [converterRes, shabbatRes, zmanimRes, learningRes] = await Promise.all([
-    fetch(converterUrl, { next: { revalidate: 300 } }),
-    fetch(shabbatUrl, { next: { revalidate: 900 } }),
-    fetch(zmanimUrl, { next: { revalidate: 300 } }),
-    fetch(learningUrl, { next: { revalidate: 900 } })
+  const [shabbatRes, zmanimRes] = await Promise.all([
+    fetch(shabbatUrl, hebcalDisplayFetch),
+    fetch(zmanimUrl, hebcalDisplayFetch)
   ]);
 
-  if (!converterRes.ok || !shabbatRes.ok || !zmanimRes.ok) {
+  if (!shabbatRes.ok || !zmanimRes.ok) {
+    throw new Error("Failed to load Hebcal data");
+  }
+
+  const shabbat = (await shabbatRes.json()) as HebcalShabbatResponse;
+  const zmanim = (await zmanimRes.json()) as HebcalZmanimResponse;
+
+  const halachicIso = halachicCivilIsoForConverter(civilIso, now, zmanim.times?.tzeit85deg);
+  const [hy, hm, hd] = halachicIso.split("-").map(Number);
+  const converterUrl = `https://www.hebcal.com/converter?cfg=json&g2h=1&gy=${hy}&gm=${hm}&gd=${hd}`;
+  const learningUrl = "https://www.hebcal.com/learning?cfg=json&geo=city&city=IL-Jerusalem";
+
+  const [converterRes, learningRes] = await Promise.all([
+    fetch(converterUrl, hebcalDisplayFetch),
+    fetch(learningUrl, hebcalDisplayFetch)
+  ]);
+
+  if (!converterRes.ok) {
     throw new Error("Failed to load Hebcal data");
   }
 
   const converter = (await converterRes.json()) as HebcalConverterResponse;
-  const shabbat = (await shabbatRes.json()) as HebcalShabbatResponse;
-  const zmanim = (await zmanimRes.json()) as HebcalZmanimResponse;
+
+  const eventsList = converter.events;
+  const events: string[] = Array.isArray(eventsList)
+    ? eventsList.filter((item): item is string => typeof item === "string")
+    : [];
 
   const parashaItem = shabbat.items?.find((item) => item.category === "parashat");
   const parasha = parashaItem?.hebrew ?? parashaItem?.title ?? "לא נמצא";
@@ -247,7 +364,6 @@ export async function getDisplaySnapshot(targetIsoDate?: string): Promise<Displa
     })
     .filter((row): row is { label: string; time: string } => Boolean(row));
 
-  const events = converter.events ?? [];
   const winter = isWinterSeason(converter.hm, converter.hd);
   const omerText = extractOmerText(events);
 
@@ -276,6 +392,7 @@ export async function getDisplaySnapshot(targetIsoDate?: string): Promise<Displa
     dafYomi,
     zmanim: zmanimRows,
     zmanimSourceTimes: zmanim.times ?? {},
+    halachicDayRollIso: zmanim.times?.tzeit85deg ?? null,
     rainText: winter ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
     blessingText: winter ? "ותן טל ומטר לברכה" : "ותן ברכה",
     omerText,

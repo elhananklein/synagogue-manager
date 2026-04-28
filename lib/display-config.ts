@@ -1,6 +1,6 @@
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 
-export type DisplayStyle = "classic" | "modern" | "minimal";
+export type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver";
 export type ScreenKey = "main" | "clock" | "halacha";
 export type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ\"ש";
 

@@ -22,7 +22,7 @@ type ScreenInput = {
 type MinyanInput = {
   id?: string;
   name: string;
-  displayStyle: "classic" | "modern" | "minimal";
+  displayStyle: "classic" | "modern" | "minimal" | "woodSilver";
   prayerSettings: PrayerSettingInput[];
   screens: ScreenInput[];
 };

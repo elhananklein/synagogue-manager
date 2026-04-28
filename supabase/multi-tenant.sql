@@ -11,7 +11,7 @@ create table if not exists public.minyanim (
   id uuid primary key default gen_random_uuid(),
   synagogue_id text not null references public.synagogues(id) on delete cascade,
   name text not null,
-  display_style text not null default 'classic' check (display_style in ('classic', 'modern', 'minimal')),
+  display_style text not null default 'classic' check (display_style in ('classic', 'modern', 'minimal', 'woodSilver')),
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

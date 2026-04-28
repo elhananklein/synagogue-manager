@@ -43,20 +43,19 @@ body {
   }
 
   .display-header {
-    position: relative;
     margin-bottom: 1.5rem;
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
-    justify-content: center;
+    gap: 0.75rem;
     border-bottom-width: 1px;
     padding-bottom: 1rem;
   }
 
   .display-header-clock {
-    position: absolute;
-    inset-inline-end: 0;
-    top: 50%;
-    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 0.6rem;
     padding: 0.35rem 0.75rem;
     line-height: 1;
@@ -68,7 +67,7 @@ body {
   }
 
   .display-title {
-    width: 100%;
+    min-width: 0;
     text-align: center;
     font-size: 1.5rem;
     font-weight: 700;
@@ -78,9 +77,8 @@ body {
   }
 
   .display-counter {
-    position: absolute;
-    inset-inline-start: 0;
     font-size: 0.875rem;
+    white-space: nowrap;
   }
 
   .display-main-grid {
@@ -355,19 +353,82 @@ body {
     font-size: 1.125rem;
   }
 
+  .display-omer-line {
+    margin-top: 1rem;
+    font-size: clamp(1.1rem, 2.3vw, 1.65rem);
+    font-weight: 700;
+  }
+
+  .display-clock-screen .display-date-hebrew {
+    margin-top: 1.75rem;
+    font-size: clamp(2.9rem, 6.8vw, 5.4rem);
+    font-weight: 800;
+    line-height: 1.05;
+  }
+
+  .display-clock-screen .display-date-gregorian {
+    margin-top: 1.2rem;
+    font-size: clamp(1.7rem, 3.9vw, 2.8rem);
+    font-weight: 700;
+  }
+
+  .display-clock-screen .display-omer-line {
+    margin-top: 1.45rem;
+    font-size: clamp(2rem, 4.8vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+  }
+
+  .display-header-clock-placeholder {
+    width: 8.75rem;
+    height: 2.7rem;
+  }
+
   .display-clock-screen {
     border-radius: 1rem;
-    padding: 2.5rem;
+    min-height: min(78vh, 52rem);
+    max-width: min(94vw, 88rem);
+    margin-inline: auto;
+    padding: 3.5rem 4rem;
     text-align: center;
   }
 
   .display-halacha-title {
-    font-size: 1.5rem;
+    font-size: 1.9rem;
+  }
+
+  .display-halacha-title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
   }
 
   .display-halacha-text {
-    font-size: 1.25rem;
-    line-height: 1.6;
+    font-size: clamp(1.6rem, 2.8vw, 2.3rem);
+    line-height: 1.55;
+    white-space: pre-line;
+  }
+
+  .display-halacha-intro {
+    font-weight: 900;
+  }
+
+  .display-halacha-source {
+    color: #facc15;
+    font-size: 0.92em;
+    font-weight: 900;
+    white-space: nowrap;
+  }
+
+  .display-halacha-signature {
+    display: block;
+    margin-top: 1.3em;
+    padding-top: 0.55em;
+    border-top: 1px solid rgb(148 163 184 / 0.45);
+    font-size: 0.9em;
+    font-weight: 800;
+    opacity: 0.9;
   }
 
   .display-empty {
@@ -378,34 +439,124 @@ body {
   }
 
   .display--modern {
-    background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 50%, #020617 100%);
-    color: #fff;
+    background:
+      radial-gradient(ellipse 90% 70% at 100% -5%, rgb(29 78 216 / 0.95) 0%, transparent 58%),
+      radial-gradient(ellipse 75% 55% at 0% 105%, rgb(30 64 175 / 0.88) 0%, transparent 52%),
+      linear-gradient(168deg, #020617 0%, #0f172a 42%, #020617 100%);
+    color: #f8fafc;
+  }
+  .display--modern .display-frame {
+    border-color: rgb(56 189 248 / 0.85);
+    outline: 1px solid rgb(251 191 36 / 0.45);
+    outline-offset: -6px;
+    box-shadow: inset 0 0 0 1px rgb(2 6 23 / 0.55);
+  }
+  .display--modern .display-header {
+    border-color: rgb(56 189 248 / 0.7);
+  }
+  .display--modern .display-title {
+    color: #020617;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    -webkit-text-stroke: 0.04em #020617;
+    text-shadow: none;
   }
   .display--modern .display-card {
-    border-color: rgb(165 180 252 / 0.4);
-    background-color: rgb(99 102 241 / 0.15);
-    color: #e2e8f0;
-    backdrop-filter: blur(4px);
+    border-color: rgb(56 189 248 / 0.55);
+    background-color: rgb(15 23 42 / 0.94);
+    background-image: linear-gradient(175deg, rgb(30 41 59 / 0.98) 0%, rgb(15 23 42 / 0.99) 100%);
+    color: #f8fafc;
+    box-shadow: 0 8px 28px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(56 189 248 / 0.12);
   }
-  .display--modern .display-frame,
-  .display--modern .display-header {
-    border-color: rgb(165 180 252 / 0.4);
+  .display--modern .display-parasha,
+  .display--modern .display-hebrew-date {
+    color: #ffffff;
   }
-  .display--modern .display-accent,
+  .display--modern .display-gregorian-date {
+    color: #93c5fd;
+  }
+  .display--modern .display-addition-text,
+  .display--modern .display-daf-yomi {
+    color: #f1f5f9;
+  }
   .display--modern .display-counter,
   .display--modern .display-gregorian-date,
   .display--modern .display-date-gregorian,
   .display--modern .display-time-details {
-    color: #c7d2fe;
+    color: #93c5fd;
+  }
+  .display--modern .display-accent {
+    color: #fde047;
+  }
+  .display--modern .display-times-title {
+    color: #ffffff;
+  }
+  .display--modern .display-next-prayer {
+    color: #7dd3fc;
+  }
+  .display--modern .display-time-section-title {
+    color: #38bdf8;
+    opacity: 1;
   }
   .display--modern .display-time-row {
-    border-color: rgb(165 180 252 / 0.4);
-    background-color: rgb(49 46 129 / 0.4);
+    border-color: rgb(51 65 85 / 0.95);
+    background-color: rgb(2 6 23 / 0.88);
+    box-shadow: inset 0 1px 0 rgb(56 189 248 / 0.08);
+  }
+  .display--modern .display-time-label {
+    color: #f1f5f9;
+  }
+  .display--modern .display-time-label--prayer {
+    color: #7dd3fc;
+  }
+  .display--modern .display-time-value {
+    color: #ffffff;
+  }
+  .display--modern .display-time-row--prayer {
+    border-inline-start-color: #22d3ee;
+    box-shadow: inset 1px 0 0 rgb(34 211 238 / 0.65);
+  }
+  .display--modern .display-time-row--next {
+    border-color: rgb(253 224 71 / 0.95);
+    background-color: rgb(30 58 138 / 0.92);
+    box-shadow:
+      0 0 0 1px rgb(253 224 71 / 0.45),
+      0 0 24px rgb(59 130 246 / 0.35),
+      inset 0 1px 0 rgb(255 255 255 / 0.08);
+  }
+  .display--modern .display-time-value--next {
+    color: #fef08a;
+  }
+  .display--modern .display-prayer-badge {
+    border-color: rgb(34 211 238 / 0.85);
+    background: rgb(8 47 73 / 0.9);
+    color: #ecfeff;
   }
   .display--modern .display-header-clock {
-    background: #f8fafc;
-    color: #111827;
-    border: 1px solid rgb(15 23 42 / 0.15);
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid rgb(15 23 42 / 0.2);
+    box-shadow: 0 2px 14px rgb(0 0 0 / 0.35);
+  }
+  .display--modern .display-yaaleh {
+    border-color: rgb(56 189 248 / 0.75);
+    background-color: rgb(30 41 59 / 0.95);
+    color: #f8fafc;
+  }
+  .display--modern .display-halacha-title {
+    color: #fde047;
+  }
+  .display--modern .display-halacha-text {
+    color: #e2e8f0;
+  }
+  .display--modern .display-clock-screen {
+    color: #ffffff;
+  }
+  .display--modern .display-clock-screen .display-date-hebrew {
+    color: #f1f5f9;
+  }
+  .display--modern .display-empty {
+    color: #7dd3fc;
   }
 
   .display--minimal {
@@ -437,6 +588,98 @@ body {
     background: #0f172a;
     color: #f8fafc;
     border: 1px solid rgb(15 23 42 / 0.2);
+  }
+
+  .display--woodSilver {
+    background:
+      linear-gradient(160deg, rgb(226 197 160 / 0.98) 0%, rgb(198 156 108 / 0.95) 48%, rgb(165 121 78 / 0.98) 100%),
+      repeating-linear-gradient(
+        12deg,
+        rgb(255 255 255 / 0.08) 0px,
+        rgb(255 255 255 / 0.08) 2px,
+        rgb(78 53 33 / 0.06) 2px,
+        rgb(78 53 33 / 0.06) 9px
+      );
+    color: #f3f4f6;
+  }
+  .display--woodSilver .display-frame {
+    border-color: rgb(83 58 39 / 0.62);
+    outline: 1px solid rgb(229 231 235 / 0.5);
+    outline-offset: -6px;
+    box-shadow: inset 0 0 0 1px rgb(229 231 235 / 0.26), 0 12px 28px rgb(56 35 22 / 0.18);
+  }
+  .display--woodSilver .display-header {
+    border-color: rgb(83 58 39 / 0.45);
+  }
+  .display--woodSilver .display-title,
+  .display--woodSilver .display-parasha,
+  .display--woodSilver .display-hebrew-date,
+  .display--woodSilver .display-gregorian-date,
+  .display--woodSilver .display-addition-text,
+  .display--woodSilver .display-daf-yomi,
+  .display--woodSilver .display-time-label,
+  .display--woodSilver .display-time-value,
+  .display--woodSilver .display-times-title,
+  .display--woodSilver .display-halacha-title,
+  .display--woodSilver .display-halacha-text,
+  .display--woodSilver .display-date-hebrew {
+    color: #f3f4f6;
+    text-shadow: 0 1px 0 rgb(255 255 255 / 0.42), 0 2px 3px rgb(33 20 11 / 0.55), 0 0 16px rgb(229 231 235 / 0.44);
+  }
+  .display--woodSilver .display-card {
+    border-color: rgb(107 75 50 / 0.5);
+    background: transparent;
+    color: #f3f4f6;
+    box-shadow: none;
+  }
+  .display--woodSilver .display-accent,
+  .display--woodSilver .display-counter,
+  .display--woodSilver .display-gregorian-date,
+  .display--woodSilver .display-date-gregorian,
+  .display--woodSilver .display-time-details,
+  .display--woodSilver .display-next-prayer {
+    color: #e5e7eb;
+    text-shadow: 0 1px 0 rgb(255 255 255 / 0.34), 0 1px 2px rgb(33 20 11 / 0.4), 0 0 10px rgb(229 231 235 / 0.24);
+  }
+  .display--woodSilver .display-time-section-title {
+    color: #f5f5f5;
+    opacity: 1;
+  }
+  .display--woodSilver .display-time-row {
+    border-color: rgb(107 75 50 / 0.46);
+    background-color: transparent;
+  }
+  .display--woodSilver .display-time-row--prayer {
+    border-inline-start-color: #e5e7eb;
+    box-shadow: inset 1px 0 0 rgb(229 231 235 / 0.85);
+  }
+  .display--woodSilver .display-time-row--next {
+    border-color: rgb(229 231 235 / 0.98);
+    background-color: transparent;
+    box-shadow: 0 0 0 1px rgb(229 231 235 / 0.58), 0 0 18px rgb(229 231 235 / 0.5);
+  }
+  .display--woodSilver .display-time-value--next {
+    color: #f9fafb;
+  }
+  .display--woodSilver .display-prayer-badge {
+    border-color: rgb(209 213 219 / 0.85);
+    background: transparent;
+    color: #f9fafb;
+  }
+  .display--woodSilver .display-header-clock {
+    background: transparent;
+    color: #f3f4f6;
+    border: 1px solid rgb(107 114 128 / 0.4);
+    box-shadow: 0 0 0 1px rgb(229 231 235 / 0.28);
+  }
+  .display--woodSilver .display-yaaleh {
+    border-color: #d1d5db;
+    background-color: transparent;
+    color: #f9fafb;
+  }
+  .display--woodSilver .display-clock-screen .display-date-gregorian,
+  .display--woodSilver .display-empty {
+    color: #f3f4f6;
   }
 
   .display--classic {
@@ -531,10 +774,10 @@ body {
       font-size: 1.5rem;
     }
     .display-halacha-title {
-      font-size: 2.25rem;
+      font-size: 2.65rem;
     }
     .display-halacha-text {
-      font-size: 1.875rem;
+      font-size: clamp(2rem, 2.9vw, 2.9rem);
     }
   }
 

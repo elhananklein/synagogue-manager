@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase";
 import { dailyHalacha, getTodayIsoDate, todayPrayerSchedule, type PrayerSlot } from "@/lib/data/mock-content";
+import { getSefariaDailyHalachaSummary } from "@/lib/data/sefaria-halacha";
 import { unstable_noStore as noStore } from "next/cache";
 
 type DbPrayerRow = {
@@ -27,13 +28,14 @@ export async function getPublicHomeData() {
   const supabase = getSupabaseClient();
 
   if (!supabase) {
+    const sefariaHalacha = await getSefariaDailyHalachaSummary();
     return {
       schedule: todayPrayerSchedule,
-      halacha: dailyHalacha
+      halacha: sefariaHalacha ?? dailyHalacha
     };
   }
 
-  const [prayerResult, halachaResult] = await Promise.all([
+  const [prayerResult, halachaResult, sefariaHalacha] = await Promise.all([
     supabase
       .from("prayer_schedules")
       .select("id, schedule_date, prayer_type, prayer_time, minyan_label, notes")
@@ -48,7 +50,8 @@ export async function getPublicHomeData() {
       .eq("published", true)
       .order("halacha_date", { ascending: false })
       .limit(1)
-      .maybeSingle()
+      .maybeSingle(),
+    getSefariaDailyHalachaSummary()
   ]);
 
   const schedule: PrayerSlot[] =
@@ -61,13 +64,15 @@ export async function getPublicHomeData() {
           notes: row.notes ?? undefined
         }));
 
-  const halacha =
+  const dbHalacha =
     halachaResult.error || !halachaResult.data
-      ? dailyHalacha
+      ? null
       : {
           title: halachaResult.data.title,
           text: halachaResult.data.content
         };
+
+  const halacha = sefariaHalacha ?? dbHalacha ?? dailyHalacha;
 
   return { schedule, halacha };
 }

@@ -6,7 +6,7 @@ import { LiveClock } from "@/components/display/live-clock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type ScreenKey = "main" | "clock" | "halacha";
-type DisplayStyle = "classic" | "modern" | "minimal";
+type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver";
 
 type RotatorScreen = {
   screenKey: ScreenKey;
@@ -33,6 +33,7 @@ type Snapshot = {
   havdalah: string | null;
   dafYomi: string;
   zmanim: Array<{ label: string; time: string }>;
+  halachicDayRollIso: string | null;
   rainText: string;
   blessingText: string;
   omerText: string | null;
@@ -101,6 +102,15 @@ export function DisplayRotator({
     };
   }, [router]);
 
+  useEffect(() => {
+    const iso = snapshot.halachicDayRollIso;
+    if (!iso) return;
+    const delay = new Date(iso).getTime() - Date.now();
+    if (delay <= 0 || delay > 24 * 60 * 60 * 1000) return;
+    const id = setTimeout(() => router.refresh(), delay);
+    return () => clearTimeout(id);
+  }, [snapshot.halachicDayRollIso, router]);
+
   const currentScreen = enabledScreens.length ? enabledScreens[index % enabledScreens.length].screenKey : null;
   const nowJerusalem = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
   const nowMinutes = nowJerusalem.getHours() * 60 + nowJerusalem.getMinutes();
@@ -126,6 +136,20 @@ export function DisplayRotator({
   const hasYaaleh = snapshot.showYaalehVeyavo;
   const hasBothExtraAdditions = hasOmer && hasYaaleh;
   const shouldAutoScroll = currentScreen === "main" && timeSections.length > 0;
+  const halachaClosingLinePattern = /["״']?\s*כל השונה הלכות בכל יום\s+מובטח לו שהוא בן העולם הבא["״']?\s*$/;
+  const halachaText = (() => {
+    const raw = halacha.text.trim();
+    const closingLineMatch = raw.match(halachaClosingLinePattern)?.[0]?.trim() ?? null;
+    const withoutClosing = closingLineMatch ? raw.replace(halachaClosingLinePattern, "").trim() : raw;
+    const withSentenceBreaks = withoutClosing.replace(/\.\s+/g, ".\n");
+    const normalized = withSentenceBreaks.replace(/\n{3,}/g, "\n\n").trim();
+    const idx = normalized.indexOf(":");
+    if (idx === -1) return { intro: null, body: normalized, closingLine: closingLineMatch };
+    const intro = normalized.slice(0, idx + 1).trim();
+    const body = normalized.slice(idx + 1).trim();
+    if (!intro || !body) return { intro: null, body: normalized, closingLine: closingLineMatch };
+    return { intro, body, closingLine: closingLineMatch };
+  })();
 
   return (
     <main className={`display display--${style}`}>
@@ -134,15 +158,19 @@ export function DisplayRotator({
       ) : (
       <div className="display-frame">
         <header className="display-header">
-          <div className="display-header-clock">
-            <LiveClock />
-          </div>
-          <h1 className="display-title">
-            {minyanName ? `${synagogueName} - ${minyanName}` : synagogueName}
-          </h1>
           <p className="display-counter">
             מסך {index + 1}/{enabledScreens.length}
           </p>
+          <h1 className="display-title">
+            {minyanName ? `${synagogueName} - ${minyanName}` : synagogueName}
+          </h1>
+          {currentScreen !== "clock" ? (
+            <div className="display-header-clock">
+              <LiveClock />
+            </div>
+          ) : (
+            <div aria-hidden className="display-header-clock-placeholder" />
+          )}
         </header>
 
         {currentScreen === "clock" ? (
@@ -150,16 +178,25 @@ export function DisplayRotator({
             <LiveClock />
             <p className="display-date-hebrew">{snapshot.hebrewDate}</p>
             <p className="display-date-gregorian">{snapshot.gregorianDate}</p>
+            {snapshot.omerText ? <p className="display-omer-line">{snapshot.omerText}</p> : null}
           </section>
         ) : null}
 
         {currentScreen === "halacha" ? (
           <Card className="display-card">
             <CardHeader>
-              <CardTitle className="display-halacha-title">{halacha.title}</CardTitle>
+              <CardTitle className="display-halacha-title display-halacha-title-row">
+                <span>{halacha.title}</span>
+                <span className="display-halacha-source">(ילקוט יוסף)</span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="display-halacha-text">{halacha.text}</p>
+              <p className="display-halacha-text">
+                {halachaText.intro ? <span className="display-halacha-intro">{halachaText.intro}</span> : null}
+                {halachaText.intro ? <br /> : null}
+                {halachaText.body}
+                {halachaText.closingLine ? <span className="display-halacha-signature">{halachaText.closingLine}</span> : null}
+              </p>
             </CardContent>
           </Card>
         ) : null}

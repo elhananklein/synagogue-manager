@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ\"ש";
-type DisplayStyle = "classic" | "modern" | "minimal";
+type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver";
 type ScreenKey = "main" | "clock" | "halacha";
 type PrayerMode = "fixed" | "relative";
 type PrayerCategory = "weekday" | "shabbat";
@@ -89,6 +90,12 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
   const [minyanim, setMinyanim] = useState<MinyanModel[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [pendingDeleteMinyanIndex, setPendingDeleteMinyanIndex] = useState<number | null>(null);
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState<1 | 2>(1);
+  const [collapsedPrayerSections, setCollapsedPrayerSections] = useState<
+    Record<number, { weekday: boolean; shabbat: boolean; screens: boolean }>
+  >({});
 
   useEffect(() => {
     void params.then((p) => setSynagogueId(p.synagogueId));
@@ -115,23 +122,62 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
   }, [synagogueId]);
 
   const title = useMemo(() => `ממשק גבאי - ${synagogueName || synagogueId}`, [synagogueId, synagogueName]);
+  const isPrayerSectionCollapsed = (minyanIndex: number, section: "weekday" | "shabbat" | "screens") =>
+    collapsedPrayerSections[minyanIndex]?.[section] ?? true;
+  const togglePrayerSection = (minyanIndex: number, section: "weekday" | "shabbat" | "screens") =>
+    setCollapsedPrayerSections((prev) => ({
+      ...prev,
+      [minyanIndex]: {
+        weekday: prev[minyanIndex]?.weekday ?? true,
+        shabbat: prev[minyanIndex]?.shabbat ?? true,
+        screens: prev[minyanIndex]?.screens ?? true,
+        [section]: !isPrayerSectionCollapsed(minyanIndex, section)
+      }
+    }));
+
+  const closeDeleteDialog = () => {
+    setPendingDeleteMinyanIndex(null);
+    setDeleteConfirmStep(1);
+  };
+
+  const openDeleteDialog = (minyanIndex: number) => {
+    setPendingDeleteMinyanIndex(minyanIndex);
+    setDeleteConfirmStep(1);
+  };
+
+  const confirmDeleteStepOne = () => {
+    setDeleteConfirmStep(2);
+  };
+
+  const confirmDeleteStepTwo = () => {
+    if (pendingDeleteMinyanIndex == null) return;
+    setMinyanim((prev) => prev.filter((_, i) => i !== pendingDeleteMinyanIndex));
+    closeDeleteDialog();
+  };
 
   async function saveSettings() {
     if (!synagogueId) return;
     setMessage(null);
     setError(null);
-    const response = await fetch(`/api/admin/gabbai/${synagogueId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ synagogueName, minyanim })
-    });
-    const payload = (await response.json()) as { ok: boolean; error?: string };
-    if (!payload.ok) {
-      setError(payload.error ?? "שמירה נכשלה");
-      return;
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/admin/gabbai/${synagogueId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ synagogueName, minyanim })
+      });
+      const payload = (await response.json()) as { ok: boolean; error?: string };
+      if (!payload.ok) {
+        setError(payload.error ?? "שמירה נכשלה");
+        return;
+      }
+      setMessage("הגדרות נשמרו בהצלחה");
+      await loadData(synagogueId);
+    } catch {
+      setError("שמירה נכשלה");
+    } finally {
+      setIsSaving(false);
     }
-    setMessage("הגדרות נשמרו בהצלחה");
-    await loadData(synagogueId);
   }
 
   return (
@@ -154,7 +200,14 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
         {minyanim.map((minyan, minyanIndex) => (
           <Card key={minyan.id ?? `new-${minyanIndex}`}>
             <CardHeader>
-              <CardTitle>מניין {minyanIndex + 1}</CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle>מניין {minyanIndex + 1}</CardTitle>
+                {minyan.id ? (
+                  <Button type="button" variant="outline" size="sm" asChild>
+                    <a href={`/display?synagogueId=${synagogueId}&minyanId=${minyan.id}`}>פתח תצוגה למניין זה</a>
+                  </Button>
+                ) : null}
+              </div>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="grid gap-3 md:grid-cols-2">
@@ -168,57 +221,81 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                     <option value="classic">Classic</option>
                     <option value="modern">Modern</option>
                     <option value="minimal">Minimal</option>
+                    <option value="woodSilver">Wood & Silver</option>
                   </select>
                 </div>
               </div>
 
-              <div>
+              <div className="border-t border-border/60 pt-4">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-sm font-semibold">תפילות ימי חול</h3>
-                  <Button type="button" variant="outline" onClick={() => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: [...m.prayerSettings, createPrayer("weekday")] } : m)))}>
-                    הוספת תפילה
-                  </Button>
+                  <div className="flex w-72 items-center justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => togglePrayerSection(minyanIndex, "weekday")}>
+                      {isPrayerSectionCollapsed(minyanIndex, "weekday") ? "פתח רשימה" : "סגור רשימה"}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: [...m.prayerSettings, createPrayer("weekday")] } : m)))}>
+                      הוספת תפילה
+                    </Button>
+                  </div>
                 </div>
-                {minyan.prayerSettings.map((setting, prayerIndex) =>
-                  setting.category === "weekday" ? (
-                    <PrayerEditor key={`w-${prayerIndex}`} setting={setting} prayerOptions={WEEKDAY_PRAYERS} onChange={(next) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.map((p, j) => (j === prayerIndex ? next : p)) } : m)))} onDelete={() => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.filter((_, j) => j !== prayerIndex) } : m)))} showDaysOfWeek />
-                  ) : null
-                )}
+                {!isPrayerSectionCollapsed(minyanIndex, "weekday")
+                  ? minyan.prayerSettings.map((setting, prayerIndex) =>
+                      setting.category === "weekday" ? (
+                        <PrayerEditor key={`w-${prayerIndex}`} setting={setting} prayerOptions={WEEKDAY_PRAYERS} onChange={(next) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.map((p, j) => (j === prayerIndex ? next : p)) } : m)))} onDelete={() => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.filter((_, j) => j !== prayerIndex) } : m)))} showDaysOfWeek />
+                      ) : null
+                    )
+                  : null}
               </div>
 
-              <div>
+              <div className="border-t border-border/60 pt-4">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-sm font-semibold">תפילות שבת</h3>
-                  <Button type="button" variant="outline" onClick={() => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: [...m.prayerSettings, createPrayer("shabbat")] } : m)))}>
-                    הוספת תפילת שבת
-                  </Button>
+                  <div className="flex w-72 items-center justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => togglePrayerSection(minyanIndex, "shabbat")}>
+                      {isPrayerSectionCollapsed(minyanIndex, "shabbat") ? "פתח רשימה" : "סגור רשימה"}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: [...m.prayerSettings, createPrayer("shabbat")] } : m)))}>
+                      הוספת תפילת שבת
+                    </Button>
+                  </div>
                 </div>
-                {minyan.prayerSettings.map((setting, prayerIndex) =>
-                  setting.category === "shabbat" ? (
-                    <PrayerEditor key={`s-${prayerIndex}`} setting={setting} prayerOptions={SHABBAT_PRAYERS} onChange={(next) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.map((p, j) => (j === prayerIndex ? next : p)) } : m)))} onDelete={() => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.filter((_, j) => j !== prayerIndex) } : m)))} />
-                  ) : null
-                )}
+                {!isPrayerSectionCollapsed(minyanIndex, "shabbat")
+                  ? minyan.prayerSettings.map((setting, prayerIndex) =>
+                      setting.category === "shabbat" ? (
+                        <PrayerEditor key={`s-${prayerIndex}`} setting={setting} prayerOptions={SHABBAT_PRAYERS} onChange={(next) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.map((p, j) => (j === prayerIndex ? next : p)) } : m)))} onDelete={() => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.filter((_, j) => j !== prayerIndex) } : m)))} />
+                      ) : null
+                    )
+                  : null}
               </div>
 
-              <div>
-                <h3 className="mb-2 text-sm font-semibold">מסכים לתצוגה בלוח המודעות</h3>
-                <div className="space-y-2">
-                  {minyan.screens.map((screen, screenIndex) => (
-                    <div key={screen.screenKey} className="grid items-center gap-2 rounded-md border border-border p-3 md:grid-cols-5">
-                      <div className="font-medium">{SCREEN_OPTIONS.find((s) => s.key === screen.screenKey)?.label}</div>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" checked={screen.enabled} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, enabled: e.target.checked } : s)) } : m)))} />
-                        פעיל
-                      </label>
-                      <input type="number" className="h-10 rounded-md border border-border bg-background px-3" value={screen.sortOrder} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, sortOrder: Number(e.target.value) } : s)) } : m)))} />
-                      <input type="number" className="h-10 rounded-md border border-border bg-background px-3" value={screen.durationSeconds} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, durationSeconds: Number(e.target.value) } : s)) } : m)))} />
-                      <span className="text-sm text-muted-foreground">שניות תצוגה</span>
-                    </div>
-                  ))}
+              <div className="border-t border-border/60 pt-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">מסכים לתצוגה בלוח המודעות</h3>
+                  <div className="flex w-72 items-center justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => togglePrayerSection(minyanIndex, "screens")}>
+                      {isPrayerSectionCollapsed(minyanIndex, "screens") ? "פתח רשימה" : "סגור רשימה"}
+                    </Button>
+                  </div>
                 </div>
+                {!isPrayerSectionCollapsed(minyanIndex, "screens") ? (
+                  <div className="space-y-2">
+                    {minyan.screens.map((screen, screenIndex) => (
+                      <div key={screen.screenKey} className="grid items-center gap-2 rounded-md border border-border p-3 md:grid-cols-5">
+                        <div className="font-medium">{SCREEN_OPTIONS.find((s) => s.key === screen.screenKey)?.label}</div>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={screen.enabled} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, enabled: e.target.checked } : s)) } : m)))} />
+                          פעיל
+                        </label>
+                        <input type="number" className="h-10 rounded-md border border-border bg-background px-3" value={screen.sortOrder} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, sortOrder: Number(e.target.value) } : s)) } : m)))} />
+                        <input type="number" className="h-10 rounded-md border border-border bg-background px-3" value={screen.durationSeconds} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, durationSeconds: Number(e.target.value) } : s)) } : m)))} />
+                        <span className="text-sm text-muted-foreground">שניות תצוגה</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
 
-              <Button type="button" variant="outline" onClick={() => setMinyanim((prev) => prev.filter((_, i) => i !== minyanIndex))}>
+              <Button type="button" variant="outline" onClick={() => openDeleteDialog(minyanIndex)}>
                 מחק מניין
               </Button>
             </CardContent>
@@ -230,8 +307,15 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
         <Button type="button" variant="outline" onClick={() => setMinyanim((prev) => [...prev, createDefaultMinyan()])}>
           הוסף מניין
         </Button>
-        <Button type="button" onClick={saveSettings}>
-          שמור הגדרות גבאי
+        <Button type="button" onClick={saveSettings} disabled={isSaving}>
+          {isSaving ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              שומר...
+            </span>
+          ) : (
+            "שמור הגדרות גבאי"
+          )}
         </Button>
         <Button type="button" variant="outline" asChild>
           <a href={`/display?synagogueId=${synagogueId}`}>פתח מסך תצוגה</a>
@@ -239,6 +323,35 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
         {message ? <span className="text-sm text-green-600">{message}</span> : null}
         {error ? <span className="text-sm text-red-600">{error}</span> : null}
       </div>
+
+      {pendingDeleteMinyanIndex != null ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-xl">
+            <h3 className="text-lg font-bold">
+              {deleteConfirmStep === 1 ? "האם אתה בטוח? פעולה זו אינה הפיכה" : "המניין יימחק לצמיתות"}
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {deleteConfirmStep === 1
+                ? "המערכת תעבור לשלב אישור נוסף לפני המחיקה בפועל."
+                : "רק לחיצה על אישור תמחק את המניין מהמסך הנוכחי."}
+            </p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="outline" onClick={closeDeleteDialog}>
+                ביטול
+              </Button>
+              {deleteConfirmStep === 1 ? (
+                <Button type="button" variant="outline" onClick={confirmDeleteStepOne}>
+                  כן, אני בטוח
+                </Button>
+              ) : (
+                <Button type="button" onClick={confirmDeleteStepTwo}>
+                  אישור
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
