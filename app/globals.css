@@ -271,17 +271,7 @@ body {
   }
 
   .display-times-track--auto {
-    animation: display-times-scroll 34s linear infinite;
     will-change: transform;
-  }
-
-  @keyframes display-times-scroll {
-    0% {
-      transform: translateY(0);
-    }
-    100% {
-      transform: translateY(-50%);
-    }
   }
 
   .display-time-row {
@@ -295,6 +285,13 @@ body {
     align-items: center;
     justify-content: space-between;
     font-size: 1.4rem;
+  }
+
+  .display-time-value-wrap {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.1;
   }
 
   .display-time-label--prayer,
@@ -321,6 +318,14 @@ body {
 
   .display-time-details {
     font-size: 1rem;
+  }
+
+  .display-time-tomorrow-note {
+    margin-top: 0.15rem;
+    font-size: 0.65em;
+    font-weight: 600;
+    opacity: 0.78;
+    white-space: nowrap;
   }
 
   .display-time-row--prayer {
@@ -852,5 +857,15 @@ body {
     .display-header-clock .display-clock-text {
       font-size: 2.35rem;
     }
+  }
+}
+
+/* Outside @layer so duration from inline styles pairs reliably with these keyframes. */
+@keyframes display-times-scroll {
+  0% {
+    transform: translateY(calc(-1 * var(--times-start-offset, 0px)));
+  }
+  100% {
+    transform: translateY(calc(-50% - var(--times-start-offset, 0px)));
   }
 }

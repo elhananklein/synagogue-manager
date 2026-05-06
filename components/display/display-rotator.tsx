@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { LiveClock } from "@/components/display/live-clock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +39,9 @@ type Snapshot = {
   omerText: string | null;
   showYaalehVeyavo: boolean;
 };
+
+/** Auto-scroll for "זמני היום ותפילות" — set here so deploys always pick up pace changes (inline beats stale CSS). */
+const TIMES_LIST_SCROLL_DURATION_SEC = 120;
 
 function toHebrewNumber(num: number) {
   if (!Number.isInteger(num) || num <= 0) return "";
@@ -92,6 +95,7 @@ export function DisplayRotator({
   const enabledScreens = useMemo(() => screens.filter((s) => s.enabled), [screens]);
   const [index, setIndex] = useState(0);
   const timesScrollRef = useRef<HTMLDivElement | null>(null);
+  const [timesStartOffset, setTimesStartOffset] = useState<number | null>(null);
 
   useEffect(() => {
     if (!enabledScreens.length) return;
@@ -185,6 +189,42 @@ export function DisplayRotator({
     chapterHebrew && sectionHebrew
       ? `פרק ${chapterHebrew} הלכה ${sectionHebrew}`
       : halacha.title;
+  const isAutoScrollReady = shouldAutoScroll && timesStartOffset !== null;
+  const timesTrackStyle = (() => {
+    if (!shouldAutoScroll) return undefined;
+    const offsetPx = `${timesStartOffset ?? 0}px`;
+    const base = { "--times-start-offset": offsetPx } as CSSProperties;
+    if (!isAutoScrollReady) return base;
+    return {
+      ...base,
+      animation: `display-times-scroll ${TIMES_LIST_SCROLL_DURATION_SEC}s linear infinite`,
+      willChange: "transform"
+    } as CSSProperties;
+  })();
+
+  useLayoutEffect(() => {
+    if (!shouldAutoScroll) {
+      setTimesStartOffset(null);
+      return;
+    }
+    const listEl = timesScrollRef.current;
+    if (!listEl) {
+      setTimesStartOffset(0);
+      return;
+    }
+
+    const nextRow = listEl.querySelector('[data-next-anchor="true"]') as HTMLDivElement | null;
+    if (!nextRow) {
+      setTimesStartOffset(0);
+      return;
+    }
+
+    const listRect = listEl.getBoundingClientRect();
+    const rowRect = nextRow.getBoundingClientRect();
+    const rowCenter = rowRect.top - listRect.top + rowRect.height / 2;
+    const containerCenter = listEl.clientHeight / 2;
+    setTimesStartOffset(Math.max(0, rowCenter - containerCenter));
+  }, [shouldAutoScroll, nextSlotIndex, timeSections, index]);
 
   return (
     <main className={`display display--${style}`}>
@@ -296,7 +336,10 @@ export function DisplayRotator({
               </CardHeader>
               <CardContent className="display-times-content">
                 <div ref={timesScrollRef} className="display-times-list">
-                  <div className={shouldAutoScroll ? "display-times-track display-times-track--auto" : "display-times-track"}>
+                  <div
+                    className={isAutoScrollReady ? "display-times-track display-times-track--auto" : "display-times-track"}
+                    style={timesTrackStyle}
+                  >
                   {timeSections.map((section, sectionIndex) => (
                     <div key={`section-${sectionIndex}`} className="display-time-section">
                       <div className="display-time-section-title">{section.title}</div>
@@ -313,6 +356,7 @@ export function DisplayRotator({
                           return (
                             <div
                               key={`${sectionIndex}-${item.kind}-${item.label}-${item.time}-${idx}`}
+                              data-next-anchor={isNext ? "true" : undefined}
                               className={`display-time-row ${isPrayer ? "display-time-row--prayer" : ""} ${isNext ? "display-time-row--next" : ""}`}
                             >
                               <div className="display-time-main">
@@ -320,7 +364,10 @@ export function DisplayRotator({
                                   {item.label}
                                   {isPrayer ? <span className="display-prayer-badge">תפילה</span> : null}
                                 </span>
-                                <span className={isNext ? "display-time-value display-time-value--next" : "display-time-value"}>{item.time}</span>
+                                <span className="display-time-value-wrap">
+                                  <span className={isNext ? "display-time-value display-time-value--next" : "display-time-value"}>{item.time}</span>
+                                  {sectionIndex === 1 ? <span className="display-time-tomorrow-note">מחר</span> : null}
+                                </span>
                               </div>
                               {"details" in item && item.details ? <div className="display-time-details">{item.details}</div> : null}
                             </div>
@@ -353,7 +400,10 @@ export function DisplayRotator({
                                   {item.label}
                                   {isPrayer ? <span className="display-prayer-badge">תפילה</span> : null}
                                 </span>
-                                <span className={isNext ? "display-time-value display-time-value--next" : "display-time-value"}>{item.time}</span>
+                                <span className="display-time-value-wrap">
+                                  <span className={isNext ? "display-time-value display-time-value--next" : "display-time-value"}>{item.time}</span>
+                                  {sectionIndex === 1 ? <span className="display-time-tomorrow-note">מחר</span> : null}
+                                </span>
                               </div>
                               {"details" in item && item.details ? <div className="display-time-details">{item.details}</div> : null}
                             </div>
