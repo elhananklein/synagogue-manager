@@ -15,17 +15,27 @@ function getIsoDateUtc(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-function diffDays(aIso: string, bIso: string) {
-  const a = new Date(`${aIso}T00:00:00.000Z`).getTime();
-  const b = new Date(`${bIso}T00:00:00.000Z`).getTime();
-  return Math.floor((a - b) / (24 * 60 * 60 * 1000));
+/** הפרש ימים בין שני תאריכי YYYY-MM-DD כימי לוח (בלי היסט של חצות UTC). */
+function diffCalendarDays(isoA: string, isoB: string) {
+  const toUtcMidnight = (iso: string) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    if (!y || !m || !d) return NaN;
+    return Date.UTC(y, m - 1, d);
+  };
+  const a = toUtcMidnight(isoA);
+  const b = toUtcMidnight(isoB);
+  if (Number.isNaN(a) || Number.isNaN(b)) return 0;
+  return Math.round((a - b) / 86400000);
 }
 
-export async function getPublicHomeData(synagogueId?: string | null) {
+export async function getPublicHomeData(
+  synagogueId?: string | null,
+  opts?: { todayIso?: string | null }
+) {
   // Supabase reads should always be fresh on page refresh (avoid Route Cache).
   noStore();
 
-  const todayJerusalem = getTodayIsoDate();
+  const todayJerusalem = (opts?.todayIso && /^\d{4}-\d{2}-\d{2}$/.test(opts.todayIso) ? opts.todayIso : null) ?? getTodayIsoDate();
   const now = new Date();
   const todayUtc = getIsoDateUtc(now);
   const yesterdayUtc = getIsoDateUtc(new Date(now.getTime() - 24 * 60 * 60 * 1000));
@@ -45,6 +55,15 @@ export async function getPublicHomeData(synagogueId?: string | null) {
     };
   }
 
+  const halachaSettingsQuery =
+    synagogueId && String(synagogueId).trim().length > 0
+      ? supabase
+          .from("synagogue_halacha_settings")
+          .select("start_date, source_key, display_mode")
+          .eq("synagogue_id", String(synagogueId).trim())
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null });
+
   const [prayerResult, halachaSettingsRes] = await Promise.all([
     supabase
       .from("prayer_schedules")
@@ -53,11 +72,7 @@ export async function getPublicHomeData(synagogueId?: string | null) {
       .eq("published", true)
       .order("schedule_date", { ascending: false })
       .order("prayer_time", { ascending: true }),
-    supabase
-      .from("synagogue_halacha_settings")
-      .select("start_date, source_key, display_mode")
-      .eq("synagogue_id", synagogueId ?? "")
-      .maybeSingle()
+    halachaSettingsQuery
   ]);
   const selectedSourceKey = halachaSettingsRes.data?.source_key ?? "kitzur_shulchan_arukh";
   const halachaResult = await supabase
@@ -79,9 +94,13 @@ export async function getPublicHomeData(synagogueId?: string | null) {
 
   const dbHalacha = await (async () => {
     if (halachaResult.error || !halachaResult.data?.length) return null;
-    const startDate = halachaSettingsRes.data?.start_date ?? todayJerusalem;
+    const startDateRaw = halachaSettingsRes.data?.start_date;
+    const startDate =
+      typeof startDateRaw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(startDateRaw.slice(0, 10))
+        ? startDateRaw.slice(0, 10)
+        : todayJerusalem;
     const displayMode = halachaSettingsRes.data?.display_mode ?? "summary";
-    const daysFromStart = Math.max(0, diffDays(todayJerusalem, startDate));
+    const daysFromStart = Math.max(0, diffCalendarDays(todayJerusalem, startDate));
     const targetDisplayDay = daysFromStart + 1;
     const chosen =
       halachaResult.data.find((row) => Number(row.display_day) === targetDisplayDay) ??

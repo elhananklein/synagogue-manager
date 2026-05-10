@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LiveClock } from "@/components/display/live-clock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { DailyLearningLine } from "@/lib/hebcal";
 
-type ScreenKey = "main" | "clock" | "halacha";
+type ScreenKey = "main" | "clock" | "halacha" | "dailyLearning";
 type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver";
 
 type RotatorScreen = {
@@ -43,6 +45,17 @@ type Snapshot = {
 /** Auto-scroll for "זמני היום ותפילות" — set here so deploys always pick up pace changes (inline beats stale CSS). */
 const TIMES_LIST_SCROLL_DURATION_SEC = 120;
 
+function sortedSectionItemsWithMinutes(
+  items: Array<{ label: string; time: string; details?: string; kind: "zman" | "prayer" }>
+) {
+  return items
+    .map((row) => {
+      const [h, m] = row.time.split(":").map(Number);
+      return { ...row, totalMinutes: h * 60 + m };
+    })
+    .sort((a, b) => a.totalMinutes - b.totalMinutes);
+}
+
 function toHebrewNumber(num: number) {
   if (!Number.isInteger(num) || num <= 0) return "";
   const ones = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"];
@@ -74,18 +87,22 @@ function toHebrewNumber(num: number) {
 
 export function DisplayRotator({
   style,
+  synagogueId,
   synagogueName,
   minyanName,
   screens,
+  dailyLearning,
   snapshot,
   halacha,
   prayerSchedule,
   timeSections
 }: {
   style: DisplayStyle;
+  synagogueId: string | null;
   synagogueName: string;
   minyanName: string | null;
   screens: RotatorScreen[];
+  dailyLearning: DailyLearningLine[];
   snapshot: Snapshot;
   halacha: { title: string; text: string; source?: string; chapterNumber?: number; sectionNumber?: number };
   prayerSchedule: PrayerSlot[];
@@ -151,19 +168,33 @@ export function DisplayRotator({
     ...snapshot.zmanim.map((row) => ({ label: row.label, time: row.time, kind: "zman" as const })),
     ...prayerSchedule.map((row) => ({ label: row.label, time: row.time, details: row.details, kind: "prayer" as const }))
   ];
-  const todayMergedTimes = todaySectionItems
-    .map((row) => {
-      const [h, m] = row.time.split(":").map(Number);
-      return { ...row, totalMinutes: h * 60 + m };
-    })
-    .sort((a, b) => a.totalMinutes - b.totalMinutes);
-  const nextIndex = todayMergedTimes.findIndex((item) => item.totalMinutes >= nowMinutes);
-  const nextSlotIndex = nextIndex === -1 ? 0 : nextIndex;
+  const todayMergedTimes = sortedSectionItemsWithMinutes(todaySectionItems);
+  const nextTodayIdx = todayMergedTimes.findIndex((item) => item.totalMinutes >= nowMinutes);
+  const pastAllTodaySlots = nextTodayIdx === -1;
+
+  let nextSectionIndex = 0;
+  let nextSlotIndexInSection = nextTodayIdx === -1 ? 0 : nextTodayIdx;
+  if (pastAllTodaySlots && timeSections[1]?.items?.length) {
+    const tomorrowMerged = sortedSectionItemsWithMinutes(timeSections[1].items);
+    const alotTomorrowIdx = tomorrowMerged.findIndex((item) => item.label.trim() === "עלות השחר");
+    if (alotTomorrowIdx >= 0) {
+      nextSectionIndex = 1;
+      nextSlotIndexInSection = alotTomorrowIdx;
+    }
+  }
+
   const todayPrayerTimes = todayMergedTimes.filter((item) => item.kind === "prayer");
+  const tomorrowPrayerTimes = timeSections[1]?.items?.length
+    ? sortedSectionItemsWithMinutes(timeSections[1].items).filter((item) => item.kind === "prayer")
+    : [];
   const nextPrayer = (() => {
-    if (!todayPrayerTimes.length) return null;
-    const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= nowMinutes);
-    return idx === -1 ? todayPrayerTimes[0] : todayPrayerTimes[idx];
+    if (!pastAllTodaySlots) {
+      if (!todayPrayerTimes.length) return null;
+      const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= nowMinutes);
+      return idx === -1 ? todayPrayerTimes[0] : todayPrayerTimes[idx];
+    }
+    if (!tomorrowPrayerTimes.length) return null;
+    return tomorrowPrayerTimes[0];
   })();
   const hasOmer = Boolean(snapshot.omerText);
   const hasYaaleh = snapshot.showYaalehVeyavo;
@@ -189,6 +220,7 @@ export function DisplayRotator({
     chapterHebrew && sectionHebrew
       ? `פרק ${chapterHebrew} הלכה ${sectionHebrew}`
       : halacha.title;
+  const adminHref = synagogueId ? `/admin/gabbai/${synagogueId}` : null;
   const isAutoScrollReady = shouldAutoScroll && timesStartOffset !== null;
   const timesTrackStyle = (() => {
     if (!shouldAutoScroll) return undefined;
@@ -224,7 +256,7 @@ export function DisplayRotator({
     const rowCenter = rowRect.top - listRect.top + rowRect.height / 2;
     const containerCenter = listEl.clientHeight / 2;
     setTimesStartOffset(Math.max(0, rowCenter - containerCenter));
-  }, [shouldAutoScroll, nextSlotIndex, timeSections, index]);
+  }, [shouldAutoScroll, nextSectionIndex, nextSlotIndexInSection, timeSections, index]);
 
   return (
     <main className={`display display--${style}`}>
@@ -233,16 +265,37 @@ export function DisplayRotator({
       ) : (
       <div className="display-frame">
         <header className="display-header">
-          <p className="display-counter">
-            מסך {index + 1}/{enabledScreens.length}
-          </p>
+          <div
+            className="display-screen-dots"
+            role="status"
+            aria-label={`מסך ${index + 1} מתוך ${enabledScreens.length}`}
+          >
+            {enabledScreens.map((_, i) => (
+              <span
+                key={i}
+                className={i === index ? "display-screen-dot display-screen-dot--active" : "display-screen-dot"}
+                aria-hidden
+              />
+            ))}
+          </div>
           <h1 className="display-title">
             {minyanName ? `${synagogueName} - ${minyanName}` : synagogueName}
           </h1>
           {currentScreen !== "clock" ? (
-            <div className="display-header-clock">
-              <LiveClock />
-            </div>
+            adminHref ? (
+              <Link
+                href={adminHref}
+                className="display-header-clock display-clock-admin-hit"
+                aria-label="מעבר לממשק ניהול בית הכנסת"
+                prefetch={false}
+              >
+                <LiveClock />
+              </Link>
+            ) : (
+              <div className="display-header-clock">
+                <LiveClock />
+              </div>
+            )
           ) : (
             <div aria-hidden className="display-header-clock-placeholder" />
           )}
@@ -250,7 +303,18 @@ export function DisplayRotator({
 
         {currentScreen === "clock" ? (
           <section className="display-clock-screen display-card">
-            <LiveClock />
+            {adminHref ? (
+              <Link
+                href={adminHref}
+                className="display-clock-admin-hit display-clock-screen-clock-link"
+                aria-label="מעבר לממשק ניהול בית הכנסת"
+                prefetch={false}
+              >
+                <LiveClock />
+              </Link>
+            ) : (
+              <LiveClock />
+            )}
             <p className="display-date-hebrew">{snapshot.hebrewDate}</p>
             <p className="display-date-gregorian">{snapshot.gregorianDate}</p>
             {snapshot.omerText ? <p className="display-omer-line">{snapshot.omerText}</p> : null}
@@ -272,6 +336,31 @@ export function DisplayRotator({
                 {halachaText.body}
                 {halachaText.closingLine ? <span className="display-halacha-signature">{halachaText.closingLine}</span> : null}
               </p>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {currentScreen === "dailyLearning" ? (
+          <Card className="display-card display-daily-learning-card">
+            <CardHeader className="display-daily-learning-header">
+              <CardTitle className="display-daily-learning-title">לימוד יומי</CardTitle>
+              <p className="display-daily-learning-note">לפי לוח הלימוד היומי (מקור הנתונים כמו דף יומי במסך הראשי)</p>
+            </CardHeader>
+            <CardContent className="display-daily-learning-body">
+              {dailyLearning.length ? (
+                <ul className="display-daily-learning-list">
+                  {dailyLearning.map((row) => (
+                    <li key={row.id} className="display-daily-learning-row">
+                      <span className="display-daily-learning-name">{row.title}</span>
+                      <span className="display-daily-learning-detail" dir="rtl">
+                        {row.detail}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="display-daily-learning-empty">לא ניתן לטעון את נתוני הלימוד כרגע.</p>
+              )}
             </CardContent>
           </Card>
         ) : null}
@@ -350,8 +439,7 @@ export function DisplayRotator({
                         })
                         .sort((a, b) => a.totalMinutes - b.totalMinutes)
                         .map((item, idx) => {
-                          const isTodaySection = sectionIndex === 0;
-                          const isNext = isTodaySection && idx === nextSlotIndex;
+                          const isNext = sectionIndex === nextSectionIndex && idx === nextSlotIndexInSection;
                           const isPrayer = item.kind === "prayer";
                           return (
                             <div
@@ -361,8 +449,7 @@ export function DisplayRotator({
                             >
                               <div className="display-time-main">
                                 <span className={isPrayer ? "display-time-label display-time-label--prayer" : "display-time-label"}>
-                                  {item.label}
-                                  {isPrayer ? <span className="display-prayer-badge">תפילה</span> : null}
+                                  {isPrayer ? `תפילת ${item.label}` : item.label}
                                 </span>
                                 <span className="display-time-value-wrap">
                                   <span className={isNext ? "display-time-value display-time-value--next" : "display-time-value"}>{item.time}</span>
@@ -387,8 +474,7 @@ export function DisplayRotator({
                         })
                         .sort((a, b) => a.totalMinutes - b.totalMinutes)
                         .map((item, idx) => {
-                          const isTodaySection = sectionIndex === 0;
-                          const isNext = isTodaySection && idx === nextSlotIndex;
+                          const isNext = sectionIndex === nextSectionIndex && idx === nextSlotIndexInSection;
                           const isPrayer = item.kind === "prayer";
                           return (
                             <div
@@ -397,8 +483,7 @@ export function DisplayRotator({
                             >
                               <div className="display-time-main">
                                 <span className={isPrayer ? "display-time-label display-time-label--prayer" : "display-time-label"}>
-                                  {item.label}
-                                  {isPrayer ? <span className="display-prayer-badge">תפילה</span> : null}
+                                  {isPrayer ? `תפילת ${item.label}` : item.label}
                                 </span>
                                 <span className="display-time-value-wrap">
                                   <span className={isNext ? "display-time-value display-time-value--next" : "display-time-value"}>{item.time}</span>

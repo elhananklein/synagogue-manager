@@ -14,7 +14,7 @@ type PrayerSettingInput = {
 };
 
 type ScreenInput = {
-  screenKey: "main" | "clock" | "halacha";
+  screenKey: "main" | "clock" | "halacha" | "dailyLearning";
   sortOrder: number;
   durationSeconds: number;
   enabled: boolean;

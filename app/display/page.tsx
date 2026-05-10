@@ -106,8 +106,8 @@ export default async function DisplayPage({
 
   const [snapshot, tomorrowSnapshot, publicData] = await Promise.all([
     getDisplaySnapshot(todayIsoDate),
-    getDisplaySnapshot(tomorrowIsoDate),
-    getPublicHomeData(params.synagogueId ?? null)
+    getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true }),
+    getPublicHomeData(params.synagogueId ?? null, { todayIso: todayIsoDate })
   ]);
   const displayConfig = await getDisplayConfig(params.synagogueId ?? null, params.minyanId ?? null);
   const prayerSchedule = buildPrayerSchedule(displayConfig.prayerSettings, snapshot.zmanimSourceTimes);
@@ -144,9 +144,11 @@ export default async function DisplayPage({
   return (
     <DisplayRotator
       style={displayConfig.displayStyle}
+      synagogueId={params.synagogueId ?? null}
       synagogueName={displayConfig.synagogueName}
       minyanName={displayConfig.minyanName}
       screens={displayConfig.screens}
+      dailyLearning={snapshot.dailyLearning}
       snapshot={displaySnapshot}
       halacha={{
         title: publicData.halacha.title,

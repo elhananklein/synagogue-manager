@@ -44,7 +44,7 @@ create table if not exists public.minyan_prayer_settings (
 create table if not exists public.minyan_display_screens (
   id uuid primary key default gen_random_uuid(),
   minyan_id uuid not null references public.minyanim(id) on delete cascade,
-  screen_key text not null check (screen_key in ('main', 'clock', 'halacha')),
+  screen_key text not null check (screen_key in ('main', 'clock', 'halacha', 'dailyLearning')),
   sort_order integer not null default 0,
   duration_seconds integer not null default 20 check (duration_seconds between 5 and 600),
   enabled boolean not null default true,

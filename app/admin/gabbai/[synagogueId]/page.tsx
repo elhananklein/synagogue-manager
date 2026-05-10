@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ\"ש";
 type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver";
-type ScreenKey = "main" | "clock" | "halacha";
+type ScreenKey = "main" | "clock" | "halacha" | "dailyLearning";
 type PrayerMode = "fixed" | "relative";
 type PrayerCategory = "weekday" | "shabbat";
 
@@ -54,8 +54,16 @@ const ZMAN_ANCHORS = [
 const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "main", label: "מסך ראשי" },
   { key: "clock", label: "תאריך ושעה" },
-  { key: "halacha", label: "הלכה יומית" }
+  { key: "halacha", label: "הלכה יומית" },
+  { key: "dailyLearning", label: "לימוד יומי" }
 ];
+
+function nextAvailableScreenKey(screens: ScreenSetting[]): ScreenKey | null {
+  const used = new Set(screens.map((s) => s.screenKey));
+  const next = SCREEN_OPTIONS.find((o) => !used.has(o.key));
+  return next?.key ?? null;
+}
+
 const WEEKDAY_OPTIONS = [
   { value: 0, label: "א'" },
   { value: 1, label: "ב'" },
@@ -87,7 +95,8 @@ function createDefaultMinyan(): MinyanModel {
     screens: [
       { screenKey: "main", sortOrder: 1, durationSeconds: 20, enabled: true },
       { screenKey: "clock", sortOrder: 2, durationSeconds: 12, enabled: true },
-      { screenKey: "halacha", sortOrder: 3, durationSeconds: 18, enabled: true }
+      { screenKey: "halacha", sortOrder: 3, durationSeconds: 18, enabled: true },
+      { screenKey: "dailyLearning", sortOrder: 4, durationSeconds: 22, enabled: false }
     ]
   };
 }
@@ -331,9 +340,34 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
               </div>
 
               <div className="border-t border-border/60 pt-4">
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold">מסכים לתצוגה בלוח המודעות</h3>
-                  <div className="flex w-72 items-center justify-end gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!nextAvailableScreenKey(minyan.screens)}
+                      onClick={() => {
+                        const key = nextAvailableScreenKey(minyan.screens);
+                        if (!key) return;
+                        const maxOrder = minyan.screens.reduce((acc, s) => Math.max(acc, s.sortOrder), 0);
+                        setMinyanim((prev) =>
+                          prev.map((m, i) =>
+                            i === minyanIndex
+                              ? {
+                                  ...m,
+                                  screens: [
+                                    ...m.screens,
+                                    { screenKey: key, sortOrder: maxOrder + 1, durationSeconds: 20, enabled: true }
+                                  ]
+                                }
+                              : m
+                          )
+                        );
+                      }}
+                    >
+                      הוסף מסך
+                    </Button>
                     <Button type="button" variant="outline" onClick={() => togglePrayerSection(minyanIndex, "screens")}>
                       {isPrayerSectionCollapsed(minyanIndex, "screens") ? "פתח רשימה" : "סגור רשימה"}
                     </Button>
@@ -342,15 +376,46 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                 {!isPrayerSectionCollapsed(minyanIndex, "screens") ? (
                   <div className="space-y-2">
                     {minyan.screens.map((screen, screenIndex) => (
-                      <div key={screen.screenKey} className="grid items-center gap-2 rounded-md border border-border p-3 md:grid-cols-5">
-                        <div className="font-medium">{SCREEN_OPTIONS.find((s) => s.key === screen.screenKey)?.label}</div>
-                        <label className="flex items-center gap-2 text-sm">
+                      <div
+                        key={`${screen.screenKey}-${screenIndex}`}
+                        className="grid grid-cols-1 items-center gap-2 rounded-md border border-border p-3 md:grid-cols-[minmax(0,1.35fr)_auto_minmax(0,1fr)_minmax(0,1fr)_auto]"
+                      >
+                        <select
+                          className="h-10 w-full rounded-md border border-border bg-background px-2 text-sm font-medium"
+                          aria-label="סוג מסך"
+                          value={screen.screenKey}
+                          onChange={(e) => {
+                            const next = e.target.value as ScreenKey;
+                            setMinyanim((prev) =>
+                              prev.map((m, i) =>
+                                i === minyanIndex
+                                  ? {
+                                      ...m,
+                                      screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, screenKey: next } : s))
+                                    }
+                                  : m
+                              )
+                            );
+                          }}
+                        >
+                          {SCREEN_OPTIONS.map((opt) => {
+                            const takenByOther = minyan.screens.some(
+                              (s, idx) => idx !== screenIndex && s.screenKey === opt.key
+                            );
+                            return (
+                              <option key={opt.key} value={opt.key} disabled={takenByOther}>
+                                {opt.label}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <label className="flex items-center gap-2 text-sm whitespace-nowrap">
                           <input type="checkbox" checked={screen.enabled} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, enabled: e.target.checked } : s)) } : m)))} />
                           פעיל
                         </label>
-                        <input type="number" className="h-10 rounded-md border border-border bg-background px-3" value={screen.sortOrder} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, sortOrder: Number(e.target.value) } : s)) } : m)))} />
-                        <input type="number" className="h-10 rounded-md border border-border bg-background px-3" value={screen.durationSeconds} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, durationSeconds: Number(e.target.value) } : s)) } : m)))} />
-                        <span className="text-sm text-muted-foreground">שניות תצוגה</span>
+                        <input type="number" className="h-10 w-full rounded-md border border-border bg-background px-3" value={screen.sortOrder} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, sortOrder: Number(e.target.value) } : s)) } : m)))} />
+                        <input type="number" className="h-10 w-full rounded-md border border-border bg-background px-3" value={screen.durationSeconds} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, durationSeconds: Number(e.target.value) } : s)) } : m)))} />
+                        <span className="text-sm text-muted-foreground md:text-end">שניות תצוגה</span>
                       </div>
                     ))}
                   </div>

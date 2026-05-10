@@ -1,3 +1,5 @@
+import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
+
 type HebcalConverterResponse = {
   gy: number;
   gm: number;
@@ -22,6 +24,14 @@ type HebcalZmanimResponse = {
   times?: Record<string, string>;
 };
 
+export type DailyLearningLine = {
+  id: string;
+  /** כותרת בעברית לתצוגה */
+  title: string;
+  /** מקטע היום לתצוגה — בעברית (מומר ממקור Hebcal/Sefaria). */
+  detail: string;
+};
+
 export type DisplaySnapshot = {
   hebrewDate: string;
   gregorianDate: string;
@@ -29,6 +39,8 @@ export type DisplaySnapshot = {
   candleLighting: string | null;
   havdalah: string | null;
   dafYomi: string;
+  /** שורות לימוד יומי מעמוד הלימוד של Hebcal (אותו מקור כמו דף יומי במסך הראשי). */
+  dailyLearning: DailyLearningLine[];
   zmanim: Array<{ label: string; time: string }>;
   zmanimSourceTimes: Record<string, string>;
   /** צאת הכוכבים ליום האזרחי של הזמנים — לרענון כשהיום העברי מתקדם (לא חצות). */
@@ -38,6 +50,11 @@ export type DisplaySnapshot = {
   omerText: string | null;
   showYaalehVeyavo: boolean;
   sourceEvents: string[];
+};
+
+export type DisplaySnapshotOptions = {
+  /** כשמושך צילום ליום אחר (למשל מחר) בלי צורך בלימוד יומי — חוסך בקשת רשת */
+  omitDailyLearning?: boolean;
 };
 
 const HEBREW_MONTHS_WINTER = new Set(["Kislev", "Tevet", "Sh'vat", "Adar", "Adar I", "Adar II"]);
@@ -299,7 +316,84 @@ function normalizeDafYomiHebrew(raw: string) {
   return `${masechetHebrew} ${dafHebrew}`;
 }
 
-export async function getDisplaySnapshot(targetIsoDate?: string): Promise<DisplaySnapshot> {
+/** סדר ובתי עמוד Hebcal learning — תואם ל־`<div class="mt-2 mb-4" id="…">` בעמוד. */
+const HEBCAL_LEARNING_BLOCK_META: Array<{ id: string; title: string }> = [
+  { id: "nachyomi", title: 'נ"ך יומי' },
+  { id: "tanakhYomi", title: 'תנ"ך יומי (חלוקת סדרים)' },
+  { id: "dailyPsalms", title: "תהילים יומי" },
+  { id: "dafyomi", title: "דף יומי" },
+  { id: "mishnayomi", title: "משנה יומי" },
+  { id: "perekYomi", title: "פרק יומי" },
+  { id: "yerushalmi-vilna", title: "ירושלמי יומי (וילנא)" },
+  { id: "yerushalmi-schottenstein", title: "ירושלמי יומי (שוטנשטיין)" },
+  { id: "dirshuAmudYomi", title: "עמוד היומי (דרשו)" },
+  { id: "dafWeekly", title: "דף בשבוע" },
+  { id: "dailyRambam1", title: 'רמב"ם — פרק יומי' },
+  { id: "dailyRambam3", title: 'רמב"ם — שלושה פרקים' },
+  { id: "seferHaMitzvot", title: "ספר המצוות" },
+  { id: "arukhHaShulchanYomi", title: "ערוך השולחן יומי" },
+  { id: "kitzurShulchanAruch", title: "קיצור שולחן ערוך יומי" },
+  { id: "chofetzChaim", title: "חפץ חיים יומי" },
+  { id: "shemiratHaLashon", title: "שמירת הלשון יומי" }
+];
+
+function extractHebcalLearningBlockHtml(html: string, id: string): string | null {
+  const open = `<div class="mt-2 mb-4" id="${id}">`;
+  const start = html.indexOf(open);
+  if (start === -1) return null;
+  const innerStart = start + open.length;
+  const subMarker = `<div class="collapse" id="sub-${id}">`;
+  const subAt = html.indexOf(subMarker, innerStart);
+  if (subAt !== -1) return html.slice(innerStart, subAt);
+  const commentMarker = `</div><!-- #${id} -->`;
+  const commentAt = html.indexOf(commentMarker, innerStart);
+  if (commentAt !== -1) return html.slice(innerStart, commentAt);
+  return null;
+}
+
+function extractDailyDetailFromLearningBlock(block: string, id: string): string {
+  let englishFallback = "";
+  if (id === "dafyomi") {
+    const m = block.match(/sefaria\.org\/([^"?]+)\?lang=bi/i);
+    if (m?.[1]) {
+      englishFallback = decodeURIComponent(m[1]).replaceAll("_", " ");
+    }
+  }
+  if (!englishFallback) {
+    const lead = block.match(/<div class="lead mt-1">([\s\S]*?)<\/div>/i);
+    if (!lead) return "";
+    const inner = lead[1].trim();
+    const link = inner.match(/<a[^>]*>([^<]+)<\/a>/i);
+    if (link?.[1]) englishFallback = link[1].trim().replace(/\s+/g, " ");
+    else {
+      const plain = inner
+        .replace(/<[^>]+>/g, "")
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean)[0];
+      englishFallback = plain ?? "";
+    }
+  }
+  return toHebrewDailyLearningDetail(id, block, englishFallback.trim());
+}
+
+/** מפרסר את עמוד הלימוד היומי של Hebcal (אותו מקור שממנו נמשך דף יומי במסך הראשי). */
+function parseHebcalDailyLearningPage(html: string): DailyLearningLine[] {
+  const out: DailyLearningLine[] = [];
+  for (const { id, title } of HEBCAL_LEARNING_BLOCK_META) {
+    const block = extractHebcalLearningBlockHtml(html, id);
+    if (!block) continue;
+    const detail = extractDailyDetailFromLearningBlock(block, id).trim();
+    if (!detail) continue;
+    out.push({ id, title, detail });
+  }
+  return out;
+}
+
+export async function getDisplaySnapshot(
+  targetIsoDate?: string,
+  options?: DisplaySnapshotOptions
+): Promise<DisplaySnapshot> {
   const now = new Date();
   const civilIso = targetIsoDate ?? toIsoDateJerusalem(now);
   const zmanimUrl = `https://www.hebcal.com/zmanim?cfg=json&geo=city&city=IL-Jerusalem&date=${civilIso}`;
@@ -320,12 +414,13 @@ export async function getDisplaySnapshot(targetIsoDate?: string): Promise<Displa
   const halachicIso = halachicCivilIsoForConverter(civilIso, now, zmanim.times?.tzeit85deg);
   const [hy, hm, hd] = halachicIso.split("-").map(Number);
   const converterUrl = `https://www.hebcal.com/converter?cfg=json&g2h=1&gy=${hy}&gm=${hm}&gd=${hd}`;
-  const learningUrl = "https://www.hebcal.com/learning?cfg=json&geo=city&city=IL-Jerusalem";
+  const learningUrl = `https://www.hebcal.com/learning/${civilIso}?cfg=json&geo=city&city=IL-Jerusalem`;
 
-  const [converterRes, learningRes] = await Promise.all([
-    fetch(converterUrl, hebcalDisplayFetch),
-    fetch(learningUrl, hebcalDisplayFetch)
-  ]);
+  const converterRes = await fetch(converterUrl, hebcalDisplayFetch);
+  const learningRes =
+    options?.omitDailyLearning === true
+      ? null
+      : await fetch(learningUrl, hebcalDisplayFetch);
 
   if (!converterRes.ok) {
     throw new Error("Failed to load Hebcal data");
@@ -368,12 +463,17 @@ export async function getDisplaySnapshot(targetIsoDate?: string): Promise<Displa
   const omerText = extractOmerText(events);
 
   let dafYomi = "לא זמין";
-  if (learningRes.ok) {
+  let dailyLearning: DailyLearningLine[] = [];
+  if (learningRes?.ok) {
     const learningHtml = await learningRes.text();
-    const match = learningHtml.match(/Daf Yomi[\s\S]*?sefaria\.org\/([^"?]+)\?lang=bi/i);
-    if (match?.[1]) {
-      const decoded = decodeURIComponent(match[1]).replaceAll("_", " ");
-      dafYomi = normalizeDafYomiHebrew(decoded);
+    dailyLearning = parseHebcalDailyLearningPage(learningHtml);
+    const dafRow = dailyLearning.find((r) => r.id === "dafyomi");
+    if (dafRow?.detail) dafYomi = dafRow.detail;
+    else {
+      const match = learningHtml.match(/Daf Yomi[\s\S]*?sefaria\.org\/([^"?]+)\?lang=bi/i);
+      if (match?.[1]) {
+        dafYomi = normalizeDafYomiHebrew(decodeURIComponent(match[1]).replaceAll("_", " "));
+      }
     }
   }
 
@@ -390,6 +490,7 @@ export async function getDisplaySnapshot(targetIsoDate?: string): Promise<Displa
     candleLighting,
     havdalah,
     dafYomi,
+    dailyLearning,
     zmanim: zmanimRows,
     zmanimSourceTimes: zmanim.times ?? {},
     halachicDayRollIso: zmanim.times?.tzeit85deg ?? null,
