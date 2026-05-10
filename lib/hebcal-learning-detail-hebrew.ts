@@ -14,7 +14,7 @@ function numberToHebrew(num: number) {
   const chars: string[] = [];
 
   const h = Math.floor(num / 100);
-  let rem = num % 100;
+  const rem = num % 100;
   if (h > 0) {
     if (h < hundreds.length) chars.push(hundreds[h]);
     else chars.push("ק".repeat(h));
