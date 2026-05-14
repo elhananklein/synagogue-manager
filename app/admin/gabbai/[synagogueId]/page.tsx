@@ -5,10 +5,11 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ\"ש";
+type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
 type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver";
-type ScreenKey = "main" | "clock" | "halacha" | "dailyLearning";
-type PrayerMode = "fixed" | "relative";
+type ScheduleTimesListMode = "all" | "prayers_only";
+type ScreenKey = "main" | "clock" | "halacha" | "dailyLearning" | "prayerTimes";
+type PrayerMode = "fixed" | "relative" | "parasha";
 type PrayerCategory = "weekday" | "shabbat";
 
 type PrayerSetting = {
@@ -20,6 +21,7 @@ type PrayerSetting = {
   zmanAnchor: string | null;
   offsetMinutes: number | null;
   roundMode: "none" | "up" | "down";
+  parashaKey: string | null;
 };
 
 type ScreenSetting = {
@@ -33,6 +35,8 @@ type MinyanModel = {
   id?: string;
   name: string;
   displayStyle: DisplayStyle;
+  /** לוח זמנים במסך הראשי */
+  scheduleTimesListMode: ScheduleTimesListMode;
   prayerSettings: PrayerSetting[];
   screens: ScreenSetting[];
 };
@@ -44,7 +48,7 @@ type HalachaSettingsModel = {
 };
 
 const WEEKDAY_PRAYERS: PrayerType[] = ["שחרית", "מנחה", "ערבית"];
-const SHABBAT_PRAYERS: PrayerType[] = ["מנחה ערב שבת", "שחרית שבת", "מנחה שבת", "ערבית מוצ\"ש"];
+const SHABBAT_PRAYERS: PrayerType[] = ["מנחה ערב שבת", "שחרית שבת", "מנחה שבת", "ערבית מוצ'ש"];
 const ZMAN_ANCHORS = [
   { value: "sunrise", label: "זריחה" },
   { value: "sunset", label: "שקיעה" },
@@ -55,7 +59,8 @@ const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "main", label: "מסך ראשי" },
   { key: "clock", label: "תאריך ושעה" },
   { key: "halacha", label: "הלכה יומית" },
-  { key: "dailyLearning", label: "לימוד יומי" }
+  { key: "dailyLearning", label: "לימוד יומי" },
+  { key: "prayerTimes", label: "זמני תפילות" }
 ];
 
 function nextAvailableScreenKey(screens: ScreenSetting[]): ScreenKey | null {
@@ -83,7 +88,8 @@ function createPrayer(category: PrayerCategory): PrayerSetting {
     fixedTime: "08:30",
     zmanAnchor: "sunset",
     offsetMinutes: 0,
-    roundMode: "none"
+    roundMode: "none",
+    parashaKey: null
   };
 }
 
@@ -91,6 +97,7 @@ function createDefaultMinyan(): MinyanModel {
   return {
     name: "",
     displayStyle: "classic",
+    scheduleTimesListMode: "all",
     prayerSettings: [createPrayer("weekday"), createPrayer("shabbat")],
     screens: [
       { screenKey: "main", sortOrder: 1, durationSeconds: 20, enabled: true },
@@ -118,6 +125,16 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
   const [collapsedPrayerSections, setCollapsedPrayerSections] = useState<
     Record<number, { weekday: boolean; shabbat: boolean; screens: boolean }>
   >({});
+  const [parashaCatalogKeys, setParashaCatalogKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    void fetch("/api/hebcal/parasha-catalog", { cache: "no-store" })
+      .then((r) => r.json() as Promise<{ ok?: boolean; keys?: string[] }>)
+      .then((d) => {
+        if (d?.ok && Array.isArray(d.keys)) setParashaCatalogKeys(d.keys);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     void params.then((p) => setSynagogueId(p.synagogueId));
@@ -135,7 +152,17 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
       return;
     }
     setSynagogueName(payload.data.synagogue.name);
-    setMinyanim(payload.data.minyanim.length ? payload.data.minyanim : [createDefaultMinyan()]);
+    const normalized = (payload.data.minyanim.length ? payload.data.minyanim : [createDefaultMinyan()]).map((m) => ({
+      ...m,
+      scheduleTimesListMode: (m.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all") as ScheduleTimesListMode,
+      prayerSettings: m.prayerSettings.map((p) => ({
+        ...p,
+        mode: (p.mode === "parasha" ? "parasha" : p.mode === "relative" ? "relative" : "fixed") as PrayerMode,
+        parashaKey: p.parashaKey ?? null,
+        roundMode: p.roundMode ?? "none"
+      }))
+    }));
+    setMinyanim(normalized);
     setHalachaSettings(payload.data.halachaSettings);
   }
 
@@ -148,15 +175,14 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
   const isPrayerSectionCollapsed = (minyanIndex: number, section: "weekday" | "shabbat" | "screens") =>
     collapsedPrayerSections[minyanIndex]?.[section] ?? true;
   const togglePrayerSection = (minyanIndex: number, section: "weekday" | "shabbat" | "screens") =>
-    setCollapsedPrayerSections((prev) => ({
-      ...prev,
-      [minyanIndex]: {
-        weekday: prev[minyanIndex]?.weekday ?? true,
-        shabbat: prev[minyanIndex]?.shabbat ?? true,
-        screens: prev[minyanIndex]?.screens ?? true,
-        [section]: !isPrayerSectionCollapsed(minyanIndex, section)
-      }
-    }));
+    setCollapsedPrayerSections((prev) => {
+      const defaults = { weekday: true, shabbat: true, screens: true };
+      const merged = { ...defaults, ...(prev[minyanIndex] ?? {}) };
+      return {
+        ...prev,
+        [minyanIndex]: { ...merged, [section]: !merged[section] }
+      };
+    });
 
   const closeDeleteDialog = () => {
     setPendingDeleteMinyanIndex(null);
@@ -275,13 +301,18 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                 <CardTitle>מניין {minyanIndex + 1}</CardTitle>
                 {minyan.id ? (
                   <Button type="button" variant="outline" size="sm" asChild>
-                    <a href={`/display?synagogueId=${synagogueId}&minyanId=${minyan.id}`}>פתח תצוגה למניין זה</a>
+                    <a
+                      href={`/display?synagogueId=${encodeURIComponent(synagogueId)}&minyan=${minyanIndex + 1}`}
+                      title="מספר לפי סדר ברשימה (1 = ראשון). אפשר גם minyan=שם מדויק או minyanId=UUID."
+                    >
+                      פתח תצוגה למניין זה
+                    </a>
                   </Button>
                 ) : null}
               </div>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium">שם המניין</label>
                   <input className="h-10 w-full rounded-md border border-border bg-background px-3" value={minyan.name} onChange={(e) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, name: e.target.value } : m)))} />
@@ -294,6 +325,26 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                     <option value="minimal">Minimal</option>
                     <option value="woodSilver">Wood & Silver</option>
                   </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">לוח זמנים במסך הראשי</label>
+                  <select
+                    className="h-10 w-full rounded-md border border-border bg-background px-3"
+                    value={minyan.scheduleTimesListMode}
+                    onChange={(e) =>
+                      setMinyanim((prev) =>
+                        prev.map((m, i) =>
+                          i === minyanIndex
+                            ? { ...m, scheduleTimesListMode: e.target.value as ScheduleTimesListMode }
+                            : m
+                        )
+                      )
+                    }
+                  >
+                    <option value="all">כל הזמנים (זמני היום + תפילות)</option>
+                    <option value="prayers_only">רק זמני תפילות</option>
+                  </select>
+                  <p className="mt-1 text-xs text-muted-foreground">משפיע על כרטיס &quot;זמני היום ותפילות&quot; במסך הראשי בלבד.</p>
                 </div>
               </div>
 
@@ -312,7 +363,25 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                 {!isPrayerSectionCollapsed(minyanIndex, "weekday")
                   ? minyan.prayerSettings.map((setting, prayerIndex) =>
                       setting.category === "weekday" ? (
-                        <PrayerEditor key={`w-${prayerIndex}`} setting={setting} prayerOptions={WEEKDAY_PRAYERS} onChange={(next) => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.map((p, j) => (j === prayerIndex ? next : p)) } : m)))} onDelete={() => setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.filter((_, j) => j !== prayerIndex) } : m)))} showDaysOfWeek />
+                        <PrayerEditor
+                          key={`w-${prayerIndex}`}
+                          setting={setting}
+                          prayerOptions={WEEKDAY_PRAYERS}
+                          parashaCatalogKeys={parashaCatalogKeys}
+                          onChange={(next) =>
+                            setMinyanim((prev) =>
+                              prev.map((m, i) =>
+                                i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.map((p, j) => (j === prayerIndex ? next : p)) } : m
+                              )
+                            )
+                          }
+                          onDelete={() =>
+                            setMinyanim((prev) =>
+                              prev.map((m, i) => (i === minyanIndex ? { ...m, prayerSettings: m.prayerSettings.filter((_, j) => j !== prayerIndex) } : m))
+                            )
+                          }
+                          showDaysOfWeek
+                        />
                       ) : null
                     )
                   : null}
@@ -488,13 +557,15 @@ function PrayerEditor({
   prayerOptions,
   onChange,
   onDelete,
-  showDaysOfWeek = false
+  showDaysOfWeek = false,
+  parashaCatalogKeys = []
 }: {
   setting: PrayerSetting;
   prayerOptions: PrayerType[];
   onChange: (next: PrayerSetting) => void;
   onDelete: () => void;
   showDaysOfWeek?: boolean;
+  parashaCatalogKeys?: string[];
 }) {
   const currentOffset = setting.offsetMinutes ?? 0;
   const direction: "before" | "after" = currentOffset < 0 ? "before" : "after";
@@ -508,23 +579,86 @@ function PrayerEditor({
           מחק תפילה
         </Button>
       </div>
-      <div className="grid gap-2 md:grid-cols-6">
-        <select className="h-10 rounded-md border border-border bg-background px-3" value={setting.prayerType} onChange={(e) => onChange({ ...setting, prayerType: e.target.value as PrayerType })}>
+      <div className="flex flex-wrap items-end gap-2">
+        <select
+          className="h-10 min-w-[7rem] rounded-md border border-border bg-background px-3"
+          value={setting.prayerType}
+          onChange={(e) => onChange({ ...setting, prayerType: e.target.value as PrayerType })}
+        >
           {prayerOptions.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
           ))}
         </select>
-        <select className="h-10 rounded-md border border-border bg-background px-3" value={setting.mode} onChange={(e) => onChange({ ...setting, mode: e.target.value as PrayerMode })}>
+        <select
+          className="h-10 min-w-[9.5rem] rounded-md border border-border bg-background px-3"
+          value={setting.mode}
+          onChange={(e) => {
+            const mode = e.target.value as PrayerMode;
+            if (!showDaysOfWeek && mode === "parasha") return;
+            const next: PrayerSetting = { ...setting, mode };
+            if (mode === "parasha") {
+              next.zmanAnchor = null;
+              next.offsetMinutes = 0;
+              next.roundMode = "none";
+              next.parashaKey = (setting.parashaKey?.trim() || parashaCatalogKeys[0] || "").trim() || null;
+              next.fixedTime = setting.fixedTime ?? "12:00";
+            } else if (mode === "fixed") {
+              next.parashaKey = null;
+              next.zmanAnchor = null;
+              next.offsetMinutes = null;
+              next.roundMode = "none";
+            } else {
+              next.parashaKey = null;
+              next.zmanAnchor = setting.zmanAnchor ?? "sunset";
+              next.offsetMinutes = setting.offsetMinutes ?? 0;
+              next.roundMode = setting.roundMode ?? "none";
+            }
+            onChange(next);
+          }}
+        >
           <option value="fixed">זמן קבוע</option>
           <option value="relative">יחסית לזמן יום</option>
+          {showDaysOfWeek ? <option value="parasha">לפי פרשה (א׳–ה׳)</option> : null}
         </select>
         {setting.mode === "fixed" ? (
-          <input type="time" className="h-10 rounded-md border border-border bg-background px-3" value={setting.fixedTime ?? ""} onChange={(e) => onChange({ ...setting, fixedTime: e.target.value })} />
-        ) : (
+          <input
+            type="time"
+            className="h-10 rounded-md border border-border bg-background px-3"
+            value={setting.fixedTime ?? ""}
+            onChange={(e) => onChange({ ...setting, fixedTime: e.target.value })}
+          />
+        ) : null}
+        {setting.mode === "parasha" ? (
           <>
-            <select className="h-10 rounded-md border border-border bg-background px-3" value={setting.zmanAnchor ?? "sunset"} onChange={(e) => onChange({ ...setting, zmanAnchor: e.target.value })}>
+            <select
+              className="h-10 min-w-[12rem] max-w-[20rem] flex-1 rounded-md border border-border bg-background px-2 text-sm"
+              value={setting.parashaKey ?? ""}
+              onChange={(e) => onChange({ ...setting, parashaKey: e.target.value || null })}
+            >
+              <option value="">בחר פרשה…</option>
+              {parashaCatalogKeys.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+            <input
+              type="time"
+              className="h-10 rounded-md border border-border bg-background px-3"
+              value={setting.fixedTime ?? ""}
+              onChange={(e) => onChange({ ...setting, fixedTime: e.target.value })}
+            />
+          </>
+        ) : null}
+        {setting.mode === "relative" ? (
+          <>
+            <select
+              className="h-10 min-w-[8rem] rounded-md border border-border bg-background px-3"
+              value={setting.zmanAnchor ?? "sunset"}
+              onChange={(e) => onChange({ ...setting, zmanAnchor: e.target.value })}
+            >
               {ZMAN_ANCHORS.map((anchor) => (
                 <option key={anchor.value} value={anchor.value}>
                   {anchor.label}
@@ -532,7 +666,7 @@ function PrayerEditor({
               ))}
             </select>
             <select
-              className="h-10 rounded-md border border-border bg-background px-3"
+              className="h-10 min-w-[5rem] rounded-md border border-border bg-background px-3"
               value={direction}
               onChange={(e) =>
                 onChange({
@@ -547,7 +681,7 @@ function PrayerEditor({
             <input
               type="number"
               min={0}
-              className="h-10 rounded-md border border-border bg-background px-3"
+              className="h-10 w-20 rounded-md border border-border bg-background px-3"
               value={absoluteMinutes}
               onChange={(e) =>
                 onChange({
@@ -555,10 +689,10 @@ function PrayerEditor({
                   offsetMinutes: direction === "before" ? -Number(e.target.value) : Number(e.target.value)
                 })
               }
-              placeholder="מספר דקות"
+              placeholder="דקות"
             />
             <select
-              className="h-10 rounded-md border border-border bg-background px-3"
+              className="h-10 min-w-[7rem] rounded-md border border-border bg-background px-2 text-sm"
               value={setting.roundMode ?? "none"}
               onChange={(e) =>
                 onChange({
@@ -572,8 +706,13 @@ function PrayerEditor({
               <option value="down">עיגול למטה (5 דק&#39;)</option>
             </select>
           </>
-        )}
+        ) : null}
       </div>
+      {showDaysOfWeek && setting.mode === "parasha" ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          בשבוע של הפרשה הנבחרת, בימים א׳–ה׳ בלבד: זמן זה מחליף כל הגדרות אחרות לאותה תפילה. שישי ושבת ללא שינוי.
+        </p>
+      ) : null}
       {showDaysOfWeek ? (
         <div className="mt-2 flex flex-wrap gap-2">
           {WEEKDAY_OPTIONS.map((day) => (

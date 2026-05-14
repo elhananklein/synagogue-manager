@@ -234,7 +234,7 @@ function extractOmerText(events: string[]) {
   return `היום ${day} ימים לעומר`;
 }
 
-function toIsoDateJerusalem(now = new Date()) {
+export function toIsoDateJerusalem(now = new Date()) {
   const ymd = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jerusalem",
     year: "numeric",
@@ -244,7 +244,7 @@ function toIsoDateJerusalem(now = new Date()) {
   return ymd;
 }
 
-function addDaysIsoDate(isoDate: string, days: number) {
+export function addDaysIsoDate(isoDate: string, days: number) {
   const [year, month, day] = isoDate.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
   date.setUTCDate(date.getUTCDate() + days);
@@ -252,6 +252,11 @@ function addDaysIsoDate(isoDate: string, days: number) {
   const m = String(date.getUTCMonth() + 1).padStart(2, "0");
   const d = String(date.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+/** מפתח תצוגה לפרשה — זהה ללוגיקת המסך (Hebcal: hebrew או title). */
+export function parashaDisplayKeyFromHebcalParashatItem(item: { hebrew?: string; title: string }) {
+  return item.hebrew ?? item.title ?? "לא נמצא";
 }
 
 /** Civil (Gregorian) day to pass to Hebcal converter for Hebrew date, Omer, holidays — rolls at tzeit, not civil midnight. */
@@ -434,7 +439,7 @@ export async function getDisplaySnapshot(
     : [];
 
   const parashaItem = shabbat.items?.find((item) => item.category === "parashat");
-  const parasha = parashaItem?.hebrew ?? parashaItem?.title ?? "לא נמצא";
+  const parasha = parashaItem ? parashaDisplayKeyFromHebcalParashatItem(parashaItem) : "לא נמצא";
   const candleItem = shabbat.items?.find((item) => item.category === "candles");
   const havdalahItem = shabbat.items?.find((item) => item.category === "havdalah");
 

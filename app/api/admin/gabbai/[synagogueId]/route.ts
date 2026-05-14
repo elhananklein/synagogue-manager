@@ -4,17 +4,18 @@ import { getSupabaseAdminClient } from "@/lib/supabase-server";
 
 type PrayerSettingInput = {
   category: "weekday" | "shabbat";
-  prayerType: "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ\"ש";
+  prayerType: "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
   daysOfWeek: number[];
-  mode: "fixed" | "relative";
+  mode: "fixed" | "relative" | "parasha";
   fixedTime: string | null;
   zmanAnchor: string | null;
   offsetMinutes: number | null;
   roundMode: "none" | "up" | "down";
+  parashaKey?: string | null;
 };
 
 type ScreenInput = {
-  screenKey: "main" | "clock" | "halacha" | "dailyLearning";
+  screenKey: "main" | "clock" | "halacha" | "dailyLearning" | "prayerTimes";
   sortOrder: number;
   durationSeconds: number;
   enabled: boolean;
@@ -24,6 +25,8 @@ type MinyanInput = {
   id?: string;
   name: string;
   displayStyle: "classic" | "modern" | "minimal" | "woodSilver";
+  /** לוח במסך הראשי: כל הזמנים או רק תפילות */
+  scheduleTimesListMode: "all" | "prayers_only";
   prayerSettings: PrayerSettingInput[];
   screens: ScreenInput[];
 };
@@ -50,7 +53,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
 
   const minyanRes = await supabase
     .from("minyanim")
-    .select("id, name, display_style, is_active")
+    .select("id, name, display_style, is_active, schedule_times_list")
     .eq("synagogue_id", synagogueId)
     .order("created_at", { ascending: true });
   const minyanIds = (minyanRes.data ?? []).map((m) => m.id);
@@ -59,7 +62,9 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     minyanIds.length
       ? supabase
           .from("minyan_prayers")
-          .select("id, minyan_id, category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order")
+          .select(
+            "id, minyan_id, category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order, parasha_key"
+          )
           .in("minyan_id", minyanIds)
       : Promise.resolve({ data: [], error: null }),
     minyanIds.length
@@ -84,6 +89,8 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     name: minyan.name,
     displayStyle: minyan.display_style,
     isActive: minyan.is_active,
+    scheduleTimesListMode:
+      (minyan as { schedule_times_list?: string }).schedule_times_list === "prayers_only" ? "prayers_only" : "all",
     prayerSettings: (prayerRes.data ?? [])
       .filter((p) => p.minyan_id === minyan.id)
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -95,7 +102,8 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
         fixedTime: p.fixed_time,
         zmanAnchor: p.zman_anchor,
         offsetMinutes: p.offset_minutes,
-        roundMode: p.round_mode ?? "none"
+        roundMode: p.round_mode ?? "none",
+        parashaKey: typeof p.parasha_key === "string" && p.parasha_key.trim() ? p.parasha_key.trim() : null
       })),
     screens: (screensRes.data ?? [])
       .filter((s) => s.minyan_id === minyan.id)
@@ -168,12 +176,24 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     let minyanId = minyan.id;
     if (!minyan.name?.trim()) continue;
 
+    for (const p of minyan.prayerSettings) {
+      if (p.mode === "parasha") {
+        if (p.category !== "weekday") {
+          return NextResponse.json({ ok: false, error: "parasha_mode_weekday_only" }, { status: 400 });
+        }
+        if (!p.parashaKey?.trim() || !p.fixedTime?.trim()) {
+          return NextResponse.json({ ok: false, error: "parasha_requires_key_and_time" }, { status: 400 });
+        }
+      }
+    }
+
     if (minyanId) {
       const { error } = await supabase
         .from("minyanim")
         .update({
           name: minyan.name.trim(),
           display_style: minyan.displayStyle,
+          schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
           is_active: true
         })
         .eq("id", minyanId)
@@ -186,6 +206,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           synagogue_id: synagogueId,
           name: minyan.name.trim(),
           display_style: minyan.displayStyle,
+          schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
           is_active: true
         })
         .select("id")
@@ -204,10 +225,11 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           prayer_type: p.prayerType,
           days_of_week: p.category === "weekday" ? (p.daysOfWeek ?? []) : [],
           mode: p.mode,
-          fixed_time: p.mode === "fixed" ? p.fixedTime : null,
+          fixed_time: p.mode === "fixed" || p.mode === "parasha" ? p.fixedTime : null,
           zman_anchor: p.mode === "relative" ? p.zmanAnchor : null,
           offset_minutes: p.mode === "relative" ? p.offsetMinutes : null,
           round_mode: p.mode === "relative" ? (p.roundMode ?? "none") : "none",
+          parasha_key: p.mode === "parasha" ? p.parashaKey?.trim() ?? null : null,
           sort_order: index + 1
         }))
       );

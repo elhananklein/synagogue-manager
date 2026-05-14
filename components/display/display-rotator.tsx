@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LiveClock } from "@/components/display/live-clock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { DailyLearningLine } from "@/lib/hebcal";
 
-type ScreenKey = "main" | "clock" | "halacha" | "dailyLearning";
+type ScreenKey = "main" | "clock" | "halacha" | "dailyLearning" | "prayerTimes";
 type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver";
 
 type RotatorScreen = {
@@ -45,6 +46,12 @@ type Snapshot = {
 /** Auto-scroll for "זמני היום ותפילות" — set here so deploys always pick up pace changes (inline beats stale CSS). */
 const TIMES_LIST_SCROLL_DURATION_SEC = 120;
 
+/**
+ * WoodSilver בלבד: כותרת יום|שעון|תאריך עברי במסגרת עגולה, תוספות+דף במסגרת עגולה, ללא רשימת זמני תפילה.
+ * ל־false — חוזרים לכותרת הקלאסית (שם בית כנסת, נקודות, שעון) ולרשימת הזמנים גם ב־woodSilver.
+ */
+const ENABLE_WOOD_SILVER_REVOLUTION_LAYOUT = true;
+
 function sortedSectionItemsWithMinutes(
   items: Array<{ label: string; time: string; details?: string; kind: "zman" | "prayer" }>
 ) {
@@ -54,6 +61,24 @@ function sortedSectionItemsWithMinutes(
       return { ...row, totalMinutes: h * 60 + m };
     })
     .sort((a, b) => a.totalMinutes - b.totalMinutes);
+}
+
+const PRAYER_TIMES_GROUP_ORDER = ["שחרית", "מנחה", "ערבית", "אחר"] as const;
+type PrayerTimesGroupId = (typeof PRAYER_TIMES_GROUP_ORDER)[number];
+
+const PRAYER_TIMES_GROUP_TITLES: Record<PrayerTimesGroupId, string> = {
+  שחרית: "שחרית",
+  מנחה: "מנחה",
+  ערבית: "ערבית",
+  אחר: "נוספות"
+};
+
+function prayerTimesGroupIdFromLabel(label: string): PrayerTimesGroupId {
+  const t = label.trim();
+  if (t.includes("שחרית")) return "שחרית";
+  if (t.includes("מנחה")) return "מנחה";
+  if (t.includes("ערבית")) return "ערבית";
+  return "אחר";
 }
 
 function toHebrewNumber(num: number) {
@@ -162,6 +187,11 @@ export function DisplayRotator({
   }, [snapshot.halachicDayRollIso, router]);
 
   const currentScreen = enabledScreens.length ? enabledScreens[index % enabledScreens.length].screenKey : null;
+  const isWoodSilverRevolution = style === "woodSilver" && ENABLE_WOOD_SILVER_REVOLUTION_LAYOUT;
+  const jerusalemWeekdayLong = new Intl.DateTimeFormat("he-IL", {
+    weekday: "long",
+    timeZone: "Asia/Jerusalem"
+  }).format(new Date());
   const nowJerusalem = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
   const nowMinutes = nowJerusalem.getHours() * 60 + nowJerusalem.getMinutes();
   const todaySectionItems = timeSections[0]?.items ?? [
@@ -196,10 +226,59 @@ export function DisplayRotator({
     if (!tomorrowPrayerTimes.length) return null;
     return tomorrowPrayerTimes[0];
   })();
+  /** להדגשה במסך «זמני תפילות» בלבד — רק תפילה עתידית באותו יום לפי שעון ירושלים */
+  const nextTodayPrayerHighlight =
+    todayPrayerTimes.length === 0
+      ? null
+      : (() => {
+          const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= nowMinutes);
+          if (idx === -1) return null;
+          const p = todayPrayerTimes[idx];
+          return { label: p.label, time: p.time };
+        })();
+  const prayerTimesScreenGroups = useMemo(() => {
+    type Row = PrayerSlot & { totalMinutes: number; group: PrayerTimesGroupId };
+    const rows: Row[] = prayerSchedule.map((row) => {
+      const [h, m] = row.time.split(":").map(Number);
+      const hh = Number.isFinite(h) ? h : 0;
+      const mm = Number.isFinite(m) ? m : 0;
+      return {
+        ...row,
+        totalMinutes: hh * 60 + mm,
+        group: prayerTimesGroupIdFromLabel(row.label)
+      };
+    });
+    rows.sort((a, b) => a.totalMinutes - b.totalMinutes);
+    const byGroup = new Map<PrayerTimesGroupId, Row[]>();
+    for (const r of rows) {
+      const list = byGroup.get(r.group) ?? [];
+      list.push(r);
+      byGroup.set(r.group, list);
+    }
+    return PRAYER_TIMES_GROUP_ORDER.filter((g) => byGroup.has(g)).map((group) => ({
+      group,
+      title: PRAYER_TIMES_GROUP_TITLES[group],
+      rows: byGroup.get(group)!
+    }));
+  }, [prayerSchedule]);
+  const prayerTimesNextBanner =
+    nextTodayPrayerHighlight &&
+    (() => {
+      const h = nextTodayPrayerHighlight;
+      const gid = prayerTimesGroupIdFromLabel(h.label);
+      const groupBlock = prayerTimesScreenGroups.find((g) => g.group === gid);
+      const idx = groupBlock
+        ? groupBlock.rows.findIndex((r) => r.label === h.label && r.time === h.time)
+        : -1;
+      const sectionTitle = PRAYER_TIMES_GROUP_TITLES[gid];
+      return idx >= 0
+        ? `התפילה הבאה: ${sectionTitle} מניין ${idx + 1} - ${h.time}`
+        : `התפילה הבאה: ${h.label} - ${h.time}`;
+    })();
   const hasOmer = Boolean(snapshot.omerText);
   const hasYaaleh = snapshot.showYaalehVeyavo;
   const hasBothExtraAdditions = hasOmer && hasYaaleh;
-  const shouldAutoScroll = currentScreen === "main" && timeSections.length > 0;
+  const shouldAutoScroll = currentScreen === "main" && timeSections.length > 0 && !isWoodSilverRevolution;
   const halachaClosingLinePattern = /["״']?\s*כל השונה הלכות בכל יום\s+מובטח לו שהוא בן העולם הבא["״']?\s*$/;
   const halachaText = (() => {
     const raw = halacha.text.trim();
@@ -264,58 +343,92 @@ export function DisplayRotator({
         <div className="display-empty">אין מסכים פעילים לתצוגה</div>
       ) : (
       <div className="display-frame">
-        <header className="display-header">
-          <div
-            className="display-screen-dots"
-            role="status"
-            aria-label={`מסך ${index + 1} מתוך ${enabledScreens.length}`}
-          >
-            {enabledScreens.map((_, i) => (
-              <span
-                key={i}
-                className={i === index ? "display-screen-dot display-screen-dot--active" : "display-screen-dot"}
-                aria-hidden
-              />
-            ))}
-          </div>
-          <h1 className="display-title">
-            {minyanName ? `${synagogueName} - ${minyanName}` : synagogueName}
-          </h1>
-          {currentScreen !== "clock" ? (
-            adminHref ? (
-              <Link
-                href={adminHref}
-                className="display-header-clock display-clock-admin-hit"
-                aria-label="מעבר לממשק ניהול בית הכנסת"
-                prefetch={false}
-              >
-                <LiveClock />
-              </Link>
-            ) : (
-              <div className="display-header-clock">
-                <LiveClock />
-              </div>
-            )
+        <header className={cn("display-header", isWoodSilverRevolution && "display-header--ws-revolution")}>
+          {isWoodSilverRevolution ? (
+            <div
+              className="display-ws-header-band"
+              role="status"
+              aria-label={`מסך ${index + 1} מתוך ${enabledScreens.length}: ${jerusalemWeekdayLong}, ${snapshot.hebrewDate}`}
+            >
+              <div className="display-ws-lozenge display-ws-lozenge--day">{jerusalemWeekdayLong}</div>
+              {adminHref ? (
+                <Link
+                  href={adminHref}
+                  className="display-ws-clock-circle display-clock-admin-hit"
+                  aria-label="מעבר לממשק ניהול בית הכנסת"
+                  prefetch={false}
+                >
+                  <LiveClock />
+                </Link>
+              ) : (
+                <div className="display-ws-clock-circle">
+                  <LiveClock />
+                </div>
+              )}
+              <div className="display-ws-lozenge display-ws-lozenge--hebrew-date">{snapshot.hebrewDate}</div>
+            </div>
           ) : (
-            <div aria-hidden className="display-header-clock-placeholder" />
+            <>
+              <div
+                className="display-screen-dots"
+                role="status"
+                aria-label={`מסך ${index + 1} מתוך ${enabledScreens.length}`}
+              >
+                {enabledScreens.map((_, i) => (
+                  <span
+                    key={i}
+                    className={i === index ? "display-screen-dot display-screen-dot--active" : "display-screen-dot"}
+                    aria-hidden
+                  />
+                ))}
+              </div>
+              <h1 className="display-title">
+                {minyanName ? `${synagogueName} - ${minyanName}` : synagogueName}
+              </h1>
+              {currentScreen !== "clock" ? (
+                adminHref ? (
+                  <Link
+                    href={adminHref}
+                    className="display-header-clock display-clock-admin-hit"
+                    aria-label="מעבר לממשק ניהול בית הכנסת"
+                    prefetch={false}
+                  >
+                    <LiveClock />
+                  </Link>
+                ) : (
+                  <div className="display-header-clock">
+                    <LiveClock />
+                  </div>
+                )
+              ) : (
+                <div aria-hidden className="display-header-clock-placeholder" />
+              )}
+            </>
           )}
         </header>
 
         {currentScreen === "clock" ? (
-          <section className="display-clock-screen display-card">
-            {adminHref ? (
-              <Link
-                href={adminHref}
-                className="display-clock-admin-hit display-clock-screen-clock-link"
-                aria-label="מעבר לממשק ניהול בית הכנסת"
-                prefetch={false}
-              >
-                <LiveClock />
-              </Link>
-            ) : (
-              <LiveClock />
+          <section
+            className={cn(
+              "display-clock-screen display-card",
+              isWoodSilverRevolution && "display-clock-screen--ws-revolution"
             )}
-            <p className="display-date-hebrew">{snapshot.hebrewDate}</p>
+          >
+            {!isWoodSilverRevolution ? (
+              adminHref ? (
+                <Link
+                  href={adminHref}
+                  className="display-clock-admin-hit display-clock-screen-clock-link"
+                  aria-label="מעבר לממשק ניהול בית הכנסת"
+                  prefetch={false}
+                >
+                  <LiveClock />
+                </Link>
+              ) : (
+                <LiveClock />
+              )
+            ) : null}
+            {!isWoodSilverRevolution ? <p className="display-date-hebrew">{snapshot.hebrewDate}</p> : null}
             <p className="display-date-gregorian">{snapshot.gregorianDate}</p>
             {snapshot.omerText ? <p className="display-omer-line">{snapshot.omerText}</p> : null}
           </section>
@@ -365,55 +478,148 @@ export function DisplayRotator({
           </Card>
         ) : null}
 
+        {currentScreen === "prayerTimes" ? (
+          <Card className="display-card display-prayer-times-card">
+            <CardHeader className="display-prayer-times-header">
+              <CardTitle className="display-times-title">זמני תפילות</CardTitle>
+              {prayerTimesNextBanner ? (
+                <p className="display-next-prayer">{prayerTimesNextBanner}</p>
+              ) : null}
+            </CardHeader>
+            <CardContent className="display-prayer-times-body">
+              {prayerTimesScreenGroups.length === 0 ? (
+                <p className="display-daily-learning-empty">אין זמני תפילה מוגדרים להיום.</p>
+              ) : (
+                <div className="display-prayer-times-groups">
+                  {prayerTimesScreenGroups.map(({ group, title, rows }) => (
+                    <div key={group} className="display-prayer-times-group">
+                      <div className="display-time-section-title">{title}</div>
+                      <div className="display-prayer-times-row-line" dir="rtl">
+                        {rows.map((item, idx) => {
+                          const isNext =
+                            nextTodayPrayerHighlight !== null &&
+                            nextTodayPrayerHighlight.label === item.label &&
+                            nextTodayPrayerHighlight.time === item.time;
+                          return (
+                            <div
+                              key={`${group}-${item.label}-${item.time}-${idx}`}
+                              data-next-anchor={isNext ? "true" : undefined}
+                              className={cn(
+                                "display-time-row display-time-row--prayer display-prayer-times-cell",
+                                isNext && "display-time-row--next"
+                              )}
+                            >
+                              <div className="display-time-main">
+                                <span className="display-time-label display-prayer-times-minyan-label">
+                                  מניין {idx + 1}
+                                </span>
+                                <span className="display-time-value-wrap">
+                                  <span
+                                    className={cn(
+                                      "display-time-value",
+                                      isNext && "display-time-value--next"
+                                    )}
+                                  >
+                                    {item.time}
+                                  </span>
+                                </span>
+                              </div>
+                              {item.details ? (
+                                <div className="display-time-details display-prayer-times-cell-detail">
+                                  {item.details}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
+
         {currentScreen === "main" ? (
-          <section className="display-main-grid">
+          <section className={cn("display-main-grid", isWoodSilverRevolution && "display-main-grid--ws-revolution")}>
             <div className="display-main-primary">
               <div className="display-main-primary-stack">
                 <Card className="display-card display-main-date-card">
                   <CardContent className="display-main-date-content">
                     <p className="display-parasha">{snapshot.parasha}</p>
-                    <p className="display-hebrew-date">{snapshot.hebrewDate}</p>
-                    <p className="display-gregorian-date">{snapshot.gregorianDate}</p>
+                    {isWoodSilverRevolution ? (
+                      <p className="display-gregorian-date">{snapshot.gregorianDate}</p>
+                    ) : (
+                      <>
+                        <p className="display-hebrew-date">{snapshot.hebrewDate}</p>
+                        <p className="display-gregorian-date">{snapshot.gregorianDate}</p>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 
-                <div className="display-main-additions">
-                  <Card className="display-card">
-                    <CardContent className="display-addition-content">
+                {isWoodSilverRevolution ? (
+                  <div className="display-ws-additions-shell">
+                    <div className="display-ws-additions-inner">
                       <p className="display-addition-text">{snapshot.rainText}</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="display-card">
-                    <CardContent className="display-addition-content">
                       <p className="display-addition-text">{snapshot.blessingText}</p>
+                      {snapshot.omerText ? <p className="display-addition-text">{snapshot.omerText}</p> : null}
+                      {snapshot.showYaalehVeyavo ? <p className="display-addition-text">יעלה ויבוא</p> : null}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="display-main-additions">
+                    <Card className="display-card">
+                      <CardContent className="display-addition-content">
+                        <p className="display-addition-text">{snapshot.rainText}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="display-card">
+                      <CardContent className="display-addition-content">
+                        <p className="display-addition-text">{snapshot.blessingText}</p>
+                      </CardContent>
+                    </Card>
+                    {snapshot.omerText ? (
+                      <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
+                        <CardContent className="display-addition-content">
+                          <p className="display-addition-text">{snapshot.omerText}</p>
+                        </CardContent>
+                      </Card>
+                    ) : null}
+                    {snapshot.showYaalehVeyavo ? (
+                      <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
+                        <CardContent className="display-addition-content">
+                          <p className="display-addition-text">יעלה ויבוא</p>
+                        </CardContent>
+                      </Card>
+                    ) : null}
+                  </div>
+                )}
+
+                {isWoodSilverRevolution ? (
+                  <div className="display-ws-daf-shell">
+                    <Card className="display-card display-daf-card display-ws-daf-card-inner">
+                      <CardContent className="display-daf-content">
+                        <div className="display-daf-yomi">
+                          דף יומי: <span className="display-accent">{snapshot.dafYomi}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : (
+                  <Card className="display-card display-daf-card">
+                    <CardContent className="display-daf-content">
+                      <div className="display-daf-yomi">
+                        דף יומי: <span className="display-accent">{snapshot.dafYomi}</span>
+                      </div>
                     </CardContent>
                   </Card>
-                  {snapshot.omerText ? (
-                    <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
-                      <CardContent className="display-addition-content">
-                        <p className="display-addition-text">{snapshot.omerText}</p>
-                      </CardContent>
-                    </Card>
-                  ) : null}
-                  {snapshot.showYaalehVeyavo ? (
-                    <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
-                      <CardContent className="display-addition-content">
-                        <p className="display-addition-text">יעלה ויבוא</p>
-                      </CardContent>
-                    </Card>
-                  ) : null}
-                </div>
-
-                <Card className="display-card display-daf-card">
-                  <CardContent className="display-daf-content">
-                    <div className="display-daf-yomi">
-                      דף יומי: <span className="display-accent">{snapshot.dafYomi}</span>
-                    </div>
-                  </CardContent>
-                </Card>
+                )}
               </div>
             </div>
 
+            {!isWoodSilverRevolution ? (
             <Card className="display-card display-main-times-card">
               <CardHeader>
                 <CardTitle className="display-times-title">זמני היום ותפילות</CardTitle>
@@ -501,6 +707,7 @@ export function DisplayRotator({
                 </div>
               </CardContent>
             </Card>
+            ) : null}
           </section>
         ) : null}
       </div>
