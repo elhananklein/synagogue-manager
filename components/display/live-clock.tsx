@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-function formatClock(now: Date) {
+function formatClockWithSeconds(now: Date) {
   return new Intl.DateTimeFormat("he-IL", {
     hour: "2-digit",
     minute: "2-digit",
@@ -13,18 +13,32 @@ function formatClock(now: Date) {
   }).format(now);
 }
 
-export function LiveClock({ className }: { className?: string }) {
-  // Keep server/client initial render identical to avoid hydration mismatch.
-  const [timeText, setTimeText] = useState("--:--:--");
+function formatClockHoursMinutes(now: Date) {
+  return new Intl.DateTimeFormat("he-IL", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Jerusalem"
+  }).format(now);
+}
+
+export function LiveClock({
+  className,
+  showSeconds = true
+}: {
+  className?: string;
+  /** כש־false — רק שעות ודקות (למשל כותרת Classic). */
+  showSeconds?: boolean;
+}) {
+  const placeholder = showSeconds ? "--:--:--" : "--:--";
+  const [timeText, setTimeText] = useState(placeholder);
 
   useEffect(() => {
-    setTimeText(formatClock(new Date()));
-
-    const id = setInterval(() => {
-      setTimeText(formatClock(new Date()));
-    }, 1000);
+    const format = showSeconds ? formatClockWithSeconds : formatClockHoursMinutes;
+    setTimeText(format(new Date()));
+    const id = setInterval(() => setTimeText(format(new Date())), showSeconds ? 1000 : 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [showSeconds]);
 
   return (
     <p className={cn("display-clock-text", className)} suppressHydrationWarning>

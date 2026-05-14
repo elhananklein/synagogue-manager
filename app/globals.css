@@ -52,6 +52,10 @@ body {
     padding-bottom: 1rem;
   }
 
+  .display-header--center-clock-band {
+    display: block;
+  }
+
   .display-header-clock {
     display: flex;
     align-items: center;
@@ -1062,11 +1066,7 @@ body {
     color: #3d2918;
   }
 
-  /* woodSilver revolution: כותרת יום|שעון|תאריך, תוספות ודף במסגרת עגולה (קשת ענקית), ללא זמנים — revert ב־display-rotator */
-  .display--woodSilver .display-header--ws-revolution {
-    display: block;
-  }
-
+  /* woodSilver revolution: כותרת יום|שעון|תאריך — layout דרך .display-header--center-clock-band */
   .display--woodSilver .display-ws-header-band {
     display: flex;
     flex-direction: row;
@@ -1215,49 +1215,123 @@ body {
   }
 
   .display--classic {
-    background: linear-gradient(180deg, #451a03 0%, #1c1917 55%, #0a0a0a 100%);
-    color: #fffdf6;
+    background:
+      radial-gradient(ellipse 100% 70% at 50% -5%, rgb(220 38 38 / 0.38) 0%, transparent 52%),
+      radial-gradient(ellipse 55% 80% at 100% 50%, rgb(185 28 65 / 0.22) 0%, transparent 50%),
+      linear-gradient(168deg, #0c0204 0%, #3f0d18 38%, #1a0308 72%, #050102 100%);
+    color: #ffffff;
   }
   .display--classic .display-frame {
-    border-color: rgb(245 158 11 / 0.7);
-    outline: 1px solid rgb(252 211 77 / 0.6);
+    border-color: rgb(251 191 36 / 0.55);
+    outline: 2px solid rgb(254 240 138 / 0.5);
     outline-offset: -6px;
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.12),
+      0 0 40px rgb(220 38 38 / 0.12);
   }
   .display--classic .display-card {
-    border-color: rgb(245 158 11 / 0.6);
-    background-color: rgb(120 53 15 / 0.42);
-    color: #fffdf6;
+    border: 1px solid rgb(251 191 36 / 0.65);
+    background: linear-gradient(
+      180deg,
+      rgb(88 10 28 / 0.94) 0%,
+      rgb(52 6 18 / 0.97) 48%,
+      rgb(30 4 12 / 0.98) 100%
+    );
+    color: #ffffff;
+    box-shadow:
+      0 10px 36px rgb(0 0 0 / 0.45),
+      inset 0 1px 0 rgb(255 255 255 / 0.14),
+      inset 0 -1px 0 rgb(0 0 0 / 0.35);
   }
   .display--classic .display-header {
-    border-color: rgb(245 158 11 / 0.55);
+    border-bottom-color: rgb(251 191 36 / 0.5);
+    border-bottom-width: 2px;
+  }
+  .display--classic .display-title {
+    color: #ffffff;
+    font-weight: 800;
+    text-shadow:
+      0 2px 4px rgb(0 0 0 / 0.75),
+      0 0 28px rgb(250 204 21 / 0.2);
   }
   .display--classic .display-accent,
-  .display--classic .display-screen-dots,
+  .display--classic .display-screen-dots {
+    color: #fde047;
+  }
+  .display--classic .display-screen-dot {
+    border-color: rgb(254 240 138 / 0.95);
+    opacity: 0.75;
+    background-color: rgb(30 6 12 / 0.5);
+  }
+  .display--classic .display-screen-dot--active {
+    opacity: 1;
+    border-color: #0c0204;
+    background-color: #fde047;
+    box-shadow: 0 0 0 2px rgb(254 240 138 / 0.95), 0 0 14px rgb(250 204 21 / 0.55);
+  }
   .display--classic .display-gregorian-date,
   .display--classic .display-date-gregorian,
   .display--classic .display-time-details {
-    color: #ffe082;
+    color: #fcd34d;
+    font-weight: 600;
   }
   .display--classic .display-time-row {
-    border-color: rgb(245 158 11 / 0.5);
-    background-color: rgb(120 53 15 / 0.36);
+    border: 1px solid rgb(251 191 36 / 0.45);
+    background: linear-gradient(90deg, rgb(72 10 26 / 0.92) 0%, rgb(42 6 16 / 0.94) 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
   }
   .display--classic .display-time-section-title {
-    color: #ffdf8c;
-    text-shadow: 0 1px 1px rgb(0 0 0 / 0.5);
+    color: #fef08a;
+    font-weight: 800;
+    text-shadow: 0 2px 4px rgb(0 0 0 / 0.65);
+    letter-spacing: 0.02em;
   }
   .display--classic .display-next-prayer {
-    color: #ffe082;
-    text-shadow: 0 1px 1px rgb(0 0 0 / 0.45);
+    color: #fde047;
+    font-weight: 800;
+    text-shadow: 0 2px 4px rgb(0 0 0 / 0.55);
   }
   .display--classic .display-header-clock {
-    background: #ffefbf;
-    color: #2b1a0d;
-    border: 1px solid rgb(146 64 14 / 0.45);
-    box-shadow: 0 1px 8px rgb(0 0 0 / 0.2);
+    background: linear-gradient(180deg, #ffffff 0%, #fff7ed 45%, #fde68a 100%);
+    color: #450a0a;
+    border: 2px solid rgb(185 28 65 / 0.55);
+    box-shadow:
+      0 4px 18px rgb(0 0 0 / 0.35),
+      inset 0 1px 0 rgb(255 255 255 / 0.9);
+  }
+  .display--classic .display-header-clock .display-clock-text {
+    color: #1c0508;
+    font-weight: 900;
+    text-shadow: 0 1px 0 rgb(255 255 255 / 0.5);
   }
   .display--classic .display-time-row--prayer {
-    background-color: rgb(161 98 7 / 0.28);
+    background: linear-gradient(90deg, rgb(100 14 32 / 0.95) 0%, rgb(55 8 20 / 0.96) 100%);
+    border-inline-start: 5px solid #facc15;
+    box-shadow:
+      inset 5px 0 0 #fde047,
+      inset 0 1px 0 rgb(255 255 255 / 0.08);
+  }
+  .display--classic .display-time-row--next {
+    border: 2px solid #fde047;
+    background: linear-gradient(180deg, rgb(120 18 38 / 0.98) 0%, rgb(70 10 26 / 0.98) 100%);
+    box-shadow:
+      0 0 0 1px rgb(254 240 138 / 0.5),
+      0 0 32px rgb(250 204 21 / 0.35),
+      inset 0 1px 0 rgb(255 255 255 / 0.12);
+  }
+  .display--classic .display-time-value--next {
+    color: #fef9c3;
+    text-shadow: 0 0 12px rgb(250 204 21 / 0.45);
+  }
+  .display--classic .display-time-label--prayer {
+    color: #fef08a;
+    font-weight: 800;
+  }
+  .display--classic .display-prayer-badge {
+    border: 1px solid #facc15;
+    background: rgb(250 204 21 / 0.22);
+    color: #fffbeb;
+    font-weight: 900;
   }
   .display--classic .display-parasha,
   .display--classic .display-hebrew-date,
@@ -1266,28 +1340,190 @@ body {
   .display--classic .display-daf-yomi,
   .display--classic .display-time-label,
   .display--classic .display-time-value {
-    text-shadow: 0 2px 2px rgb(0 0 0 / 0.62), 0 0 14px rgb(255 193 7 / 0.2);
-    -webkit-text-stroke: 0.2px rgb(0 0 0 / 0.55);
+    -webkit-text-stroke: 0;
+  }
+  .display--classic .display-parasha,
+  .display--classic .display-hebrew-date,
+  .display--classic .display-addition-text,
+  .display--classic .display-daf-yomi {
+    color: #ffffff;
+    text-shadow: 0 2px 6px rgb(0 0 0 / 0.65);
+  }
+  .display--classic .display-times-title {
+    color: #fef08a;
+    font-weight: 900;
+    text-shadow: 0 2px 4px rgb(0 0 0 / 0.55);
+  }
+  .display--classic .display-time-label:not(.display-time-label--prayer),
+  .display--classic .display-time-value {
+    color: #fff7ed;
+    font-weight: 700;
+  }
+  .display--classic .display-accent {
+    color: #fde047;
+    font-weight: 800;
   }
   .display--classic .display-yaaleh {
-    border-color: #f59e0b;
-    background-color: rgb(245 158 11 / 0.2);
+    border: 1px solid #facc15;
+    background: linear-gradient(180deg, rgb(250 204 21 / 0.22) 0%, rgb(185 28 65 / 0.25) 100%);
+    color: #fffbeb;
+    font-weight: 800;
+  }
+  .display--classic .display-halacha-title {
+    color: #fef08a;
+    font-weight: 900;
+    text-shadow: 0 2px 4px rgb(0 0 0 / 0.5);
+  }
+  .display--classic .display-halacha-text {
+    color: #fff7ed;
+    font-weight: 600;
+  }
+  .display--classic .display-halacha-intro {
+    color: #ffffff;
+    font-weight: 800;
+  }
+  .display--classic .display-halacha-source {
+    color: #fde047;
+    font-weight: 800;
+  }
+  .display--classic .display-halacha-signature {
+    border-top-color: rgb(251 191 36 / 0.55);
+    color: #fcd34d;
+    font-weight: 700;
+  }
+  .display--classic .display-clock-screen {
+    border: 1px solid rgb(251 191 36 / 0.55);
+    background: linear-gradient(180deg, rgb(80 12 28 / 0.95) 0%, rgb(28 4 12 / 0.98) 100%);
+    color: #ffffff;
+    box-shadow:
+      0 8px 32px rgb(0 0 0 / 0.4),
+      inset 0 1px 0 rgb(255 255 255 / 0.1);
+  }
+  .display--classic .display-clock-screen .display-date-hebrew,
+  .display--classic .display-clock-screen .display-date-gregorian,
+  .display--classic .display-clock-screen .display-omer-line {
+    color: #fffbeb;
+    font-weight: 800;
+    text-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+  }
+  .display--classic .display-clock-screen .display-clock-text {
+    color: #ffffff;
+    text-shadow:
+      0 3px 12px rgb(0 0 0 / 0.55),
+      0 0 40px rgb(250 204 21 / 0.2);
   }
   .display--classic .display-daily-learning-title {
-    color: #fde047;
+    color: #fef08a;
+    font-weight: 900;
   }
   .display--classic .display-daily-learning-note,
   .display--classic .display-daily-learning-empty {
-    color: #ffe082;
+    color: #fcd34d;
+    font-weight: 600;
   }
   .display--classic .display-daily-learning-row {
-    border-color: rgb(245 158 11 / 0.45);
-    background-color: rgb(120 53 15 / 0.28);
+    border: 1px solid rgb(251 191 36 / 0.5);
+    background: linear-gradient(90deg, rgb(70 10 24 / 0.92) 0%, rgb(38 6 14 / 0.95) 100%);
   }
   .display--classic .display-daily-learning-name,
   .display--classic .display-daily-learning-detail {
-    color: #fffdf6;
-    text-shadow: 0 2px 2px rgb(0 0 0 / 0.62), 0 0 14px rgb(255 193 7 / 0.2);
+    color: #ffffff;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+  }
+
+  .display--classic .display-empty {
+    color: #fde047;
+    font-weight: 700;
+  }
+
+  /* Classic: כותרת רצועה — יום בשמאל | שעון במרכז (רק שעות:דקות, גדול) | תאריך עברי בימין */
+  .display--classic .display-ws-header-band {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(0.35rem, 1.2vw, 0.85rem);
+    width: 100%;
+    min-height: clamp(6.5rem, 14vw, 9rem);
+  }
+
+  .display--classic .display-ws-lozenge {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: clamp(0.9rem, 2vw, 1.35rem) clamp(0.45rem, 1.5vw, 0.9rem);
+    min-height: clamp(4.75rem, 11vw, 7rem);
+    font-weight: 900;
+    font-size: clamp(1.1rem, 2.6vw, 1.65rem);
+    line-height: 1.28;
+    color: #1c0508;
+    letter-spacing: 0.02em;
+    word-break: break-word;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7ed 55%, #fde68a 100%);
+    border: 2px solid rgb(251 191 36 / 0.75);
+    border-radius: clamp(1.75rem, 5vmin, 3rem);
+    box-shadow:
+      0 6px 20px rgb(0 0 0 / 0.35),
+      inset 0 2px 0 rgb(255 255 255 / 0.95);
+    text-shadow: 0 1px 0 rgb(255 255 255 / 0.6);
+  }
+
+  .display--classic .display-ws-lozenge--hebrew-date {
+    font-size: clamp(1.2rem, 2.9vw, 1.95rem);
+  }
+
+  .display--classic .display-ws-clock-circle {
+    flex: 0 0 auto;
+    width: clamp(10.5rem, 26vw, 15.5rem);
+    height: clamp(10.5rem, 26vw, 15.5rem);
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(185deg, rgb(28 5 12) 0%, #0c0204 100%);
+    border: 3px solid rgb(251 191 36 / 0.85);
+    box-shadow:
+      0 12px 36px rgb(0 0 0 / 0.55),
+      inset 0 2px 0 rgb(255 255 255 / 0.12),
+      0 0 40px rgb(250 204 21 / 0.12);
+  }
+
+  .display--classic .display-ws-clock-circle .display-clock-text {
+    font-size: clamp(2.6rem, 7.5vw, 4.75rem);
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-shadow:
+      0 0 2px rgb(0 0 0 / 0.9),
+      0 3px 10px rgb(0 0 0 / 0.65);
+  }
+
+  .display--classic .display-ws-clock-circle.display-clock-admin-hit:focus-visible {
+    outline: 3px solid rgb(254 240 138 / 0.98);
+    outline-offset: 4px;
+  }
+
+  .display--classic .display-clock-screen--classic-band {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 2.5rem 3rem;
+  }
+
+  .display--classic .display-clock-screen--classic-band .display-date-gregorian {
+    margin-top: 0;
+  }
+
+  .display--classic .display-clock-screen--classic-band .display-omer-line {
+    margin-top: 1.25rem;
   }
 
   .display-time-row--prayer {

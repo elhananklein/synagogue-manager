@@ -188,6 +188,8 @@ export function DisplayRotator({
 
   const currentScreen = enabledScreens.length ? enabledScreens[index % enabledScreens.length].screenKey : null;
   const isWoodSilverRevolution = style === "woodSilver" && ENABLE_WOOD_SILVER_REVOLUTION_LAYOUT;
+  /** כמו woodSilver revolution: יום | שעון | תאריך עברי בכותרת — גם ב־Classic */
+  const useCenterClockBand = isWoodSilverRevolution || style === "classic";
   const jerusalemWeekdayLong = new Intl.DateTimeFormat("he-IL", {
     weekday: "long",
     timeZone: "Asia/Jerusalem"
@@ -340,8 +342,13 @@ export function DisplayRotator({
         <div className="display-empty">אין מסכים פעילים לתצוגה</div>
       ) : (
       <div className="display-frame">
-        <header className={cn("display-header", isWoodSilverRevolution && "display-header--ws-revolution")}>
-          {isWoodSilverRevolution ? (
+        <header
+          className={cn(
+            "display-header",
+            useCenterClockBand && "display-header--center-clock-band"
+          )}
+        >
+          {useCenterClockBand ? (
             <div
               className="display-ws-header-band"
               role="status"
@@ -355,11 +362,11 @@ export function DisplayRotator({
                   aria-label="מעבר לממשק ניהול בית הכנסת"
                   prefetch={false}
                 >
-                  <LiveClock />
+                  <LiveClock showSeconds={style !== "classic"} />
                 </Link>
               ) : (
                 <div className="display-ws-clock-circle">
-                  <LiveClock />
+                  <LiveClock showSeconds={style !== "classic"} />
                 </div>
               )}
               <div className="display-ws-lozenge display-ws-lozenge--hebrew-date">{snapshot.hebrewDate}</div>
@@ -390,11 +397,11 @@ export function DisplayRotator({
                     aria-label="מעבר לממשק ניהול בית הכנסת"
                     prefetch={false}
                   >
-                    <LiveClock />
+                    <LiveClock showSeconds />
                   </Link>
                 ) : (
                   <div className="display-header-clock">
-                    <LiveClock />
+                    <LiveClock showSeconds />
                   </div>
                 )
               ) : (
@@ -408,10 +415,11 @@ export function DisplayRotator({
           <section
             className={cn(
               "display-clock-screen display-card",
-              isWoodSilverRevolution && "display-clock-screen--ws-revolution"
+              isWoodSilverRevolution && "display-clock-screen--ws-revolution",
+              style === "classic" && useCenterClockBand && "display-clock-screen--classic-band"
             )}
           >
-            {!isWoodSilverRevolution ? (
+            {!useCenterClockBand ? (
               adminHref ? (
                 <Link
                   href={adminHref}
@@ -419,13 +427,13 @@ export function DisplayRotator({
                   aria-label="מעבר לממשק ניהול בית הכנסת"
                   prefetch={false}
                 >
-                  <LiveClock />
+                  <LiveClock showSeconds />
                 </Link>
               ) : (
-                <LiveClock />
+                <LiveClock showSeconds />
               )
             ) : null}
-            {!isWoodSilverRevolution ? <p className="display-date-hebrew">{snapshot.hebrewDate}</p> : null}
+            {!useCenterClockBand ? <p className="display-date-hebrew">{snapshot.hebrewDate}</p> : null}
             <p className="display-date-gregorian">{snapshot.gregorianDate}</p>
             {snapshot.omerText ? <p className="display-omer-line">{snapshot.omerText}</p> : null}
           </section>
