@@ -102,13 +102,17 @@ export default async function DisplayPage({
       screens={displayConfig.screens}
       dailyLearning={snapshot.dailyLearning}
       snapshot={displaySnapshot}
-      halacha={{
-        title: publicData.halacha.title,
-        text: publicData.halacha.text,
-        source: publicData.halacha.source,
-        chapterNumber: publicData.halacha.chapterNumber,
-        sectionNumber: publicData.halacha.sectionNumber
-      }}
+      halacha={
+        publicData.halacha
+          ? {
+              title: publicData.halacha.title,
+              text: publicData.halacha.text,
+              source: publicData.halacha.source,
+              chapterNumber: publicData.halacha.chapterNumber,
+              sectionNumber: publicData.halacha.sectionNumber
+            }
+          : null
+      }
       prayerSchedule={prayerSchedule}
       timeSections={timeSections}
     />

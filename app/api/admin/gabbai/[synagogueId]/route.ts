@@ -33,7 +33,7 @@ type MinyanInput = {
 
 type HalachaSettingsInput = {
   startDate: string;
-  sourceKey: "kitzur_shulchan_arukh";
+  sourceKey: "manual" | "kitzur_shulchan_arukh";
   displayMode: "summary" | "full";
 };
 
@@ -117,7 +117,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
   }));
   const halachaSettings = {
     startDate: halachaSettingsRes.data?.start_date ?? new Date().toISOString().slice(0, 10),
-    sourceKey: (halachaSettingsRes.data?.source_key as "kitzur_shulchan_arukh") ?? "kitzur_shulchan_arukh",
+    sourceKey: (halachaSettingsRes.data?.source_key as "manual" | "kitzur_shulchan_arukh") ?? "manual",
     displayMode: (halachaSettingsRes.data?.display_mode as "summary" | "full") ?? "summary"
   };
 
@@ -157,7 +157,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
   const incomingMinyanim = payload.minyanim ?? [];
   const halachaSettings = payload.halachaSettings ?? {
     startDate: new Date().toISOString().slice(0, 10),
-    sourceKey: "kitzur_shulchan_arukh",
+    sourceKey: "manual",
     displayMode: "summary"
   };
   const existingMinyanRes = await supabase.from("minyanim").select("id").eq("synagogue_id", synagogueId);

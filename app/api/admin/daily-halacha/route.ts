@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { fetchKitzurHalacha } from "@/lib/data/kitzur-shulchan-arukh";
 
 type HalachaPayload = {
   displayDay: number;
@@ -15,8 +14,6 @@ type HalachaPayload = {
   chapterNumber?: number;
   sectionNumber?: number;
   topic?: string;
-  generateBatch?: boolean;
-  batchSize?: number;
 };
 
 function getSupabaseAdminClient() {
@@ -30,46 +27,7 @@ function getSupabaseAdminClient() {
   return createClient(url, key);
 }
 
-type AdminSupabaseClient = NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
-
-async function getNextDisplayDay(supabase: AdminSupabaseClient, sourceKey: string) {
-  const { data } = (await supabase
-    .from("daily_halacha")
-    .select("display_day")
-    .eq("source_key", sourceKey)
-    .order("display_day", { ascending: false })
-    .limit(1)
-    .maybeSingle()) as { data: { display_day: number } | null };
-  return (data?.display_day ?? 0) + 1;
-}
-
-async function getLastKitzurCursor(supabase: AdminSupabaseClient) {
-  const { data } = (await supabase
-    .from("daily_halacha")
-    .select("chapter_number, section_number")
-    .eq("book_name", "קיצור שולחן ערוך")
-    .not("chapter_number", "is", null)
-    .not("section_number", "is", null)
-    .order("display_day", { ascending: false })
-    .limit(1)
-    .maybeSingle()) as { data: { chapter_number: number; section_number: number } | null };
-  return {
-    chapterNumber: data?.chapter_number ?? 1,
-    sectionNumber: data?.section_number ?? 0
-  };
-}
-
-async function findNextHalacha(chapterNumber: number, sectionNumber: number) {
-  let chapter = chapterNumber;
-  let section = sectionNumber + 1;
-  while (chapter <= 400) {
-    const item = await fetchKitzurHalacha(chapter, section);
-    if (item) return item;
-    chapter += 1;
-    section = 1;
-  }
-  return null;
-}
+const ADMIN_HALACHA_SOURCE_KEY = "manual";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +41,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("daily_halacha")
     .select("display_day, title, content, full_text, summary_text, source_key, source, book_name, chapter_number, section_number, topic, published")
+    .eq("source_key", ADMIN_HALACHA_SOURCE_KEY)
     .order("display_day", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -102,55 +61,6 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as Partial<HalachaPayload>;
-  const activeSourceKey = (body.sourceKey ?? "kitzur_shulchan_arukh").trim() || "kitzur_shulchan_arukh";
-  if (body.generateBatch) {
-    const batchSize = Math.min(10, Math.max(1, Number(body.batchSize ?? 10)));
-    const startDisplayDay = await getNextDisplayDay(supabase, activeSourceKey);
-    const lastCursor = await getLastKitzurCursor(supabase);
-    const rows: Array<Record<string, unknown>> = [];
-    let cursor = { ...lastCursor };
-
-    for (let index = 0; index < batchSize; index += 1) {
-      const nextHalacha = await findNextHalacha(cursor.chapterNumber, cursor.sectionNumber);
-      if (!nextHalacha) break;
-      const targetDisplayDay = startDisplayDay + index;
-      rows.push({
-        display_day: targetDisplayDay,
-        title: `${nextHalacha.bookName} ${nextHalacha.chapterNumber}:${nextHalacha.sectionNumber}`,
-        content: nextHalacha.summaryText,
-        full_text: nextHalacha.fullText,
-        summary_text: nextHalacha.summaryText,
-        source: "Sefaria",
-        source_key: activeSourceKey,
-        book_name: nextHalacha.bookName,
-        chapter_number: nextHalacha.chapterNumber,
-        section_number: nextHalacha.sectionNumber,
-        topic: nextHalacha.topic,
-        published: true
-      });
-      cursor = {
-        chapterNumber: nextHalacha.chapterNumber,
-        sectionNumber: nextHalacha.sectionNumber
-      };
-    }
-
-    if (!rows.length) {
-      return NextResponse.json({ ok: false, error: "kitzur_source_exhausted" }, { status: 400 });
-    }
-
-    const { error } = await supabase.from("daily_halacha").upsert(rows, {
-      onConflict: "source_key,display_day"
-    });
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({
-      ok: true,
-      inserted: rows.length,
-      startDisplayDay,
-      endDisplayDay: (rows[rows.length - 1]?.display_day as number | undefined) ?? startDisplayDay
-    });
-  }
 
   const displayDay =
     typeof body.displayDay === "number" && Number.isFinite(body.displayDay) ? Math.floor(body.displayDay) : NaN;
@@ -160,7 +70,7 @@ export async function POST(request: Request) {
   const fullText = (body.fullText ?? content).trim();
   const summaryText = (body.summaryText ?? content).trim();
   const source = (body.source ?? "").trim() || null;
-  const sourceKey = (body.sourceKey ?? "manual").trim() || "manual";
+  const sourceKey = ADMIN_HALACHA_SOURCE_KEY;
   const bookName = (body.bookName ?? "").trim() || null;
   const chapterNumber = typeof body.chapterNumber === "number" && Number.isFinite(body.chapterNumber) ? body.chapterNumber : null;
   const sectionNumber = typeof body.sectionNumber === "number" && Number.isFinite(body.sectionNumber) ? body.sectionNumber : null;
@@ -200,4 +110,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true });
 }
-

@@ -129,7 +129,7 @@ export function DisplayRotator({
   screens: RotatorScreen[];
   dailyLearning: DailyLearningLine[];
   snapshot: Snapshot;
-  halacha: { title: string; text: string; source?: string; chapterNumber?: number; sectionNumber?: number };
+  halacha: { title: string; text: string; source?: string; chapterNumber?: number; sectionNumber?: number } | null;
   prayerSchedule: PrayerSlot[];
   timeSections: TimeSection[];
 }) {
@@ -266,39 +266,36 @@ export function DisplayRotator({
     (() => {
       const h = nextTodayPrayerHighlight;
       const gid = prayerTimesGroupIdFromLabel(h.label);
-      const groupBlock = prayerTimesScreenGroups.find((g) => g.group === gid);
-      const idx = groupBlock
-        ? groupBlock.rows.findIndex((r) => r.label === h.label && r.time === h.time)
-        : -1;
       const sectionTitle = PRAYER_TIMES_GROUP_TITLES[gid];
-      return idx >= 0
-        ? `התפילה הבאה: ${sectionTitle} מניין ${idx + 1} - ${h.time}`
-        : `התפילה הבאה: ${h.label} - ${h.time}`;
+      return `התפילה הבאה: ${sectionTitle} - ${h.time}`;
     })();
   const hasOmer = Boolean(snapshot.omerText);
   const hasYaaleh = snapshot.showYaalehVeyavo;
   const hasBothExtraAdditions = hasOmer && hasYaaleh;
   const shouldAutoScroll = currentScreen === "main" && timeSections.length > 0 && !isWoodSilverRevolution;
   const halachaClosingLinePattern = /["״']?\s*כל השונה הלכות בכל יום\s+מובטח לו שהוא בן העולם הבא["״']?\s*$/;
-  const halachaText = (() => {
-    const raw = halacha.text.trim();
-    const closingLineMatch = raw.match(halachaClosingLinePattern)?.[0]?.trim() ?? null;
-    const withoutClosing = closingLineMatch ? raw.replace(halachaClosingLinePattern, "").trim() : raw;
-    const withSentenceBreaks = withoutClosing.replace(/\.\s+/g, ".\n");
-    const normalized = withSentenceBreaks.replace(/\n{3,}/g, "\n\n").trim();
-    const idx = normalized.indexOf(":");
-    if (idx === -1) return { intro: null, body: normalized, closingLine: closingLineMatch };
-    const intro = normalized.slice(0, idx + 1).trim();
-    const body = normalized.slice(idx + 1).trim();
-    if (!intro || !body) return { intro: null, body: normalized, closingLine: closingLineMatch };
-    return { intro, body, closingLine: closingLineMatch };
-  })();
-  const chapterHebrew = halacha.chapterNumber ? toHebrewNumber(halacha.chapterNumber) : "";
-  const sectionHebrew = halacha.sectionNumber ? toHebrewNumber(halacha.sectionNumber) : "";
+  const halachaText = halacha
+    ? (() => {
+        const raw = halacha.text.trim();
+        const closingLineMatch = raw.match(halachaClosingLinePattern)?.[0]?.trim() ?? null;
+        const withoutClosing = closingLineMatch ? raw.replace(halachaClosingLinePattern, "").trim() : raw;
+        const withSentenceBreaks = withoutClosing.replace(/\.\s+/g, ".\n");
+        const normalized = withSentenceBreaks.replace(/\n{3,}/g, "\n\n").trim();
+        const idx = normalized.indexOf(":");
+        if (idx === -1) return { intro: null, body: normalized, closingLine: closingLineMatch };
+        const intro = normalized.slice(0, idx + 1).trim();
+        const body = normalized.slice(idx + 1).trim();
+        if (!intro || !body) return { intro: null, body: normalized, closingLine: closingLineMatch };
+        return { intro, body, closingLine: closingLineMatch };
+      })()
+    : null;
+  const chapterHebrew = halacha?.chapterNumber ? toHebrewNumber(halacha.chapterNumber) : "";
+  const sectionHebrew = halacha?.sectionNumber ? toHebrewNumber(halacha.sectionNumber) : "";
   const halachaHeaderLabel =
-    chapterHebrew && sectionHebrew
+    halacha &&
+    (chapterHebrew && sectionHebrew
       ? `פרק ${chapterHebrew} הלכה ${sectionHebrew}`
-      : halacha.title;
+      : halacha.title);
   const adminHref = synagogueId ? `/admin/gabbai/${synagogueId}` : null;
   const isAutoScrollReady = shouldAutoScroll && timesStartOffset !== null;
   const timesTrackStyle = (() => {
@@ -436,20 +433,30 @@ export function DisplayRotator({
 
         {currentScreen === "halacha" ? (
           <Card className="display-card">
-            <CardHeader>
-              <CardTitle className="display-halacha-title display-halacha-title-row">
-                <span>{halachaHeaderLabel}</span>
-                {halacha.source ? <span className="display-halacha-source">({halacha.source})</span> : null}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="display-halacha-text">
-                {halachaText.intro ? <span className="display-halacha-intro">{halachaText.intro}</span> : null}
-                {halachaText.intro ? <br /> : null}
-                {halachaText.body}
-                {halachaText.closingLine ? <span className="display-halacha-signature">{halachaText.closingLine}</span> : null}
-              </p>
-            </CardContent>
+            {halacha && halachaText ? (
+              <>
+                <CardHeader>
+                  <CardTitle className="display-halacha-title display-halacha-title-row">
+                    <span>{halachaHeaderLabel}</span>
+                    {halacha.source ? <span className="display-halacha-source">({halacha.source})</span> : null}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="display-halacha-text">
+                    {halachaText.intro ? <span className="display-halacha-intro">{halachaText.intro}</span> : null}
+                    {halachaText.intro ? <br /> : null}
+                    {halachaText.body}
+                    {halachaText.closingLine ? (
+                      <span className="display-halacha-signature">{halachaText.closingLine}</span>
+                    ) : null}
+                  </p>
+                </CardContent>
+              </>
+            ) : (
+              <CardContent className="display-daily-learning-body">
+                <p className="display-daily-learning-empty">אין הלכה יומית להצגה.</p>
+              </CardContent>
+            )}
           </Card>
         ) : null}
 
@@ -509,14 +516,11 @@ export function DisplayRotator({
                                 isNext && "display-time-row--next"
                               )}
                             >
-                              <div className="display-time-main">
-                                <span className="display-time-label display-prayer-times-minyan-label">
-                                  מניין {idx + 1}
-                                </span>
+                              <div className="display-time-main display-prayer-times-time-main">
                                 <span className="display-time-value-wrap">
                                   <span
                                     className={cn(
-                                      "display-time-value",
+                                      "display-time-value display-prayer-times-time-value",
                                       isNext && "display-time-value--next"
                                     )}
                                   >

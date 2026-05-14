@@ -43,7 +43,7 @@ type MinyanModel = {
 
 type HalachaSettingsModel = {
   startDate: string;
-  sourceKey: "kitzur_shulchan_arukh";
+  sourceKey: "manual" | "kitzur_shulchan_arukh";
   displayMode: "summary" | "full";
 };
 
@@ -114,7 +114,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
   const [minyanim, setMinyanim] = useState<MinyanModel[]>([]);
   const [halachaSettings, setHalachaSettings] = useState<HalachaSettingsModel>({
     startDate: new Date().toISOString().slice(0, 10),
-    sourceKey: "kitzur_shulchan_arukh",
+    sourceKey: "manual",
     displayMode: "summary"
   });
   const [message, setMessage] = useState<string | null>(null);
@@ -267,11 +267,12 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
               onChange={(e) =>
                 setHalachaSettings((prev) => ({
                   ...prev,
-                  sourceKey: e.target.value as "kitzur_shulchan_arukh"
+                  sourceKey: e.target.value as "manual" | "kitzur_shulchan_arukh"
                 }))
               }
             >
-              <option value="kitzur_shulchan_arukh">קיצור שולחן ערוך</option>
+              <option value="manual">הלכות שהוזנו ידנית (מפתח manual)</option>
+              <option value="kitzur_shulchan_arukh">קיצור שולחן ערוך (שורות בטבלה בלבד, ללא משיכה מהרשת)</option>
             </select>
           </div>
           <div>

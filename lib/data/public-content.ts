@@ -79,13 +79,7 @@ export async function getPublicHomeData(
   if (!supabase) {
     return {
       schedule: todayPrayerSchedule,
-      halacha: {
-        title: "הלכה יומית",
-        text: "אין חיבור למסד נתונים ולכן לא ניתן להציג הלכה ממקור מוגדר.",
-        source: "אין מקור זמין",
-        chapterNumber: undefined,
-        sectionNumber: undefined
-      }
+      halacha: null
     };
   }
 
@@ -112,29 +106,16 @@ export async function getPublicHomeData(
   const configuredSourceKey =
     typeof rawConfiguredSource === "string" && rawConfiguredSource.trim().length > 0
       ? rawConfiguredSource.trim()
-      : "kitzur_shulchan_arukh";
-  /** טופס האדמין שומר ברירת מחדל `manual`; ההגדרות לרוב `kitzur_shulchan_arukh` — מנסים לפי סדר. */
-  const halachaSourceKeysToTry = [...new Set([configuredSourceKey, "kitzur_shulchan_arukh", "manual"])];
+      : "manual";
   const halachaSelect =
     "title, content, full_text, summary_text, display_day, source_key, chapter_number, section_number";
 
-  const [firstSourceKey, ...restSourceKeys] = halachaSourceKeysToTry;
-  let halachaResult = await supabase
+  const halachaResult = await supabase
     .from("daily_halacha")
     .select(halachaSelect)
-    .eq("source_key", firstSourceKey)
+    .eq("source_key", configuredSourceKey)
     .eq("published", true)
     .order("display_day", { ascending: true });
-
-  for (const sourceKey of restSourceKeys) {
-    if (!halachaResult.error && halachaResult.data && halachaResult.data.length > 0) break;
-    halachaResult = await supabase
-      .from("daily_halacha")
-      .select(halachaSelect)
-      .eq("source_key", sourceKey)
-      .eq("published", true)
-      .order("display_day", { ascending: true });
-  }
 
   const schedule: PrayerSlot[] =
     prayerResult.error || !prayerResult.data?.length
@@ -159,14 +140,15 @@ export async function getPublicHomeData(
     if (!chosen) return null;
     const text =
       displayMode === "full"
-        ? (chosen.full_text?.trim() || "אין טקסט מלא זמין להלכה זו.")
-        : (chosen.summary_text ?? chosen.content);
+        ? (chosen.full_text?.trim() ?? "")
+        : String(chosen.summary_text ?? chosen.content ?? "").trim();
+    if (!text) return null;
     const rowSourceKey = String(chosen.source_key ?? "").trim() || configuredSourceKey;
     const sourceLabel =
-      rowSourceKey === "kitzur_shulchan_arukh"
-        ? "קיצור שולחן ערוך"
-        : rowSourceKey === "manual"
-          ? "מקור בסיס"
+      rowSourceKey === "manual"
+        ? "ידני"
+        : rowSourceKey === "kitzur_shulchan_arukh"
+          ? "קיצור שולחן ערוך"
           : "מקור פנימי";
     return {
       title: chosen.title,
@@ -177,13 +159,5 @@ export async function getPublicHomeData(
     };
   })();
 
-  const halacha = dbHalacha ?? {
-    title: "הלכה יומית",
-    text: "לא נמצאה הלכה זמינה למקור וליום שהוגדרו. יש למשוך הלכות למקור הנבחר.",
-    source: "אין הלכה זמינה",
-    chapterNumber: undefined,
-    sectionNumber: undefined
-  };
-
-  return { schedule, halacha };
+  return { schedule, halacha: dbHalacha };
 }

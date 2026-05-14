@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -22,58 +22,50 @@ export function DailyHalachaForm() {
   const [form, setForm] = useState<HalachaFormState>(INITIAL_FORM);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  const loadLatest = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/daily-halacha", { cache: "no-store" });
+      const payload = (await response.json()) as {
+        ok: boolean;
+        data?: {
+          display_day: number;
+          title: string;
+          content: string;
+          published: boolean;
+        } | null;
+        error?: string;
+      };
 
-    async function loadLatest() {
-      try {
-        const response = await fetch("/api/admin/daily-halacha", { cache: "no-store" });
-        const payload = (await response.json()) as {
-          ok: boolean;
-          data?: {
-            display_day: number;
-            title: string;
-            content: string;
-            published: boolean;
-          } | null;
-          error?: string;
-        };
-
-        if (!active) return;
-
-        if (!payload.ok) {
-          setError(payload.error ?? "טעינת ההלכה נכשלה");
-          return;
-        }
-
-        if (payload.data) {
-          setForm({
-            displayDay: payload.data.display_day,
-            title: payload.data.title,
-            content: payload.data.content,
-            published: payload.data.published
-          });
-        }
-      } catch {
-        if (!active) return;
-        setError("טעינת ההלכה נכשלה");
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
+      if (!payload.ok) {
+        setError(payload.error ?? "טעינת ההלכה נכשלה");
+        return;
       }
+
+      if (payload.data) {
+        setForm({
+          displayDay: payload.data.display_day,
+          title: payload.data.title,
+          content: payload.data.content,
+          published: payload.data.published
+        });
+      } else {
+        setForm(INITIAL_FORM);
+      }
+    } catch {
+      setError("טעינת ההלכה נכשלה");
+    } finally {
+      setIsLoading(false);
     }
-
-    loadLatest();
-
-    return () => {
-      active = false;
-    };
   }, []);
+
+  useEffect(() => {
+    void loadLatest();
+  }, [loadLatest]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -94,7 +86,8 @@ export function DailyHalachaForm() {
         return;
       }
 
-      setMessage("ההלכה היומית נשמרה בהצלחה.");
+      setMessage("ההלכה נשמרה בטבלה.");
+      await loadLatest();
     } catch {
       setError("שמירת ההלכה נכשלה");
     } finally {
@@ -102,44 +95,14 @@ export function DailyHalachaForm() {
     }
   }
 
-  async function generateKitzurBatch() {
-    setIsGenerating(true);
-    setMessage(null);
-    setError(null);
-    try {
-      const response = await fetch("/api/admin/daily-halacha", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generateBatch: true, batchSize: 10 })
-      });
-      const payload = (await response.json()) as {
-        ok: boolean;
-        inserted?: number;
-        startDisplayDay?: number;
-        endDisplayDay?: number;
-        error?: string;
-      };
-
-      if (!payload.ok) {
-        setError(payload.error ?? "משיכת הלכות נכשלה");
-        return;
-      }
-
-      setMessage(
-        `נמשכו ${payload.inserted ?? 0} הלכות מקיצור שולחן ערוך (יום ${payload.startDisplayDay ?? "?"} עד יום ${payload.endDisplayDay ?? "?"}).`
-      );
-    } catch {
-      setError("משיכת הלכות נכשלה");
-    } finally {
-      setIsGenerating(false);
-    }
-  }
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>ניהול הלכה יומית</CardTitle>
-        <CardDescription>עדכון התוכן שמוצג בדף הבית.</CardDescription>
+        <CardDescription>
+          הוספה ועריכה ידנית בלבד — השמירה נכנסת לטבלת <code className="rounded bg-muted px-1">daily_halacha</code> תחת מפתח{" "}
+          <code className="rounded bg-muted px-1">manual</code>. יום להצגה ייחודי לכל שורה (אותו יום = עדכון השורה הקיימת).
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -148,7 +111,7 @@ export function DailyHalachaForm() {
           <form className="space-y-4" onSubmit={onSubmit}>
             <div className="space-y-1">
               <label className="block text-sm font-medium" htmlFor="displayDay">
-                יום להצגה
+                יום להצגה (מספר סידורי במחזור)
               </label>
               <input
                 id="displayDay"
@@ -194,15 +157,15 @@ export function DailyHalachaForm() {
                 checked={form.published}
                 onChange={(event) => setForm((prev) => ({ ...prev, published: event.target.checked }))}
               />
-              פרסום פעיל בדף הבית
+              פרסום פעיל (מסך תצוגה ציבורי)
             </label>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" disabled={isSaving}>
-                {isSaving ? "שומר..." : "שמור הלכה"}
+                {isSaving ? "שומר..." : "שמור / עדכן הלכה"}
               </Button>
-              <Button type="button" variant="outline" disabled={isGenerating || isSaving} onClick={generateKitzurBatch}>
-                {isGenerating ? "מושך 10 הלכות..." : "משוך 10 הלכות מקיצור שו\"ע"}
+              <Button type="button" variant="outline" disabled={isSaving} onClick={() => void loadLatest()}>
+                רענן מהטבלה
               </Button>
               {message ? <p className="text-sm text-green-600">{message}</p> : null}
               {error ? <p className="text-sm text-red-600">{error}</p> : null}
@@ -213,4 +176,3 @@ export function DailyHalachaForm() {
     </Card>
   );
 }
-
