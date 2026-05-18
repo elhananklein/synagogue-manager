@@ -68,7 +68,9 @@ export default async function DisplayPage({
   );
   const forceYaalehRaw = singleQueryParam(params.forceYaaleh);
   const forceYaaleh = forceYaalehRaw === "1" || forceYaalehRaw === "true";
-  const displaySnapshot = forceYaaleh ? { ...snapshot, showYaalehVeyavo: true } : snapshot;
+  const displaySnapshot = forceYaaleh
+    ? { ...snapshot, amidahAdditionText: "יעלה ויבוא" as const }
+    : snapshot;
   const includeZmanimInTimesList = displayConfig.scheduleTimesListMode !== "prayers_only";
   const todayZmanimItems = includeZmanimInTimesList
     ? snapshot.zmanim.map((row) => ({ label: row.label, time: row.time, kind: "zman" as const }))

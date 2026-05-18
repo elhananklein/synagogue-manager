@@ -48,7 +48,8 @@ export type DisplaySnapshot = {
   rainText: string;
   blessingText: string;
   omerText: string | null;
-  showYaalehVeyavo: boolean;
+  /** תוספת תפילה: "יעלה ויבוא" (ר"ח / חוה"מ) או שם הרגל (פסח / שבועות / סוכות). */
+  amidahAdditionText: string | null;
   sourceEvents: string[];
 };
 
@@ -121,35 +122,55 @@ function stripHebrewNiqqud(text: string) {
   return text.replace(/[\u0591-\u05C7]/g, "");
 }
 
-function hasYaalehVeyavo(events: string[]) {
-  const holidayKeywords = [
-    "Rosh Chodesh",
-    "Sukkot",
-    "Pesach",
-    "Shavuot",
-    "Rosh Hashana",
-    "Yom Kippur",
-    "Shemini Atzeret",
-    "Simchat Torah"
-  ];
-  const holidayKeywordsHe = [
-    "ראש חודש",
-    "סוכות",
-    "פסח",
-    "שבועות",
-    "ראש השנה",
-    "יום כיפור",
-    "שמיני עצרת",
-    "שמחת תורה"
-  ];
+function isParashatReadingEvent(event: string) {
+  const plain = stripHebrewNiqqud(event);
+  return /^Parashat\s/i.test(event) || /^פרשת\s/.test(plain);
+}
 
-  return events.some((event) => {
-    const plain = stripHebrewNiqqud(event);
-    return (
-      holidayKeywords.some((keyword) => event.includes(keyword)) ||
-      holidayKeywordsHe.some((keyword) => plain.includes(keyword))
-    );
-  });
+function isErevYomTovEvent(event: string) {
+  const plain = stripHebrewNiqqud(event);
+  return /^Erev\s/i.test(event) || /^ערב\s/.test(plain);
+}
+
+function isCholHamoedEvent(event: string) {
+  if (/\(CH['’]*M\)/i.test(event)) return true;
+  const plain = stripHebrewNiqqud(event);
+  if (plain.includes("חול המועד")) return true;
+  // ימי חול המועד של פסח/סוכות (כולל חֲמִישׁי/שִׁשִּׁי בלי סימון CH''M ב-Hebcal)
+  if (/^Pesach\s+(II|III|IV|V|VI)\b/i.test(event)) return true;
+  if (/^Sukkot\s+(II|III|IV|V|VI|VII)\b/i.test(event)) return true;
+  return false;
+}
+
+function isRoshChodeshEvent(event: string) {
+  const plain = stripHebrewNiqqud(event);
+  return /Rosh Chodesh/i.test(event) || plain.includes("ראש חודש");
+}
+
+const REGEL_YOM_TOV_LABELS: Record<string, string> = {
+  Pesach: "פסח",
+  Shavuot: "שבועות",
+  Sukkot: "סוכות"
+};
+
+function extractRegelYomTovLabel(events: string[]): string | null {
+  for (const event of events) {
+    const match = event.match(/^(Pesach|Shavuot|Sukkot)\s+(I|VII)\b/i);
+    if (!match) continue;
+    return REGEL_YOM_TOV_LABELS[match[1]] ?? null;
+  }
+  return null;
+}
+
+/** תוספת עמידה לתצוגה: יעלה ויבוא (ר"ח / חוה"מ) או שם הרגל בשלושת הרגלים. */
+function resolveAmidahAdditionText(events: string[]): string | null {
+  const relevant = events.filter((event) => !isParashatReadingEvent(event));
+
+  if (relevant.some(isErevYomTovEvent)) return null;
+  if (relevant.some(isCholHamoedEvent)) return "יעלה ויבוא";
+  if (relevant.some(isRoshChodeshEvent)) return "יעלה ויבוא";
+
+  return extractRegelYomTovLabel(relevant);
 }
 
 const HEBREW_LETTER_GEMATRIA: Record<string, number> = {
@@ -502,7 +523,7 @@ export async function getDisplaySnapshot(
     rainText: winter ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
     blessingText: winter ? "ותן טל ומטר לברכה" : "ותן ברכה",
     omerText,
-    showYaalehVeyavo: hasYaalehVeyavo(events),
+    amidahAdditionText: resolveAmidahAdditionText(events),
     sourceEvents: events
   };
 }

@@ -40,7 +40,7 @@ type Snapshot = {
   rainText: string;
   blessingText: string;
   omerText: string | null;
-  showYaalehVeyavo: boolean;
+  amidahAdditionText: string | null;
 };
 
 /** Auto-scroll for "זמני היום ותפילות" — set here so deploys always pick up pace changes (inline beats stale CSS). */
@@ -272,8 +272,9 @@ export function DisplayRotator({
       return `התפילה הבאה: ${sectionTitle} - ${h.time}`;
     })();
   const hasOmer = Boolean(snapshot.omerText);
-  const hasYaaleh = snapshot.showYaalehVeyavo;
-  const hasBothExtraAdditions = hasOmer && hasYaaleh;
+  const amidahAddition = snapshot.amidahAdditionText;
+  const hasAmidahAddition = Boolean(amidahAddition);
+  const hasBothExtraAdditions = hasOmer && hasAmidahAddition;
   const shouldAutoScroll = currentScreen === "main" && timeSections.length > 0 && !isWoodSilverRevolution;
   const halachaClosingLinePattern = /["״']?\s*כל השונה הלכות בכל יום\s+מובטח לו שהוא בן העולם הבא["״']?\s*$/;
   const halachaText = halacha
@@ -577,7 +578,7 @@ export function DisplayRotator({
                       <p className="display-addition-text">{snapshot.rainText}</p>
                       <p className="display-addition-text">{snapshot.blessingText}</p>
                       {snapshot.omerText ? <p className="display-addition-text">{snapshot.omerText}</p> : null}
-                      {snapshot.showYaalehVeyavo ? <p className="display-addition-text">יעלה ויבוא</p> : null}
+                      {amidahAddition ? <p className="display-addition-text">{amidahAddition}</p> : null}
                     </div>
                   </div>
                 ) : (
@@ -599,10 +600,10 @@ export function DisplayRotator({
                         </CardContent>
                       </Card>
                     ) : null}
-                    {snapshot.showYaalehVeyavo ? (
+                    {amidahAddition ? (
                       <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
                         <CardContent className="display-addition-content">
-                          <p className="display-addition-text">יעלה ויבוא</p>
+                          <p className="display-addition-text">{amidahAddition}</p>
                         </CardContent>
                       </Card>
                     ) : null}
