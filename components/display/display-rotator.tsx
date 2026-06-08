@@ -178,6 +178,41 @@ export function DisplayRotator({
   }, [router]);
 
   useEffect(() => {
+    // כניסה אוטומטית למסך מלא. דפדפנים חוסמים מסך מלא ללא מחווה, לכן מנסים מיד
+    // (יעבוד אם הדף הופעל עם הרשאה/קיוסק) וגם בלחיצה/מגע/מקש הראשונים.
+    type FsElement = HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+      msRequestFullscreen?: () => Promise<void> | void;
+    };
+    const requestFullscreen = () => {
+      if (typeof document === "undefined") return;
+      if (document.fullscreenElement) return;
+      const el = document.documentElement as FsElement;
+      const fn = el.requestFullscreen ?? el.webkitRequestFullscreen ?? el.msRequestFullscreen;
+      if (!fn) return;
+      try {
+        const result = fn.call(el);
+        if (result && typeof (result as Promise<void>).catch === "function") {
+          (result as Promise<void>).catch(() => {});
+        }
+      } catch {
+        /* הדפדפן דחה — נחכה למחווה הבאה */
+      }
+    };
+
+    requestFullscreen();
+
+    const onGesture = () => {
+      requestFullscreen();
+    };
+    const events: Array<keyof WindowEventMap> = ["pointerdown", "touchend", "keydown"];
+    events.forEach((evt) => window.addEventListener(evt, onGesture));
+    return () => {
+      events.forEach((evt) => window.removeEventListener(evt, onGesture));
+    };
+  }, []);
+
+  useEffect(() => {
     const iso = snapshot.halachicDayRollIso;
     if (!iso) return;
     const delay = new Date(iso).getTime() - Date.now();
