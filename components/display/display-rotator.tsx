@@ -8,8 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { DailyLearningLine } from "@/lib/hebcal";
 
-type ScreenKey = "main" | "clock" | "halacha" | "dailyLearning" | "prayerTimes";
-type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver";
+type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat";
+type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
 
 type RotatorScreen = {
   screenKey: ScreenKey;
@@ -120,7 +120,10 @@ export function DisplayRotator({
   snapshot,
   halacha,
   prayerSchedule,
-  timeSections
+  timeSections,
+  footerText,
+  scheduleTimesListMode = "all",
+  shabbat = null
 }: {
   style: DisplayStyle;
   synagogueId: string | null;
@@ -132,6 +135,16 @@ export function DisplayRotator({
   halacha: { title: string; text: string; source?: string; chapterNumber?: number; sectionNumber?: number } | null;
   prayerSchedule: PrayerSlot[];
   timeSections: TimeSection[];
+  footerText?: string | null;
+  /** "prayers_only" — רשימת תפילות בלבד, נכנסת במלואה ולכן ללא גלילה אוטומטית */
+  scheduleTimesListMode?: "all" | "prayers_only";
+  /** נתוני מסך שבת: פרשה, כניסה/יציאה, וזמני תפילות שבת (כולל מנחה ערב שבת) */
+  shabbat?: {
+    parasha: string;
+    candleLighting: string | null;
+    havdalah: string | null;
+    prayers: Array<{ label: string; time: string }>;
+  } | null;
 }) {
   const router = useRouter();
   const enabledScreens = useMemo(() => screens.filter((s) => s.enabled), [screens]);
@@ -224,7 +237,7 @@ export function DisplayRotator({
   const currentScreen = enabledScreens.length ? enabledScreens[index % enabledScreens.length].screenKey : null;
   const isWoodSilverRevolution = style === "woodSilver" && ENABLE_WOOD_SILVER_REVOLUTION_LAYOUT;
   /** כמו woodSilver revolution: יום | שעון | תאריך עברי בכותרת — גם ב־Classic */
-  const useCenterClockBand = isWoodSilverRevolution || style === "classic";
+  const useCenterClockBand = isWoodSilverRevolution || style === "classic" || style === "royalBlue";
   const jerusalemWeekdayLong = new Intl.DateTimeFormat("he-IL", {
     weekday: "long",
     timeZone: "Asia/Jerusalem"
@@ -310,7 +323,11 @@ export function DisplayRotator({
   const amidahAddition = snapshot.amidahAdditionText;
   const hasAmidahAddition = Boolean(amidahAddition);
   const hasBothExtraAdditions = hasOmer && hasAmidahAddition;
-  const shouldAutoScroll = currentScreen === "main" && timeSections.length > 0 && !isWoodSilverRevolution;
+  const shouldAutoScroll =
+    currentScreen === "main" &&
+    timeSections.length > 0 &&
+    !isWoodSilverRevolution &&
+    scheduleTimesListMode !== "prayers_only";
   const halachaClosingLinePattern = /["״']?\s*כל השונה הלכות בכל יום\s+מובטח לו שהוא בן העולם הבא["״']?\s*$/;
   const halachaText = halacha
     ? (() => {
@@ -593,77 +610,12 @@ export function DisplayRotator({
           <section className={cn("display-main-grid", isWoodSilverRevolution && "display-main-grid--ws-revolution")}>
             <div className="display-main-primary">
               <div className="display-main-primary-stack">
-                <Card className="display-card display-main-date-card">
-                  <CardContent className="display-main-date-content">
-                    <p className="display-parasha">{snapshot.parasha}</p>
-                    {isWoodSilverRevolution ? (
-                      <p className="display-gregorian-date">{snapshot.gregorianDate}</p>
-                    ) : (
-                      <>
-                        <p className="display-hebrew-date">{snapshot.hebrewDate}</p>
-                        <p className="display-gregorian-date">{snapshot.gregorianDate}</p>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {isWoodSilverRevolution ? (
-                  <div className="display-ws-additions-shell">
-                    <div className="display-ws-additions-inner">
-                      <p className="display-addition-text">{snapshot.rainText}</p>
-                      <p className="display-addition-text">{snapshot.blessingText}</p>
-                      {snapshot.omerText ? <p className="display-addition-text">{snapshot.omerText}</p> : null}
-                      {amidahAddition ? <p className="display-addition-text">{amidahAddition}</p> : null}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="display-main-additions">
-                    <Card className="display-card">
-                      <CardContent className="display-addition-content">
-                        <p className="display-addition-text">{snapshot.rainText}</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="display-card">
-                      <CardContent className="display-addition-content">
-                        <p className="display-addition-text">{snapshot.blessingText}</p>
-                      </CardContent>
-                    </Card>
-                    {snapshot.omerText ? (
-                      <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
-                        <CardContent className="display-addition-content">
-                          <p className="display-addition-text">{snapshot.omerText}</p>
-                        </CardContent>
-                      </Card>
-                    ) : null}
-                    {amidahAddition ? (
-                      <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
-                        <CardContent className="display-addition-content">
-                          <p className="display-addition-text">{amidahAddition}</p>
-                        </CardContent>
-                      </Card>
-                    ) : null}
-                  </div>
-                )}
-
-                {isWoodSilverRevolution ? (
-                  <div className="display-ws-daf-shell">
-                    <Card className="display-card display-daf-card display-ws-daf-card-inner">
-                      <CardContent className="display-daf-content">
-                        <div className="display-daf-yomi">
-                          דף יומי: <span className="display-accent">{snapshot.dafYomi}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                ) : (
-                  <Card className="display-card display-daf-card">
-                    <CardContent className="display-daf-content">
-                      <div className="display-daf-yomi">
-                        דף יומי: <span className="display-accent">{snapshot.dafYomi}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                <PrimaryInfoStack
+                  snapshot={snapshot}
+                  isWoodSilverRevolution={isWoodSilverRevolution}
+                  amidahAddition={amidahAddition}
+                  hasBothExtraAdditions={hasBothExtraAdditions}
+                />
               </div>
             </div>
 
@@ -678,7 +630,10 @@ export function DisplayRotator({
                 ) : null}
               </CardHeader>
               <CardContent className="display-times-content">
-                <div ref={timesScrollRef} className="display-times-list">
+                <div
+                  ref={timesScrollRef}
+                  className={cn("display-times-list", !shouldAutoScroll && "display-times-list--static")}
+                >
                   <div
                     className={isAutoScrollReady ? "display-times-track display-times-track--auto" : "display-times-track"}
                     style={timesTrackStyle}
@@ -758,9 +713,158 @@ export function DisplayRotator({
             ) : null}
           </section>
         ) : null}
+
+        {currentScreen === "mainInfo" ? (
+          <section className="display-info-screen">
+            <div className="display-info-stack">
+              <PrimaryInfoStack
+                snapshot={snapshot}
+                isWoodSilverRevolution={isWoodSilverRevolution}
+                amidahAddition={amidahAddition}
+                hasBothExtraAdditions={hasBothExtraAdditions}
+              />
+            </div>
+          </section>
+        ) : null}
+
+        {currentScreen === "shabbat" ? (
+          <section className="display-shabbat-screen">
+            <div className="display-shabbat-inner">
+              <p className="display-shabbat-title">שבת קודש</p>
+              <p className="display-shabbat-parasha">{shabbat?.parasha ?? snapshot.parasha}</p>
+
+              <div className="display-shabbat-zmanim">
+                <Card className="display-card display-shabbat-zman-card">
+                  <CardContent className="display-shabbat-zman-content">
+                    <span className="display-shabbat-zman-label">כניסת שבת</span>
+                    <span className="display-shabbat-zman-time display-accent">
+                      {shabbat?.candleLighting ?? snapshot.candleLighting ?? "—"}
+                    </span>
+                  </CardContent>
+                </Card>
+                <Card className="display-card display-shabbat-zman-card">
+                  <CardContent className="display-shabbat-zman-content">
+                    <span className="display-shabbat-zman-label">צאת שבת</span>
+                    <span className="display-shabbat-zman-time display-accent">
+                      {shabbat?.havdalah ?? snapshot.havdalah ?? "—"}
+                    </span>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {shabbat?.prayers?.length ? (
+                <Card className="display-card display-shabbat-prayers-card">
+                  <CardContent className="display-shabbat-prayers">
+                    {shabbat.prayers.map((prayer, prayerIndex) => (
+                      <div className="display-shabbat-prayer-row" key={`${prayer.label}-${prayerIndex}`}>
+                        <span className="display-shabbat-prayer-label">{prayer.label}</span>
+                        <span className="display-shabbat-prayer-time">{prayer.time}</span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {style === "royalBlue" && footerText ? (
+          <footer className="display-royal-footer">
+            <span className="display-royal-footer-text">{footerText}</span>
+          </footer>
+        ) : null}
       </div>
       )}
     </main>
+  );
+}
+
+/** התוכן של צד ימין במסך הראשי (פרשה/תאריך, תוספות, דף יומי) — משותף למסך הראשי ולמסך "מידע מרכזי". */
+function PrimaryInfoStack({
+  snapshot,
+  isWoodSilverRevolution,
+  amidahAddition,
+  hasBothExtraAdditions
+}: {
+  snapshot: Snapshot;
+  isWoodSilverRevolution: boolean;
+  amidahAddition: string | null;
+  hasBothExtraAdditions: boolean;
+}) {
+  return (
+    <>
+      <Card className="display-card display-main-date-card">
+        <CardContent className="display-main-date-content">
+          <p className="display-parasha">{snapshot.parasha}</p>
+          {isWoodSilverRevolution ? (
+            <p className="display-gregorian-date">{snapshot.gregorianDate}</p>
+          ) : (
+            <>
+              <p className="display-hebrew-date">{snapshot.hebrewDate}</p>
+              <p className="display-gregorian-date">{snapshot.gregorianDate}</p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {isWoodSilverRevolution ? (
+        <div className="display-ws-additions-shell">
+          <div className="display-ws-additions-inner">
+            <p className="display-addition-text">{snapshot.rainText}</p>
+            <p className="display-addition-text">{snapshot.blessingText}</p>
+            {snapshot.omerText ? <p className="display-addition-text">{snapshot.omerText}</p> : null}
+            {amidahAddition ? <p className="display-addition-text">{amidahAddition}</p> : null}
+          </div>
+        </div>
+      ) : (
+        <div className="display-main-additions">
+          <Card className="display-card">
+            <CardContent className="display-addition-content">
+              <p className="display-addition-text">{snapshot.rainText}</p>
+            </CardContent>
+          </Card>
+          <Card className="display-card">
+            <CardContent className="display-addition-content">
+              <p className="display-addition-text">{snapshot.blessingText}</p>
+            </CardContent>
+          </Card>
+          {snapshot.omerText ? (
+            <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
+              <CardContent className="display-addition-content">
+                <p className="display-addition-text">{snapshot.omerText}</p>
+              </CardContent>
+            </Card>
+          ) : null}
+          {amidahAddition ? (
+            <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
+              <CardContent className="display-addition-content">
+                <p className="display-addition-text">{amidahAddition}</p>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      )}
+
+      {isWoodSilverRevolution ? (
+        <div className="display-ws-daf-shell">
+          <Card className="display-card display-daf-card display-ws-daf-card-inner">
+            <CardContent className="display-daf-content">
+              <div className="display-daf-yomi">
+                דף יומי: <span className="display-accent">{snapshot.dafYomi}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <Card className="display-card display-daf-card">
+          <CardContent className="display-daf-content">
+            <div className="display-daf-yomi">
+              דף יומי: <span className="display-accent">{snapshot.dafYomi}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </>
   );
 }
 

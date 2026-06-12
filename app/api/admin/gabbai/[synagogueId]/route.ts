@@ -15,7 +15,7 @@ type PrayerSettingInput = {
 };
 
 type ScreenInput = {
-  screenKey: "main" | "clock" | "halacha" | "dailyLearning" | "prayerTimes";
+  screenKey: "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat";
   sortOrder: number;
   durationSeconds: number;
   enabled: boolean;
@@ -24,9 +24,11 @@ type ScreenInput = {
 type MinyanInput = {
   id?: string;
   name: string;
-  displayStyle: "classic" | "modern" | "minimal" | "woodSilver";
+  displayStyle: "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
   /** לוח במסך הראשי: כל הזמנים או רק תפילות */
   scheduleTimesListMode: "all" | "prayers_only";
+  /** טקסט חופשי לכותרת תחתונה בתצוגה */
+  footerText?: string | null;
   prayerSettings: PrayerSettingInput[];
   screens: ScreenInput[];
 };
@@ -53,7 +55,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
 
   const minyanRes = await supabase
     .from("minyanim")
-    .select("id, name, display_style, is_active, schedule_times_list")
+    .select("id, name, display_style, is_active, schedule_times_list, display_footer_text")
     .eq("synagogue_id", synagogueId)
     .order("created_at", { ascending: true });
   const minyanIds = (minyanRes.data ?? []).map((m) => m.id);
@@ -91,6 +93,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     isActive: minyan.is_active,
     scheduleTimesListMode:
       (minyan as { schedule_times_list?: string }).schedule_times_list === "prayers_only" ? "prayers_only" : "all",
+    footerText: (minyan as { display_footer_text?: string | null }).display_footer_text ?? null,
     prayerSettings: (prayerRes.data ?? [])
       .filter((p) => p.minyan_id === minyan.id)
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -194,6 +197,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           name: minyan.name.trim(),
           display_style: minyan.displayStyle,
           schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
+          display_footer_text: minyan.footerText?.trim() ? minyan.footerText.trim() : null,
           is_active: true
         })
         .eq("id", minyanId)
@@ -207,6 +211,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           name: minyan.name.trim(),
           display_style: minyan.displayStyle,
           schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
+          display_footer_text: minyan.footerText?.trim() ? minyan.footerText.trim() : null,
           is_active: true
         })
         .select("id")

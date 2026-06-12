@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Sapphire clock orb">
+  <defs>
+    <radialGradient id="orbGem" cx="0.4" cy="0.34" r="0.75">
+      <stop offset="0" stop-color="#7db0f2"/>
+      <stop offset="0.35" stop-color="#2f6ad0"/>
+      <stop offset="0.7" stop-color="#143b86"/>
+      <stop offset="1" stop-color="#08204f"/>
+    </radialGradient>
+    <linearGradient id="orbRing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f6ecc0"/>
+      <stop offset="0.35" stop-color="#cbd2dc"/>
+      <stop offset="0.5" stop-color="#9aa6b6"/>
+      <stop offset="0.65" stop-color="#dfe6ef"/>
+      <stop offset="1" stop-color="#8d7a3e"/>
+    </linearGradient>
+    <radialGradient id="orbHi" cx="0.38" cy="0.3" r="0.4">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="98" fill="url(#orbRing)"/>
+  <circle cx="100" cy="100" r="90" fill="#0a2150"/>
+  <circle cx="100" cy="100" r="84" fill="url(#orbGem)"/>
+  <ellipse cx="80" cy="74" rx="38" ry="26" fill="url(#orbHi)"/>
+  <circle cx="100" cy="100" r="84" fill="none" stroke="#0a1838" stroke-opacity="0.5" stroke-width="2"/>
+</svg>

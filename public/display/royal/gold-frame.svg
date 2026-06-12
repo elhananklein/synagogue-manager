@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Ornate gold frame">
+  <defs>
+    <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbe9a8"/>
+      <stop offset="0.5" stop-color="#caa24a"/>
+      <stop offset="1" stop-color="#8a6a22"/>
+    </linearGradient>
+  </defs>
+  <!-- outer gold ring -->
+  <path fill="url(#gf)" fill-rule="evenodd"
+        d="M3 3 H117 V117 H3 Z M30 30 H90 V90 H30 Z"/>
+  <!-- inner dark keyline -->
+  <path fill="none" stroke="#5b430f" stroke-width="1.4" opacity="0.7"
+        d="M28 28 H92 V92 H28 Z"/>
+  <!-- outer dark keyline -->
+  <path fill="none" stroke="#5b430f" stroke-width="1.4" opacity="0.55"
+        d="M5 5 H115 V115 H5 Z"/>
+  <!-- corner diamonds -->
+  <g fill="#fff4cf" stroke="#8a6a22" stroke-width="0.8">
+    <rect x="11.5" y="11.5" width="13" height="13" transform="rotate(45 18 18)"/>
+    <rect x="95.5" y="11.5" width="13" height="13" transform="rotate(45 102 18)"/>
+    <rect x="11.5" y="95.5" width="13" height="13" transform="rotate(45 18 102)"/>
+    <rect x="95.5" y="95.5" width="13" height="13" transform="rotate(45 102 102)"/>
+  </g>
+  <!-- edge beads (centered in the tiling slice 38..82) -->
+  <g fill="#fff4cf">
+    <circle cx="49" cy="16.5" r="3"/><circle cx="71" cy="16.5" r="3"/>
+    <circle cx="49" cy="103.5" r="3"/><circle cx="71" cy="103.5" r="3"/>
+    <circle cx="16.5" cy="49" r="3"/><circle cx="16.5" cy="71" r="3"/>
+    <circle cx="103.5" cy="49" r="3"/><circle cx="103.5" cy="71" r="3"/>
+  </g>
+</svg>

@@ -1,6 +1,12 @@
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
 
-type MinyanRow = { id: string; name: string; display_style: string; schedule_times_list?: string | null };
+type MinyanRow = {
+  id: string;
+  name: string;
+  display_style: string;
+  schedule_times_list?: string | null;
+  display_footer_text?: string | null;
+};
 
 /** UUID של Supabase — לא לבלבל עם מספר סידורי כמו "12" (אין מקפים). */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -13,8 +19,8 @@ function isOrdinalToken(s: string) {
   return /^\d+$/.test(s.trim());
 }
 
-export type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver";
-export type ScreenKey = "main" | "clock" | "halacha" | "dailyLearning" | "prayerTimes";
+export type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
+export type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat";
 export type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
 
 export type PrayerSetting = {
@@ -45,6 +51,8 @@ export type DisplayConfig = {
   displayStyle: DisplayStyle;
   /** לוח זמנים במסך הראשי: כל הזמנים או רק תפילות */
   scheduleTimesListMode: ScheduleTimesListMode;
+  /** טקסט חופשי לכותרת תחתונה (כרגע מוצג רק ב־royalBlue) */
+  footerText: string | null;
   screens: ScreenSetting[];
   prayerSettings: PrayerSetting[];
 };
@@ -54,6 +62,7 @@ const DEFAULT_CONFIG: DisplayConfig = {
   minyanName: null,
   displayStyle: "classic",
   scheduleTimesListMode: "all",
+  footerText: null,
   screens: [{ screenKey: "main", sortOrder: 1, durationSeconds: 25, enabled: true }],
   prayerSettings: []
 };
@@ -82,7 +91,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   if (!token) {
     const r = await supabase
       .from("minyanim")
-      .select("id, name, display_style, schedule_times_list")
+      .select("id, name, display_style, schedule_times_list, display_footer_text")
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
       .order("created_at", { ascending: true })
@@ -92,7 +101,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   } else if (isUuid(token)) {
     const r = await supabase
       .from("minyanim")
-      .select("id, name, display_style, schedule_times_list")
+      .select("id, name, display_style, schedule_times_list, display_footer_text")
       .eq("id", token)
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
@@ -101,7 +110,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   } else {
     const listRes = await supabase
       .from("minyanim")
-      .select("id, name, display_style, schedule_times_list")
+      .select("id, name, display_style, schedule_times_list, display_footer_text")
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
       .order("created_at", { ascending: true });
@@ -166,11 +175,17 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
             parashaKey: typeof row.parasha_key === "string" && row.parasha_key.trim() ? row.parasha_key.trim() : null
           }));
 
+  const footerText =
+    typeof chosenMinyan.display_footer_text === "string" && chosenMinyan.display_footer_text.trim()
+      ? chosenMinyan.display_footer_text.trim()
+      : null;
+
   return {
     synagogueName: synagogueRes.data.name,
     minyanName: chosenMinyan.name,
     displayStyle: (chosenMinyan.display_style as DisplayStyle) ?? "classic",
     scheduleTimesListMode: normalizeScheduleTimesListMode(chosenMinyan.schedule_times_list),
+    footerText,
     screens,
     prayerSettings
   };

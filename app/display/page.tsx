@@ -1,8 +1,8 @@
-import { getDisplaySnapshot, getTomorrowIsoDateFrom } from "@/lib/hebcal";
+import { addDaysIsoDate, getDisplaySnapshot, getTomorrowIsoDateFrom } from "@/lib/hebcal";
 import { DisplayRotator } from "@/components/display/display-rotator";
 import { getDisplayConfig } from "@/lib/display-config";
 import { getPublicHomeData } from "@/lib/data/public-content";
-import { buildPrayerScheduleForDay } from "@/lib/build-prayer-schedule";
+import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule } from "@/lib/build-prayer-schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +28,8 @@ export default async function DisplayPage({
     minyan?: string | string[];
     minyanId?: string | string[];
     forceYaaleh?: string | string[];
+    /** דריסת סגנון זמנית לתצוגה מקדימה, למשל style=royalBlue (לא משנה את ה-DB) */
+    style?: string | string[];
   }>;
 }) {
   const params = await searchParams;
@@ -47,6 +49,10 @@ export default async function DisplayPage({
     getPublicHomeData(synagogueId, { todayIso: todayIsoDate })
   ]);
   const displayConfig = await getDisplayConfig(synagogueId, minyanSelector);
+  const allowedStyles = ["classic", "modern", "minimal", "woodSilver", "royalBlue"] as const;
+  const styleOverrideRaw = singleQueryParam(params.style);
+  const styleOverride = allowedStyles.find((s) => s === styleOverrideRaw) ?? null;
+  const effectiveStyle = styleOverride ?? displayConfig.displayStyle;
   const todayJsDay = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" })).getDay();
   const isShabbatToday = todayJsDay === 6;
   const prayerSchedule = buildPrayerScheduleForDay(
@@ -71,6 +77,37 @@ export default async function DisplayPage({
   const displaySnapshot = forceYaaleh
     ? { ...snapshot, amidahAdditionText: "יעלה ויבוא" as const }
     : snapshot;
+  const shabbatScreenEnabled = displayConfig.screens.some(
+    (screen) => screen.screenKey === "shabbat" && screen.enabled
+  );
+  let shabbat:
+    | {
+        parasha: string;
+        candleLighting: string | null;
+        havdalah: string | null;
+        prayers: Array<{ label: string; time: string }>;
+      }
+    | null = null;
+  if (shabbatScreenEnabled) {
+    const daysUntilSaturday = (6 - todayJsDay + 7) % 7;
+    const saturdayIso = addDaysIsoDate(todayIsoDate, daysUntilSaturday);
+    const fridayIso = addDaysIsoDate(saturdayIso, -1);
+    const [fridaySnapshot, saturdaySnapshot] = await Promise.all([
+      getDisplaySnapshot(fridayIso, { omitDailyLearning: true }),
+      getDisplaySnapshot(saturdayIso, { omitDailyLearning: true })
+    ]);
+    shabbat = {
+      parasha: snapshot.parasha,
+      candleLighting: snapshot.candleLighting,
+      havdalah: snapshot.havdalah,
+      prayers: buildShabbatPrayerSchedule(
+        displayConfig.prayerSettings,
+        fridaySnapshot.zmanimSourceTimes,
+        saturdaySnapshot.zmanimSourceTimes
+      )
+    };
+  }
+
   const includeZmanimInTimesList = displayConfig.scheduleTimesListMode !== "prayers_only";
   const todayZmanimItems = includeZmanimInTimesList
     ? snapshot.zmanim.map((row) => ({ label: row.label, time: row.time, kind: "zman" as const }))
@@ -97,10 +134,12 @@ export default async function DisplayPage({
 
   return (
     <DisplayRotator
-      style={displayConfig.displayStyle}
+      style={effectiveStyle}
       synagogueId={synagogueId}
       synagogueName={displayConfig.synagogueName}
       minyanName={displayConfig.minyanName}
+      footerText={displayConfig.footerText}
+      scheduleTimesListMode={displayConfig.scheduleTimesListMode}
       screens={displayConfig.screens}
       dailyLearning={snapshot.dailyLearning}
       snapshot={displaySnapshot}
@@ -117,6 +156,7 @@ export default async function DisplayPage({
       }
       prayerSchedule={prayerSchedule}
       timeSections={timeSections}
+      shabbat={shabbat}
     />
   );
 }

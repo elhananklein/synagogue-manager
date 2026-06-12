@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Royal blue drapery background">
+  <defs>
+    <linearGradient id="rbSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#21509e"/>
+      <stop offset="0.45" stop-color="#123573"/>
+      <stop offset="1" stop-color="#0a204d"/>
+    </linearGradient>
+    <radialGradient id="rbGlow" cx="0.5" cy="0.18" r="0.75">
+      <stop offset="0" stop-color="#5b8fd6" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#2a5aa6" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#0a204d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rbFold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0a2150" stop-opacity="0.9"/>
+      <stop offset="0.5" stop-color="#3e74c4" stop-opacity="0.0"/>
+      <stop offset="1" stop-color="#0a2150" stop-opacity="0.9"/>
+    </linearGradient>
+    <pattern id="rbFolds" width="150" height="900" patternUnits="userSpaceOnUse">
+      <rect width="150" height="900" fill="url(#rbFold)"/>
+      <rect x="73" width="4" height="900" fill="#6f9fe0" opacity="0.18"/>
+    </pattern>
+    <linearGradient id="rbGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbe9a8"/>
+      <stop offset="0.5" stop-color="#caa24a"/>
+      <stop offset="1" stop-color="#8a6a22"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#rbSky)"/>
+  <rect width="1600" height="900" fill="url(#rbFolds)"/>
+  <rect width="1600" height="900" fill="url(#rbGlow)"/>
+
+  <!-- Top valance -->
+  <g>
+    <path d="M0 0 H1600 V96
+             C1500 150 1420 150 1320 96
+             C1220 150 1140 150 1040 96
+             C940 150 860 150 760 96
+             C660 150 580 150 480 96
+             C380 150 300 150 200 96
+             C120 138 60 138 0 104 Z"
+          fill="#0e2c64"/>
+    <path d="M0 96
+             C1500 150 1420 150 1320 96
+             C1220 150 1140 150 1040 96
+             C940 150 860 150 760 96
+             C660 150 580 150 480 96
+             C380 150 300 150 200 96
+             C120 138 60 138 0 104"
+          fill="none" stroke="url(#rbGold)" stroke-width="5" opacity="0.85"/>
+    <!-- tassels -->
+    <g fill="url(#rbGold)" opacity="0.9">
+      <circle cx="1320" cy="150" r="9"/><rect x="1316" y="150" width="8" height="34" rx="3"/>
+      <circle cx="1040" cy="150" r="9"/><rect x="1036" y="150" width="8" height="34" rx="3"/>
+      <circle cx="760" cy="150" r="9"/><rect x="756" y="150" width="8" height="34" rx="3"/>
+      <circle cx="480" cy="150" r="9"/><rect x="476" y="150" width="8" height="34" rx="3"/>
+      <circle cx="200" cy="150" r="9"/><rect x="196" y="150" width="8" height="34" rx="3"/>
+    </g>
+  </g>
+</svg>

@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
-type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver";
+type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
 type ScheduleTimesListMode = "all" | "prayers_only";
-type ScreenKey = "main" | "clock" | "halacha" | "dailyLearning" | "prayerTimes";
+type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat";
 type PrayerMode = "fixed" | "relative" | "parasha";
 type PrayerCategory = "weekday" | "shabbat";
 
@@ -37,6 +37,8 @@ type MinyanModel = {
   displayStyle: DisplayStyle;
   /** לוח זמנים במסך הראשי */
   scheduleTimesListMode: ScheduleTimesListMode;
+  /** טקסט חופשי לכותרת תחתונה בתצוגה (מוצג כרגע בסגנון "כחול מלכותי") */
+  footerText: string;
   prayerSettings: PrayerSetting[];
   screens: ScreenSetting[];
 };
@@ -57,10 +59,12 @@ const ZMAN_ANCHORS = [
 ];
 const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "main", label: "מסך ראשי" },
+  { key: "mainInfo", label: "מידע מרכזי (מוגדל)" },
   { key: "clock", label: "תאריך ושעה" },
   { key: "halacha", label: "הלכה יומית" },
   { key: "dailyLearning", label: "לימוד יומי" },
-  { key: "prayerTimes", label: "זמני תפילות" }
+  { key: "prayerTimes", label: "זמני תפילות" },
+  { key: "shabbat", label: "שבת" }
 ];
 
 function nextAvailableScreenKey(screens: ScreenSetting[]): ScreenKey | null {
@@ -98,6 +102,7 @@ function createDefaultMinyan(): MinyanModel {
     name: "",
     displayStyle: "classic",
     scheduleTimesListMode: "all",
+    footerText: "",
     prayerSettings: [createPrayer("weekday"), createPrayer("shabbat")],
     screens: [
       { screenKey: "main", sortOrder: 1, durationSeconds: 20, enabled: true },
@@ -154,6 +159,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
     setSynagogueName(payload.data.synagogue.name);
     const normalized = (payload.data.minyanim.length ? payload.data.minyanim : [createDefaultMinyan()]).map((m) => ({
       ...m,
+      footerText: typeof m.footerText === "string" ? m.footerText : "",
       scheduleTimesListMode: (m.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all") as ScheduleTimesListMode,
       prayerSettings: m.prayerSettings.map((p) => ({
         ...p,
@@ -325,6 +331,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                     <option value="modern">Modern</option>
                     <option value="minimal">Minimal</option>
                     <option value="woodSilver">Wood & Silver</option>
+                    <option value="royalBlue">כחול מלכותי</option>
                   </select>
                 </div>
                 <div>
@@ -346,6 +353,18 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                     <option value="prayers_only">רק זמני תפילות</option>
                   </select>
                   <p className="mt-1 text-xs text-muted-foreground">משפיע על כרטיס &quot;זמני היום ותפילות&quot; במסך הראשי בלבד.</p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">כותרת תחתונה (footer)</label>
+                  <input
+                    className="h-10 w-full rounded-md border border-border bg-background px-3"
+                    value={minyan.footerText}
+                    placeholder="למשל: שוחרי תפילה"
+                    onChange={(e) =>
+                      setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, footerText: e.target.value } : m)))
+                    }
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">טקסט חופשי שמוצג בתחתית המסך (כרגע בסגנון &quot;כחול מלכותי&quot;).</p>
                 </div>
               </div>
 

@@ -290,6 +290,13 @@ body {
     padding-bottom: 1.5rem;
   }
 
+  /* ללא גלילה אוטומטית (למשל מצב "רק זמני תפילות") — ממרכזים את הרשימה אנכית */
+  .display-times-list--static {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
   .display-times-track {
     display: flex;
     flex-direction: column;
@@ -593,23 +600,29 @@ body {
 
   .display-prayer-times-group {
     display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
+    flex-direction: row;
+    align-items: center;
+    gap: clamp(0.75rem, 2vw, 1.75rem);
   }
 
+  /* כותרת הקבוצה כתווית צד (בימין ב־RTL) ליד שורת הזמנים — שורה אחת לכל תפילה */
   .display-prayer-times-group .display-time-section-title {
+    flex: 0 0 auto;
+    width: clamp(5rem, 11vw, 9.5rem);
     text-align: center;
-    margin-bottom: 0.1rem;
+    margin-bottom: 0;
+    font-size: clamp(1.2rem, 2.4vw, 1.95rem);
   }
 
   .display-prayer-times-row-line {
     display: flex;
+    flex: 1 1 auto;
     flex-direction: row;
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: stretch;
     gap: clamp(0.85rem, 2vh, 1.35rem) clamp(0.95rem, 2.2vw, 1.5rem);
-    width: 100%;
+    min-width: 0;
   }
 
   /* תא שעה במסך זמני תפילות — ריבוע גדול במכוון */
@@ -660,6 +673,153 @@ body {
     transform: none;
     padding-top: clamp(1.45rem, 3.4vh, 2.4rem);
     padding-bottom: clamp(1.45rem, 3.4vh, 2.4rem);
+  }
+
+  /* מסך "מידע מרכזי" — כל תוכן צד ימין של המסך הראשי, ממורכז ומוגדל */
+  .display-info-screen {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: clamp(0.5rem, 2vh, 1.75rem);
+  }
+  .display-info-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1rem, 2.8vh, 2.25rem);
+    width: 100%;
+    max-width: min(92vw, 72rem);
+    max-height: 100%;
+  }
+  .display-info-stack .display-main-date-card,
+  .display-info-stack .display-daf-card,
+  .display-info-stack .display-main-additions,
+  .display-info-stack .display-ws-additions-shell,
+  .display-info-stack .display-ws-daf-shell {
+    width: 100%;
+    max-width: min(90vw, 64rem);
+  }
+  .display-info-stack .display-main-date-content {
+    min-height: clamp(8rem, 18vh, 14rem);
+  }
+  .display-info-stack .display-addition-content {
+    min-height: clamp(5rem, 11vh, 9rem);
+  }
+  .display-info-stack .display-daf-content {
+    min-height: clamp(4.5rem, 10vh, 8rem);
+  }
+  /* טיפוגרפיה מוגדלת (specificity של 3 מחלקות כדי לגבור על כוונון ה-themes) */
+  .display-info-screen .display-info-stack .display-parasha {
+    font-size: clamp(2.6rem, 6vw, 4.75rem);
+    line-height: 1.12;
+  }
+  .display-info-screen .display-info-stack .display-hebrew-date {
+    font-size: clamp(2.1rem, 4.6vw, 3.5rem);
+    line-height: 1.12;
+  }
+  .display-info-screen .display-info-stack .display-gregorian-date {
+    font-size: clamp(1.45rem, 2.9vw, 2.3rem);
+  }
+  .display-info-screen .display-info-stack .display-addition-text {
+    font-size: clamp(1.9rem, 3.8vw, 3.1rem);
+    line-height: 1.15;
+  }
+  .display-info-screen .display-info-stack .display-daf-yomi {
+    font-size: clamp(1.9rem, 3.8vw, 3.1rem);
+  }
+
+  /* מסך שבת — פרשה, כניסת/יציאת שבת וזמני תפילות שבת, ממורכז ומוגדל */
+  .display-shabbat-screen {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: clamp(0.5rem, 2vh, 1.75rem);
+  }
+  .display-shabbat-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.75rem, 2.4vh, 1.75rem);
+    width: 100%;
+    max-width: min(92vw, 72rem);
+    max-height: 100%;
+  }
+  .display-shabbat-title {
+    font-size: clamp(1.5rem, 3vw, 2.4rem);
+    font-weight: 700;
+    opacity: 0.82;
+    letter-spacing: 0.04em;
+  }
+  .display-shabbat-parasha {
+    font-size: clamp(2.6rem, 6vw, 4.75rem);
+    font-weight: 800;
+    line-height: 1.1;
+    text-align: center;
+  }
+  .display-shabbat-zmanim {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: clamp(1rem, 3vw, 2.5rem);
+    width: 100%;
+  }
+  .display-shabbat-zman-card {
+    flex: 1 1 0;
+    min-width: min(40vw, 18rem);
+    max-width: 28rem;
+  }
+  .display-shabbat-zman-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(0.25rem, 1vh, 0.75rem);
+    padding: clamp(1rem, 3vh, 2rem);
+  }
+  .display-shabbat-zman-label {
+    font-size: clamp(1.4rem, 2.8vw, 2.2rem);
+    font-weight: 600;
+    opacity: 0.85;
+  }
+  .display-shabbat-zman-time {
+    font-size: clamp(2.4rem, 5vw, 3.8rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .display-shabbat-prayers-card {
+    width: 100%;
+    max-width: min(90vw, 56rem);
+  }
+  .display-shabbat-prayers {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.35rem, 1.1vh, 0.9rem);
+    padding: clamp(1rem, 2.6vh, 1.75rem) clamp(1.25rem, 3vw, 2.5rem);
+  }
+  .display-shabbat-prayer-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: clamp(1.6rem, 3.2vw, 2.6rem);
+  }
+  .display-shabbat-prayer-row + .display-shabbat-prayer-row {
+    border-top: 1px solid rgba(148, 163, 184, 0.25);
+    padding-top: clamp(0.35rem, 1.1vh, 0.9rem);
+  }
+  .display-shabbat-prayer-label {
+    font-weight: 600;
+  }
+  .display-shabbat-prayer-time {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
   }
 
   .display-empty {
@@ -1524,6 +1684,245 @@ body {
 
   .display--classic .display-clock-screen--classic-band .display-omer-line {
     margin-top: 1.25rem;
+  }
+
+  /* ===================== Royal Blue (כחול מלכותי / פרוכת) ===================== */
+  .display--royalBlue {
+    --royal-gold: linear-gradient(180deg, #fbe9a8 0%, #caa24a 52%, #8a6a22 100%);
+    --royal-parchment: linear-gradient(180deg, #fffdf6 0%, #f6ecd2 55%, #ecdcb6 100%);
+    --royal-ribbon: linear-gradient(180deg, #b91c3a 0%, #8a1228 100%);
+    --royal-font: var(--font-royal), "Frank Ruhl Libre", "David Libre", Georgia, serif;
+    background-color: #0d2a61;
+    background-image: url("/display/royal/parochet-bg.svg");
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    color: #f7e7b8;
+  }
+  .display--royalBlue .display-frame {
+    border: 2px solid rgb(202 162 74 / 0.85);
+    border-radius: 0.85rem;
+    background: rgb(10 30 70 / 0.18);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 244 207 / 0.22),
+      0 18px 44px rgb(5 12 32 / 0.5);
+  }
+  .display--royalBlue .display-header {
+    border-bottom-color: transparent;
+    border-bottom-width: 0;
+  }
+
+  /* Parchment panels framed in ornate gold */
+  .display--royalBlue .display-card {
+    border: 16px solid transparent;
+    border-image: url("/display/royal/gold-frame.svg") 38 / 16px / 0 round;
+    border-radius: 0;
+    background: var(--royal-parchment);
+    background-clip: padding-box;
+    color: #2a1c08;
+    box-shadow: 0 10px 30px rgb(5 12 32 / 0.45);
+  }
+  .display--royalBlue .display-parasha,
+  .display--royalBlue .display-hebrew-date,
+  .display--royalBlue .display-addition-text,
+  .display--royalBlue .display-daf-yomi,
+  .display--royalBlue .display-time-label,
+  .display--royalBlue .display-time-value,
+  .display--royalBlue .display-halacha-text,
+  .display--royalBlue .display-halacha-intro,
+  .display--royalBlue .display-daily-learning-name,
+  .display--royalBlue .display-daily-learning-detail {
+    color: #241708;
+    text-shadow: none;
+  }
+  .display--royalBlue .display-parasha,
+  .display--royalBlue .display-hebrew-date,
+  .display--royalBlue .display-times-title,
+  .display--royalBlue .display-halacha-title,
+  .display--royalBlue .display-daily-learning-title,
+  .display--royalBlue .display-daf-yomi {
+    font-family: var(--royal-font);
+    letter-spacing: 0.01em;
+  }
+  .display--royalBlue .display-gregorian-date,
+  .display--royalBlue .display-date-gregorian,
+  .display--royalBlue .display-time-details,
+  .display--royalBlue .display-daily-learning-note {
+    color: #6b4e1e;
+  }
+  .display--royalBlue .display-accent {
+    color: #9a3412;
+    font-weight: 900;
+  }
+
+  /* Section/ribbon titles in royal red */
+  .display--royalBlue .display-time-section-title,
+  .display--royalBlue .display-times-title,
+  .display--royalBlue .display-halacha-title,
+  .display--royalBlue .display-daily-learning-title {
+    display: inline-block;
+    align-self: center;
+    color: #fff7e6;
+    background: var(--royal-ribbon);
+    border: 1px solid rgb(202 162 74 / 0.9);
+    border-radius: 999px;
+    padding: 0.3em 1.1em;
+    box-shadow:
+      0 3px 10px rgb(5 12 32 / 0.4),
+      inset 0 1px 0 rgb(255 255 255 / 0.25);
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    opacity: 1;
+  }
+  .display--royalBlue .display-halacha-title-row {
+    justify-content: center;
+  }
+  .display--royalBlue .display-halacha-source {
+    color: #fde68a;
+  }
+
+  /* Time rows as small parchment plaques with gold edge */
+  .display--royalBlue .display-time-row {
+    border: 1px solid rgb(160 120 40 / 0.7);
+    border-radius: 0.5rem;
+    background: linear-gradient(180deg, #fffdf6 0%, #f3e7c8 100%);
+  }
+  .display--royalBlue .display-time-label--prayer {
+    color: #7c2d12;
+  }
+  .display--royalBlue .display-time-row--prayer {
+    border-inline-start: 5px solid #b45309;
+    box-shadow: inset 4px 0 0 rgb(180 83 9 / 0.35);
+  }
+  .display--royalBlue .display-time-row--next {
+    border: 2px solid #b45309;
+    background: linear-gradient(180deg, #fff7df 0%, #ffe9b8 100%);
+    box-shadow:
+      0 0 0 2px rgb(234 179 8 / 0.4),
+      0 6px 20px rgb(113 63 18 / 0.25);
+  }
+  .display--royalBlue .display-time-value--next {
+    color: #9a3412;
+  }
+  .display--royalBlue .display-next-prayer {
+    color: #fde68a;
+    font-weight: 800;
+  }
+  .display--royalBlue .display-prayer-badge {
+    border-color: rgb(180 83 9 / 0.8);
+    background: rgb(254 243 199 / 0.85);
+    color: #7c2d12;
+  }
+  .display--royalBlue .display-daily-learning-row {
+    border-color: rgb(160 120 40 / 0.55);
+    background: rgb(255 253 246 / 0.7);
+  }
+  .display--royalBlue .display-time-tomorrow-note {
+    color: #6b4e1e;
+  }
+
+  /* Header band: day | sapphire orb | hebrew date */
+  .display--royalBlue .display-ws-header-band {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(0.35rem, 1.2vw, 0.85rem);
+    width: 100%;
+    min-height: clamp(4.75rem, 13vh, 8.5rem);
+  }
+  .display--royalBlue .display-ws-lozenge {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: clamp(0.7rem, 1.8vh, 1.3rem) clamp(0.6rem, 1.8vw, 1.2rem);
+    min-height: clamp(3.5rem, 9vh, 6rem);
+    font-family: var(--royal-font);
+    font-weight: 700;
+    font-size: clamp(1.15rem, 2.7vw, 1.85rem);
+    line-height: 1.25;
+    color: #241708;
+    word-break: break-word;
+    border: 16px solid transparent;
+    border-image: url("/display/royal/gold-frame.svg") 38 / 14px / 0 round;
+    background: var(--royal-parchment);
+    background-clip: padding-box;
+  }
+  .display--royalBlue .display-ws-lozenge--hebrew-date {
+    font-size: clamp(1.25rem, 2.95vw, 2.05rem);
+  }
+  .display--royalBlue .display-ws-clock-circle {
+    flex: 0 0 auto;
+    width: clamp(7.5rem, 21vh, 13rem);
+    height: clamp(7.5rem, 21vh, 13rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-image: url("/display/royal/clock-orb.svg");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: none;
+    border-radius: 9999px;
+  }
+  .display--royalBlue .display-ws-clock-circle .display-clock-text {
+    font-size: clamp(2.1rem, 8.5vh, 3.8rem);
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: 0.03em;
+    line-height: 1;
+    text-shadow:
+      0 0 2px rgb(0 0 0 / 0.85),
+      0 2px 6px rgb(0 0 0 / 0.6);
+  }
+  .display--royalBlue .display-ws-clock-circle.display-clock-admin-hit:focus-visible {
+    outline: 3px solid rgb(255 244 207 / 0.95);
+    outline-offset: 4px;
+  }
+
+  /* Clock screen + empty */
+  .display--royalBlue .display-clock-screen {
+    border: 16px solid transparent;
+    border-image: url("/display/royal/gold-frame.svg") 38 / 16px / 0 round;
+    border-radius: 0;
+    background: var(--royal-parchment);
+    background-clip: padding-box;
+    color: #241708;
+  }
+  .display--royalBlue .display-clock-screen .display-date-hebrew,
+  .display--royalBlue .display-clock-screen .display-date-gregorian,
+  .display--royalBlue .display-clock-screen .display-omer-line {
+    color: #2a1c08;
+    text-shadow: none;
+  }
+  .display--royalBlue .display-empty {
+    color: #fde68a;
+    font-weight: 700;
+  }
+
+  /* Footer ribbon (royalBlue only) */
+  .display-royal-footer {
+    flex-shrink: 0;
+    margin-top: clamp(0.5rem, 1.4vh, 1rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .display-royal-footer-text {
+    font-family: var(--royal-font);
+    font-weight: 700;
+    font-size: clamp(1.1rem, 2.4vh, 1.75rem);
+    color: #fff7e6;
+    background: var(--royal-ribbon);
+    border: 1px solid rgb(202 162 74 / 0.9);
+    border-radius: 999px;
+    padding: 0.3em 2em;
+    box-shadow:
+      0 4px 14px rgb(5 12 32 / 0.45),
+      inset 0 1px 0 rgb(255 255 255 / 0.25);
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.45);
   }
 
   .display-time-row--prayer {

@@ -1,4 +1,4 @@
-import type { PrayerSetting } from "@/lib/display-config";
+import type { PrayerSetting, PrayerType } from "@/lib/display-config";
 
 /** ימי א׳–ה׳ בלבד — שישי ושבת לא רלוונטיים לחוק "לפי פרשה". */
 export function isParashaScheduleWeekday(jsDay: number) {
@@ -131,4 +131,43 @@ export function buildPrayerScheduleForDay(
     }
   }
   return out;
+}
+
+/** סדר תצוגת תפילות השבת — מנחה ערב שבת תחילה, ואז שחרית/מנחה/ערבית מוצ"ש. */
+const SHABBAT_PRAYER_ORDER: PrayerType[] = ["מנחה ערב שבת", "שחרית שבת", "מנחה שבת", "ערבית מוצ'ש"];
+
+/**
+ * זמני תפילות לשבת הקרובה. "מנחה ערב שבת" מחושבת מזמני יום שישי; שאר התפילות מזמני שבת.
+ * תומך במצב fixed ו-relative (parasha לא רלוונטי לשבת).
+ */
+export function buildShabbatPrayerSchedule(
+  prayerSettings: PrayerSetting[],
+  fridayZmanim: Record<string, string>,
+  saturdayZmanim: Record<string, string>
+): Array<{ label: string; time: string }> {
+  const shabbatSettings = prayerSettings.filter((setting) => setting.category === "shabbat");
+
+  const resolved = shabbatSettings
+    .map((setting, inputIndex) => {
+      const zmanim = setting.prayerType === "מנחה ערב שבת" ? fridayZmanim : saturdayZmanim;
+      let time: string | null = null;
+      if (setting.mode === "fixed" && setting.fixedTime) {
+        time = setting.fixedTime.slice(0, 5);
+      } else if (setting.mode === "relative" && setting.zmanAnchor && setting.zmanAnchor in zmanim) {
+        time = formatWithOffset(zmanim[setting.zmanAnchor], setting.offsetMinutes ?? 0, setting.roundMode ?? "none");
+      }
+      if (!time) return null;
+      const orderIndex = SHABBAT_PRAYER_ORDER.indexOf(setting.prayerType);
+      return {
+        label: setting.prayerType,
+        time,
+        order: orderIndex === -1 ? SHABBAT_PRAYER_ORDER.length : orderIndex,
+        inputIndex
+      };
+    })
+    .filter((row): row is { label: PrayerType; time: string; order: number; inputIndex: number } => row !== null);
+
+  return resolved
+    .sort((a, b) => a.order - b.order || a.inputIndex - b.inputIndex)
+    .map(({ label, time }) => ({ label, time }));
 }
