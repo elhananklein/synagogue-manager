@@ -33,8 +33,11 @@ export function middleware(request: NextRequest) {
   }
 
   const cookieMode = request.cookies.get(VIEW_COOKIE)?.value;
-  const useMobile =
-    cookieMode === "full" ? false : cookieMode === "mobile" ? true : isMobileRequest(request);
+  const isMobile = isMobileRequest(request);
+
+  // במכשיר מובייל אמיתי — תמיד תצוגת מובייל (עוגיית view=full לא תדחוף תצוגת קיר).
+  // בדסקטופ: ברירת מחדל תצוגה רגילה; ?view=mobile מאפשר תצוגת מובייל לבדיקות.
+  const useMobile = isMobile ? true : cookieMode === "mobile";
 
   if (!useMobile) {
     return NextResponse.next();

@@ -38,13 +38,9 @@ export default async function MobileHomePage() {
         <MobileSynagogueSelector synagogues={synagogues} />
       </main>
 
-      <footer className="flex items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-3 text-sm">
+      <footer className="flex items-center justify-center border-t border-slate-200 bg-white px-4 py-3 text-sm">
         <Link href="/contact" className="text-slate-600">
           צור קשר
-        </Link>
-        <span className="text-slate-300">|</span>
-        <Link href="/?view=full" className="text-slate-400">
-          מעבר לתצוגת דסקטופ
         </Link>
       </footer>
     </div>
