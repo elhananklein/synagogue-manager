@@ -197,26 +197,55 @@ export function DisplayRotator({
       webkitRequestFullscreen?: () => Promise<void> | void;
       msRequestFullscreen?: () => Promise<void> | void;
     };
+    type FsDocument = Document & {
+      webkitFullscreenElement?: Element | null;
+      msFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void> | void;
+      msExitFullscreen?: () => Promise<void> | void;
+    };
+    const settle = (result: Promise<void> | void) => {
+      if (result && typeof (result as Promise<void>).catch === "function") {
+        (result as Promise<void>).catch(() => {});
+      }
+    };
+    const isFullscreen = () => {
+      if (typeof document === "undefined") return false;
+      const doc = document as FsDocument;
+      return Boolean(doc.fullscreenElement ?? doc.webkitFullscreenElement ?? doc.msFullscreenElement);
+    };
     const requestFullscreen = () => {
       if (typeof document === "undefined") return;
-      if (document.fullscreenElement) return;
+      if (isFullscreen()) return;
       const el = document.documentElement as FsElement;
       const fn = el.requestFullscreen ?? el.webkitRequestFullscreen ?? el.msRequestFullscreen;
       if (!fn) return;
       try {
-        const result = fn.call(el);
-        if (result && typeof (result as Promise<void>).catch === "function") {
-          (result as Promise<void>).catch(() => {});
-        }
+        settle(fn.call(el));
       } catch {
         /* הדפדפן דחה — נחכה למחווה הבאה */
+      }
+    };
+    const exitFullscreen = () => {
+      if (typeof document === "undefined") return;
+      if (!isFullscreen()) return;
+      const doc = document as FsDocument;
+      const fn = doc.exitFullscreen ?? doc.webkitExitFullscreen ?? doc.msExitFullscreen;
+      if (!fn) return;
+      try {
+        settle(fn.call(doc));
+      } catch {
+        /* התעלמות — נחכה למחווה הבאה */
       }
     };
 
     requestFullscreen();
 
     const onGesture = () => {
-      requestFullscreen();
+      if (isFullscreen()) {
+        exitFullscreen();
+      } else {
+        requestFullscreen();
+      }
     };
     const events: Array<keyof WindowEventMap> = ["pointerdown", "touchend", "keydown"];
     events.forEach((evt) => window.addEventListener(evt, onGesture));
