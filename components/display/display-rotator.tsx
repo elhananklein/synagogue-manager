@@ -746,6 +746,11 @@ export function DisplayRotator({
         {currentScreen === "mainInfo" ? (
           <section className="display-info-screen">
             <div className="display-info-stack">
+              {nextPrayer ? (
+                <p className="display-info-next-prayer">
+                  התפילה הבאה: {nextPrayer.label} - {nextPrayer.time}
+                </p>
+              ) : null}
               <PrimaryInfoStack
                 snapshot={snapshot}
                 isWoodSilverRevolution={isWoodSilverRevolution}

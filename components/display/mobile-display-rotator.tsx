@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText } from "lucide-react";
 import { LiveClock } from "@/components/display/live-clock";
@@ -74,6 +75,9 @@ const PRAYER_GROUP_TITLES: Record<PrayerGroupId, string> = {
   אחר: "נוספות"
 };
 
+const SWIPE_THRESHOLD = 48;
+const SLIDE_MS = 320;
+
 function prayerGroupIdFromLabel(label: string): PrayerGroupId {
   const t = label.trim();
   if (t.includes("שחרית")) return "שחרית";
@@ -108,16 +112,62 @@ export function MobileDisplayRotator({
   const enabledScreens = useMemo(() => screens.filter((s) => s.enabled), [screens]);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(0);
 
-  const safeIndex = enabledScreens.length ? index % enabledScreens.length : 0;
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipedRef = useRef(false);
+  const dragAxisRef = useRef<"x" | "y" | null>(null);
+
+  const screenCount = enabledScreens.length;
+  const safeIndex = screenCount ? ((index % screenCount) + screenCount) % screenCount : 0;
   const current = enabledScreens[safeIndex];
 
+  useLayoutEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const measure = () => setViewportWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
-    if (!enabledScreens.length || paused) return;
+    if (index >= screenCount && screenCount > 0) setIndex(0);
+  }, [index, screenCount]);
+
+  const pauseInteraction = useCallback(() => setPaused(true), []);
+
+  const goTo = useCallback(
+    (i: number) => {
+      if (!screenCount) return;
+      setIndex(((i % screenCount) + screenCount) % screenCount);
+      pauseInteraction();
+    },
+    [screenCount, pauseInteraction]
+  );
+
+  const next = useCallback(() => {
+    if (!screenCount) return;
+    setIndex((prev) => (prev + 1) % screenCount);
+    pauseInteraction();
+  }, [screenCount, pauseInteraction]);
+
+  const prev = useCallback(() => {
+    if (!screenCount) return;
+    setIndex((prevIdx) => (prevIdx - 1 + screenCount) % screenCount);
+    pauseInteraction();
+  }, [screenCount, pauseInteraction]);
+
+  useEffect(() => {
+    if (!screenCount || paused || isDragging) return;
     const durationMs = Math.max(5, current?.durationSeconds ?? 20) * 1000;
-    const timer = setTimeout(() => setIndex((prev) => (prev + 1) % enabledScreens.length), durationMs);
+    const timer = setTimeout(() => setIndex((prev) => (prev + 1) % screenCount), durationMs);
     return () => clearTimeout(timer);
-  }, [enabledScreens, current, safeIndex, paused]);
+  }, [screenCount, current, safeIndex, paused, isDragging]);
 
   useEffect(() => {
     const refreshIntervalMs = 5 * 60 * 1000;
@@ -151,46 +201,59 @@ export function MobileDisplayRotator({
     .filter((item) => item.kind === "prayer")
     .map((item) => ({ ...item, totalMinutes: toMinutes(item.time) }))
     .sort((a, b) => a.totalMinutes - b.totalMinutes);
-  const nextPrayer =
-    todayPrayers.find((item) => item.totalMinutes >= nowMinutes) ?? null;
-
-  const goTo = (i: number) => {
-    setIndex(i);
-    setPaused(true);
-  };
-  const next = () => {
-    if (!enabledScreens.length) return;
-    setIndex((prev) => (prev + 1) % enabledScreens.length);
-    setPaused(true);
-  };
-  const prev = () => {
-    if (!enabledScreens.length) return;
-    setIndex((prevIdx) => (prevIdx - 1 + enabledScreens.length) % enabledScreens.length);
-    setPaused(true);
-  };
-
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const swipedRef = useRef(false);
-  const SWIPE_THRESHOLD = 45;
+  const nextPrayer = todayPrayers.find((item) => item.totalMinutes >= nowMinutes) ?? null;
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
     touchStartRef.current = { x: t.clientX, y: t.clientY };
+    dragAxisRef.current = null;
     swipedRef.current = false;
+    setIsDragging(false);
   };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    if (!start || !viewportWidth) return;
+    const t = e.touches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+
+    if (!dragAxisRef.current) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      dragAxisRef.current = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (dragAxisRef.current !== "x") return;
+
+    setIsDragging(true);
+    const atFirst = safeIndex === 0;
+    const atLast = safeIndex === screenCount - 1;
+    let offset = dx;
+    if ((atFirst && offset > 0) || (atLast && offset < 0)) offset *= 0.35;
+    setDragOffset(offset);
+  };
+
   const onTouchEnd = (e: React.TouchEvent) => {
     const start = touchStartRef.current;
     touchStartRef.current = null;
+    setIsDragging(false);
+    setDragOffset(0);
+
     if (!start) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
-    if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) <= Math.abs(dy)) return;
+
+    if (dragAxisRef.current !== "x" || Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) <= Math.abs(dy)) {
+      dragAxisRef.current = null;
+      return;
+    }
+
+    dragAxisRef.current = null;
     swipedRef.current = true;
-    // החלקה ימינה → המסך הבא, החלקה שמאלה → המסך הקודם.
     if (dx > 0) next();
     else prev();
   };
+
   const onAreaClick = () => {
     if (swipedRef.current) {
       swipedRef.current = false;
@@ -199,7 +262,25 @@ export function MobileDisplayRotator({
     next();
   };
 
-  const currentScreen = current?.screenKey ?? "main";
+  const baseOffset = viewportWidth ? -safeIndex * viewportWidth : 0;
+  const trackTransform = viewportWidth ? `translate3d(${baseOffset + dragOffset}px, 0, 0)` : undefined;
+
+  const renderPanel = (screenKey: ScreenKey) => (
+    <>
+      <ScreenHeading screenKey={screenKey} />
+      <div className="mt-4">
+        {screenKey === "main" && <MainScreen snapshot={snapshot} timeSections={timeSections} />}
+        {screenKey === "mainInfo" && <MainInfoScreen snapshot={snapshot} nextPrayer={nextPrayer} />}
+        {screenKey === "clock" && <ClockScreen snapshot={snapshot} />}
+        {screenKey === "halacha" && <HalachaScreen halacha={halacha} />}
+        {screenKey === "dailyLearning" && <DailyLearningScreen lines={dailyLearning} />}
+        {screenKey === "prayerTimes" && (
+          <PrayerTimesScreen prayerSchedule={prayerSchedule} nowMinutes={nowMinutes} />
+        )}
+        {screenKey === "shabbat" && <ShabbatScreen shabbat={shabbat} />}
+      </div>
+    </>
+  );
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-gradient-to-b from-slate-50 to-slate-100 text-slate-900">
@@ -208,6 +289,9 @@ export function MobileDisplayRotator({
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold leading-tight">{synagogueName}</h1>
             {minyanName ? <p className="truncate text-sm text-slate-500">{minyanName}</p> : null}
+            <Link href="/?pick=1" className="text-xs text-emerald-600 underline-offset-2 hover:underline">
+              החלפת בית כנסת
+            </Link>
           </div>
           <div className="text-left">
             <LiveClock className="text-2xl font-bold tabular-nums tracking-tight" showSeconds={false} />
@@ -222,10 +306,12 @@ export function MobileDisplayRotator({
         ) : null}
       </header>
 
-      <main
-        className="flex-1 touch-pan-y px-4 py-5"
+      <div
+        ref={viewportRef}
+        className="relative min-h-0 flex-1 overflow-hidden touch-pan-y"
         onClick={onAreaClick}
         onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         role="button"
         tabIndex={0}
@@ -235,19 +321,26 @@ export function MobileDisplayRotator({
           else if (e.key === "ArrowLeft") prev();
         }}
       >
-        <ScreenHeading screenKey={currentScreen} />
-        <div className="mt-4">
-          {currentScreen === "main" && <MainScreen snapshot={snapshot} timeSections={timeSections} />}
-          {currentScreen === "mainInfo" && <MainInfoScreen snapshot={snapshot} nextPrayer={nextPrayer} />}
-          {currentScreen === "clock" && <ClockScreen snapshot={snapshot} />}
-          {currentScreen === "halacha" && <HalachaScreen halacha={halacha} />}
-          {currentScreen === "dailyLearning" && <DailyLearningScreen lines={dailyLearning} />}
-          {currentScreen === "prayerTimes" && <PrayerTimesScreen prayerSchedule={prayerSchedule} nowMinutes={nowMinutes} />}
-          {currentScreen === "shabbat" && <ShabbatScreen shabbat={shabbat} />}
+        <div
+          className={cn("flex h-full will-change-transform", !isDragging && "transition-transform ease-out")}
+          style={{
+            transform: trackTransform,
+            transitionDuration: isDragging ? "0ms" : `${SLIDE_MS}ms`
+          }}
+        >
+          {enabledScreens.map((screen, i) => (
+            <div
+              key={`${screen.screenKey}-${i}`}
+              className="h-full w-full shrink-0 overflow-y-auto px-4 py-5"
+              aria-hidden={i !== safeIndex}
+            >
+              {renderPanel(screen.screenKey)}
+            </div>
+          ))}
         </div>
-      </main>
+      </div>
 
-      {enabledScreens.length > 1 ? (
+      {screenCount > 1 ? (
         <div className="flex items-center justify-center gap-2 px-4 py-3">
           {enabledScreens.map((screen, i) => (
             <button
@@ -259,7 +352,7 @@ export function MobileDisplayRotator({
                 goTo(i);
               }}
               className={cn(
-                "h-2 rounded-full transition-all",
+                "h-2 rounded-full transition-all duration-300",
                 i === safeIndex ? "w-6 bg-emerald-600" : "w-2 bg-slate-300"
               )}
             />
