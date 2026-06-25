@@ -262,8 +262,12 @@ export function MobileDisplayRotator({
     next();
   };
 
-  const baseOffset = viewportWidth ? -safeIndex * viewportWidth : 0;
-  const trackTransform = viewportWidth ? `translate3d(${baseOffset + dragOffset}px, 0, 0)` : undefined;
+  const slideFraction = screenCount > 0 ? 100 / screenCount : 100;
+  const baseOffset = viewportWidth > 0 ? -safeIndex * viewportWidth : 0;
+  const trackTransform =
+    viewportWidth > 0
+      ? `translate3d(${baseOffset + dragOffset}px, 0, 0)`
+      : `translate3d(calc(-${safeIndex * slideFraction}% + ${dragOffset}px), 0, 0)`;
 
   const renderPanel = (screenKey: ScreenKey) => (
     <>
@@ -308,6 +312,7 @@ export function MobileDisplayRotator({
 
       <div
         ref={viewportRef}
+        dir="ltr"
         className="relative min-h-0 flex-1 overflow-hidden touch-pan-y"
         onClick={onAreaClick}
         onTouchStart={onTouchStart}
@@ -324,6 +329,7 @@ export function MobileDisplayRotator({
         <div
           className={cn("flex h-full will-change-transform", !isDragging && "transition-transform ease-out")}
           style={{
+            width: viewportWidth > 0 ? viewportWidth * screenCount : `${screenCount * 100}%`,
             transform: trackTransform,
             transitionDuration: isDragging ? "0ms" : `${SLIDE_MS}ms`
           }}
@@ -331,7 +337,11 @@ export function MobileDisplayRotator({
           {enabledScreens.map((screen, i) => (
             <div
               key={`${screen.screenKey}-${i}`}
-              className="h-full w-full shrink-0 overflow-y-auto px-4 py-5"
+              dir="rtl"
+              className="h-full shrink-0 grow-0 overflow-y-auto px-4 py-5"
+              style={{
+                width: viewportWidth > 0 ? viewportWidth : `${100 / Math.max(screenCount, 1)}%`
+              }}
               aria-hidden={i !== safeIndex}
             >
               {renderPanel(screen.screenKey)}
