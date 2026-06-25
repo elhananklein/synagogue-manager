@@ -1,9 +1,9 @@
-import { DisplayRotator } from "@/components/display/display-rotator";
+import { MobileDisplayRotator } from "@/components/display/mobile-display-rotator";
 import { buildDisplayView, type DisplayViewParams } from "@/lib/build-display-view";
 
 export const dynamic = "force-dynamic";
 
-export default async function DisplayPage({
+export default async function MobileDisplayPage({
   searchParams
 }: {
   searchParams: Promise<DisplayViewParams>;
@@ -12,13 +12,10 @@ export default async function DisplayPage({
   const view = await buildDisplayView(params);
 
   return (
-    <DisplayRotator
-      style={view.style}
-      synagogueId={view.synagogueId}
+    <MobileDisplayRotator
       synagogueName={view.synagogueName}
       minyanName={view.minyanName}
       footerText={view.footerText}
-      scheduleTimesListMode={view.scheduleTimesListMode}
       screens={view.screens}
       dailyLearning={view.dailyLearning}
       snapshot={view.snapshot}

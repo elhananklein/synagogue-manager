@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Synagogue app icon">
+  <rect width="512" height="512" rx="96" fill="#059669"/>
+  <path fill="#ecfdf5" d="M256 88 128 200v224h96V280h64v144h96V200Z"/>
+  <path fill="#a7f3d0" d="M256 120 160 208v184h64V264h128v128h64V208Z"/>
+  <circle cx="256" cy="168" r="20" fill="#fef3c7"/>
+</svg>
