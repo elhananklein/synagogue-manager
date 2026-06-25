@@ -51,7 +51,7 @@ export type DisplayConfig = {
   displayStyle: DisplayStyle;
   /** לוח זמנים במסך הראשי: כל הזמנים או רק תפילות */
   scheduleTimesListMode: ScheduleTimesListMode;
-  /** טקסט חופשי לכותרת תחתונה (כרגע מוצג רק ב־royalBlue) */
+  /** הודעת גבאי בת שורה אחת המוצגת בתחתית כל המסכים, בכל הסגנונות */
   footerText: string | null;
   screens: ScreenSetting[];
   prayerSettings: PrayerSetting[];

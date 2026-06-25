@@ -37,7 +37,7 @@ type MinyanModel = {
   displayStyle: DisplayStyle;
   /** לוח זמנים במסך הראשי */
   scheduleTimesListMode: ScheduleTimesListMode;
-  /** טקסט חופשי לכותרת תחתונה בתצוגה (מוצג כרגע בסגנון "כחול מלכותי") */
+  /** הודעת גבאי בת שורה אחת המוצגת בתחתית כל המסכים, בכל הסגנונות */
   footerText: string;
   prayerSettings: PrayerSetting[];
   screens: ScreenSetting[];
@@ -355,16 +355,16 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                   <p className="mt-1 text-xs text-muted-foreground">משפיע על כרטיס &quot;זמני היום ותפילות&quot; במסך הראשי בלבד.</p>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">כותרת תחתונה (footer)</label>
+                  <label className="mb-1 block text-sm font-medium">הודעה בתחתית המסך</label>
                   <input
                     className="h-10 w-full rounded-md border border-border bg-background px-3"
                     value={minyan.footerText}
-                    placeholder="למשל: שוחרי תפילה"
+                    placeholder={"למשל: לע\"נ פלוני אלמוני, תרומת המשפחה"}
                     onChange={(e) =>
                       setMinyanim((prev) => prev.map((m, i) => (i === minyanIndex ? { ...m, footerText: e.target.value } : m)))
                     }
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">טקסט חופשי שמוצג בתחתית המסך (כרגע בסגנון &quot;כחול מלכותי&quot;).</p>
+                  <p className="mt-1 text-xs text-muted-foreground">הודעה חופשית בת שורה אחת שמוצגת בתחתית כל המסכים, בכל הסגנונות (למשל הקדשה לע&quot;נ או פנייה להערות). השאר ריק כדי לא להציג.</p>
                 </div>
               </div>
 

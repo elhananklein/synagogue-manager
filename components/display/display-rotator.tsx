@@ -768,9 +768,9 @@ export function DisplayRotator({
           </section>
         ) : null}
 
-        {style === "royalBlue" && footerText ? (
-          <footer className="display-royal-footer">
-            <span className="display-royal-footer-text">{footerText}</span>
+        {footerText ? (
+          <footer className="display-footer">
+            <span className="display-footer-text">{footerText}</span>
           </footer>
         ) : null}
       </div>

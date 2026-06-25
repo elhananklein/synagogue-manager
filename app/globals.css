@@ -42,6 +42,27 @@ body {
     padding: 1rem;
   }
 
+  /* הודעת גבאי בשורה אחת בתחתית כל המסכים (כל הסגנונות). הצבע יורש מצבע הסגנון. */
+  .display-footer {
+    flex-shrink: 0;
+    margin-top: clamp(0.5rem, 1.4vh, 1rem);
+    padding-top: clamp(0.4rem, 1vh, 0.85rem);
+    border-top: 1px solid rgb(148 163 184 / 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .display-footer-text {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    font-weight: 600;
+    opacity: 0.85;
+    font-size: clamp(0.8rem, 1.6vh, 1.15rem);
+  }
+
   .display-header {
     margin-bottom: clamp(0.5rem, 1.4vh, 1.5rem);
     display: grid;
@@ -1902,23 +1923,20 @@ body {
     font-weight: 700;
   }
 
-  /* Footer ribbon (royalBlue only) */
-  .display-royal-footer {
-    flex-shrink: 0;
-    margin-top: clamp(0.5rem, 1.4vh, 1rem);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  /* royalBlue — שומר על עיצוב סרט הזהב הדקורטיבי לטקסט התחתון */
+  .display--royalBlue .display-footer {
+    border-top: none;
   }
-  .display-royal-footer-text {
+  .display--royalBlue .display-footer-text {
     font-family: var(--royal-font);
     font-weight: 700;
-    font-size: clamp(1.1rem, 2.4vh, 1.75rem);
+    font-size: clamp(0.85rem, 1.7vh, 1.25rem);
     color: #fff7e6;
     background: var(--royal-ribbon);
     border: 1px solid rgb(202 162 74 / 0.9);
     border-radius: 999px;
     padding: 0.3em 2em;
+    opacity: 1;
     box-shadow:
       0 4px 14px rgb(5 12 32 / 0.45),
       inset 0 1px 0 rgb(255 255 255 / 0.25);
