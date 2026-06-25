@@ -762,6 +762,89 @@ body {
     line-height: 1.2;
   }
 
+  /* מסך לוח מודעות — הודעה אחת במרכז + נקודות סימון פנימיות */
+  .display-bulletin-screen {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1rem, 2.5vh, 2rem);
+    padding: clamp(0.75rem, 2vh, 1.5rem);
+    overflow: hidden;
+  }
+  .display-bulletin-body {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    max-width: min(92vw, 68rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: clamp(0.75rem, 2vh, 1.5rem);
+  }
+  .display-bulletin-title {
+    font-size: clamp(2rem, 4.5vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.15;
+  }
+  .display-bulletin-text {
+    font-size: clamp(1.65rem, 3.4vw, 2.75rem);
+    line-height: 1.35;
+    white-space: pre-line;
+    max-width: 48rem;
+  }
+  .display-bulletin-caption {
+    font-size: clamp(1.2rem, 2.2vw, 1.75rem);
+    opacity: 0.85;
+  }
+  .display-bulletin-empty {
+    font-size: clamp(1.4rem, 2.8vw, 2rem);
+    opacity: 0.7;
+  }
+  .display-bulletin-image-wrap {
+    position: relative;
+    width: min(92vw, 64rem);
+    max-height: min(58vh, 42rem);
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .display-bulletin-image {
+    max-width: 100%;
+    max-height: min(58vh, 42rem);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 0.5rem;
+  }
+  .display-bulletin-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    flex-shrink: 0;
+    padding-bottom: 0.25rem;
+  }
+  .display-bulletin-dot {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 9999px;
+    border: 2px solid currentColor;
+    box-sizing: border-box;
+    opacity: 0.45;
+    flex-shrink: 0;
+  }
+  .display-bulletin-dot--active {
+    opacity: 1;
+    background-color: currentColor;
+  }
+
   /* מסך שבת — פרשה, כניסת/יציאת שבת וזמני תפילות שבת, ממורכז ומוגדל */
   .display-shabbat-screen {
     flex: 1;

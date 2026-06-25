@@ -35,6 +35,7 @@ export default async function MobileDisplayPage({
       prayerSchedule={view.prayerSchedule}
       timeSections={view.timeSections}
       shabbat={view.shabbat}
+      bulletinItems={view.bulletinItems}
     />
     </>
   );

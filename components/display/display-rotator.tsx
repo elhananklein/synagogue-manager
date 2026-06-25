@@ -4,11 +4,13 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LiveClock } from "@/components/display/live-clock";
+import { DisplayBulletinScreen } from "@/components/display/display-bulletin-screen";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { DailyLearningLine } from "@/lib/hebcal";
+import type { BulletinItem } from "@/lib/bulletin-board";
 
-type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat";
+type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat" | "bulletin";
 type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
 
 type RotatorScreen = {
@@ -123,7 +125,8 @@ export function DisplayRotator({
   timeSections,
   footerText,
   scheduleTimesListMode = "all",
-  shabbat = null
+  shabbat = null,
+  bulletinItems = []
 }: {
   style: DisplayStyle;
   synagogueId: string | null;
@@ -145,6 +148,7 @@ export function DisplayRotator({
     havdalah: string | null;
     prayers: Array<{ label: string; time: string }>;
   } | null;
+  bulletinItems?: BulletinItem[];
 }) {
   const router = useRouter();
   const enabledScreens = useMemo(() => screens.filter((s) => s.enabled), [screens]);
@@ -155,10 +159,14 @@ export function DisplayRotator({
   useEffect(() => {
     if (!enabledScreens.length) return;
     const current = enabledScreens[index % enabledScreens.length];
-    const durationMs = Math.max(5, current.durationSeconds) * 1000;
+    const baseSeconds = Math.max(5, current.durationSeconds);
+    const isBulletin = current.screenKey === "bulletin";
+    const bulletinCount = bulletinItems.length;
+    const durationMs =
+      isBulletin && bulletinCount > 0 ? baseSeconds * 1000 * bulletinCount : baseSeconds * 1000;
     const timer = setTimeout(() => setIndex((prev) => (prev + 1) % enabledScreens.length), durationMs);
     return () => clearTimeout(timer);
-  }, [enabledScreens, index]);
+  }, [enabledScreens, index, bulletinItems.length]);
 
   useEffect(() => {
     // Keep unattended displays up-to-date without full page reload.
@@ -759,6 +767,13 @@ export function DisplayRotator({
               />
             </div>
           </section>
+        ) : null}
+
+        {currentScreen === "bulletin" ? (
+          <DisplayBulletinScreen
+            items={bulletinItems}
+            secondsPerItem={enabledScreens[index % enabledScreens.length]?.durationSeconds ?? 20}
+          />
         ) : null}
 
         {currentScreen === "shabbat" ? (

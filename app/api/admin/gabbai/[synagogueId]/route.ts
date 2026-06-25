@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getAllBulletinItemsForAdmin, saveBulletinItems, type BulletinItemInput } from "@/lib/bulletin-board";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 
 type PrayerSettingInput = {
@@ -15,7 +16,7 @@ type PrayerSettingInput = {
 };
 
 type ScreenInput = {
-  screenKey: "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat";
+  screenKey: "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat" | "bulletin";
   sortOrder: number;
   durationSeconds: number;
   enabled: boolean;
@@ -123,13 +124,15 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     sourceKey: (halachaSettingsRes.data?.source_key as "manual" | "kitzur_shulchan_arukh") ?? "manual",
     displayMode: (halachaSettingsRes.data?.display_mode as "summary" | "full") ?? "summary"
   };
+  const bulletinItems = await getAllBulletinItemsForAdmin(synagogueId);
 
   return NextResponse.json({
     ok: true,
     data: {
       synagogue: synagogueRes.data,
       minyanim: mappedMinyanim,
-      halachaSettings
+      halachaSettings,
+      bulletinItems
     }
   });
 }
@@ -145,6 +148,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     synagogueName: string;
     minyanim: MinyanInput[];
     halachaSettings?: HalachaSettingsInput;
+    bulletinItems?: BulletinItemInput[];
   };
 
   const synagogueName = payload.synagogueName?.trim();
@@ -268,6 +272,13 @@ export async function POST(request: Request, context: { params: Promise<{ synago
   );
   if (halachaSettingsError) {
     return NextResponse.json({ ok: false, error: halachaSettingsError.message }, { status: 500 });
+  }
+
+  if (payload.bulletinItems) {
+    const bulletinResult = await saveBulletinItems(synagogueId, payload.bulletinItems);
+    if (!bulletinResult.ok) {
+      return NextResponse.json({ ok: false, error: bulletinResult.error }, { status: 500 });
+    }
   }
 
   const cookieStore = await cookies();

@@ -26,6 +26,7 @@ export default async function DisplayPage({
       prayerSchedule={view.prayerSchedule}
       timeSections={view.timeSections}
       shabbat={view.shabbat}
+      bulletinItems={view.bulletinItems}
     />
   );
 }

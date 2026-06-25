@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { BulletinBoardEditor, mapBulletinForSave, mapBulletinFromApi, type BulletinItemModel } from "@/components/admin/bulletin-board-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
 type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
 type ScheduleTimesListMode = "all" | "prayers_only";
-type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat";
+type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat" | "bulletin";
 type PrayerMode = "fixed" | "relative" | "parasha";
 type PrayerCategory = "weekday" | "shabbat";
 
@@ -64,7 +65,8 @@ const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "halacha", label: "הלכה יומית" },
   { key: "dailyLearning", label: "לימוד יומי" },
   { key: "prayerTimes", label: "זמני תפילות" },
-  { key: "shabbat", label: "שבת" }
+  { key: "shabbat", label: "שבת" },
+  { key: "bulletin", label: "לוח מודעות" }
 ];
 
 function nextAvailableScreenKey(screens: ScreenSetting[]): ScreenKey | null {
@@ -131,6 +133,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
     Record<number, { weekday: boolean; shabbat: boolean; screens: boolean }>
   >({});
   const [parashaCatalogKeys, setParashaCatalogKeys] = useState<string[]>([]);
+  const [bulletinItems, setBulletinItems] = useState<BulletinItemModel[]>([]);
 
   useEffect(() => {
     void fetch("/api/hebcal/parasha-catalog", { cache: "no-store" })
@@ -149,7 +152,20 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
     const response = await fetch(`/api/admin/gabbai/${id}`, { cache: "no-store" });
     const payload = (await response.json()) as {
       ok: boolean;
-      data?: { synagogue: { id: string; name: string }; minyanim: MinyanModel[]; halachaSettings: HalachaSettingsModel };
+      data?: {
+        synagogue: { id: string; name: string };
+        minyanim: MinyanModel[];
+        halachaSettings: HalachaSettingsModel;
+        bulletinItems?: Array<{
+          id: string;
+          kind: "text" | "image";
+          title: string | null;
+          bodyText: string | null;
+          imageUrl: string | null;
+          sortOrder: number;
+          published: boolean;
+        }>;
+      };
       error?: string;
     };
     if (!payload.ok || !payload.data) {
@@ -170,6 +186,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
     }));
     setMinyanim(normalized);
     setHalachaSettings(payload.data.halachaSettings);
+    setBulletinItems(mapBulletinFromApi(payload.data.bulletinItems ?? []));
   }
 
   useEffect(() => {
@@ -219,7 +236,12 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
       const response = await fetch(`/api/admin/gabbai/${synagogueId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ synagogueName, minyanim, halachaSettings })
+        body: JSON.stringify({
+          synagogueName,
+          minyanim,
+          halachaSettings,
+          bulletinItems: mapBulletinForSave(bulletinItems)
+        })
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!payload.ok) {
@@ -299,6 +321,8 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
           </div>
         </CardContent>
       </Card>
+
+      <BulletinBoardEditor synagogueId={synagogueId} items={bulletinItems} onChange={setBulletinItems} />
 
       <section className="mt-6 space-y-4">
         {minyanim.map((minyan, minyanIndex) => (

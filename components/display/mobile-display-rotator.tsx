@@ -3,17 +3,19 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText } from "lucide-react";
+import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText, Megaphone } from "lucide-react";
+import { DisplayBulletinScreen } from "@/components/display/display-bulletin-screen";
 import { LiveClock } from "@/components/display/live-clock";
 import { cn } from "@/lib/utils";
 import type { DailyLearningLine } from "@/lib/hebcal";
+import type { BulletinItem } from "@/lib/bulletin-board";
 import type {
   DisplayPrayerSlot,
   DisplayShabbat,
   DisplayTimeSection
 } from "@/lib/build-display-view";
 
-type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat";
+type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat" | "bulletin";
 
 type RotatorScreen = {
   screenKey: ScreenKey;
@@ -53,6 +55,7 @@ type MobileDisplayRotatorProps = {
   prayerSchedule: DisplayPrayerSlot[];
   timeSections: DisplayTimeSection[];
   shabbat?: DisplayShabbat | null;
+  bulletinItems?: BulletinItem[];
 };
 
 const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> = {
@@ -62,7 +65,8 @@ const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> =
   halacha: { title: "הלכה יומית", Icon: ScrollText },
   dailyLearning: { title: "לימוד יומי", Icon: BookOpen },
   prayerTimes: { title: "זמני תפילות", Icon: CalendarDays },
-  shabbat: { title: "שבת", Icon: Sun }
+  shabbat: { title: "שבת", Icon: Sun },
+  bulletin: { title: "לוח מודעות", Icon: Megaphone }
 };
 
 const PRAYER_GROUP_ORDER = ["שחרית", "מנחה", "ערבית", "אחר"] as const;
@@ -106,7 +110,8 @@ export function MobileDisplayRotator({
   halacha,
   prayerSchedule,
   timeSections,
-  shabbat = null
+  shabbat = null,
+  bulletinItems = []
 }: MobileDisplayRotatorProps) {
   const router = useRouter();
   const enabledScreens = useMemo(() => screens.filter((s) => s.enabled), [screens]);
@@ -164,10 +169,14 @@ export function MobileDisplayRotator({
 
   useEffect(() => {
     if (!screenCount || paused || isDragging) return;
-    const durationMs = Math.max(5, current?.durationSeconds ?? 20) * 1000;
+    const isBulletin = current?.screenKey === "bulletin";
+    const bulletinCount = bulletinItems.length;
+    const baseSeconds = Math.max(5, current?.durationSeconds ?? 20);
+    const durationMs =
+      isBulletin && bulletinCount > 0 ? baseSeconds * 1000 * bulletinCount : baseSeconds * 1000;
     const timer = setTimeout(() => setIndex((prev) => (prev + 1) % screenCount), durationMs);
     return () => clearTimeout(timer);
-  }, [screenCount, current, safeIndex, paused, isDragging]);
+  }, [screenCount, current, safeIndex, paused, isDragging, bulletinItems.length]);
 
   useEffect(() => {
     const refreshIntervalMs = 5 * 60 * 1000;
@@ -269,7 +278,7 @@ export function MobileDisplayRotator({
       ? `translate3d(${baseOffset + dragOffset}px, 0, 0)`
       : `translate3d(calc(-${safeIndex * slideFraction}% + ${dragOffset}px), 0, 0)`;
 
-  const renderPanel = (screenKey: ScreenKey) => (
+  const renderPanel = (screenKey: ScreenKey, secondsPerItem: number) => (
     <>
       <ScreenHeading screenKey={screenKey} />
       <div className="mt-4">
@@ -282,6 +291,9 @@ export function MobileDisplayRotator({
           <PrayerTimesScreen prayerSchedule={prayerSchedule} nowMinutes={nowMinutes} />
         )}
         {screenKey === "shabbat" && <ShabbatScreen shabbat={shabbat} />}
+        {screenKey === "bulletin" && (
+          <DisplayBulletinScreen items={bulletinItems} secondsPerItem={secondsPerItem} />
+        )}
       </div>
     </>
   );
@@ -344,7 +356,7 @@ export function MobileDisplayRotator({
               }}
               aria-hidden={i !== safeIndex}
             >
-              {renderPanel(screen.screenKey)}
+              {renderPanel(screen.screenKey, screen.durationSeconds)}
             </div>
           ))}
         </div>

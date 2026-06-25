@@ -1,3 +1,4 @@
+import { getPublishedBulletinItems, type BulletinItem } from "@/lib/bulletin-board";
 import { addDaysIsoDate, getDisplaySnapshot, getTomorrowIsoDateFrom, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
 import { getDisplayConfig, type DisplayStyle, type ScheduleTimesListMode, type ScreenSetting } from "@/lib/display-config";
 import { getPublicHomeData } from "@/lib/data/public-content";
@@ -47,6 +48,7 @@ export type DisplayView = {
   prayerSchedule: DisplayPrayerSlot[];
   timeSections: DisplayTimeSection[];
   shabbat: DisplayShabbat | null;
+  bulletinItems: BulletinItem[];
 };
 
 function singleQueryParam(value: string | string[] | undefined | null): string | null {
@@ -80,10 +82,11 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   }).format(new Date());
   const tomorrowIsoDate = getTomorrowIsoDateFrom(todayIsoDate);
 
-  const [snapshot, tomorrowSnapshot, publicData] = await Promise.all([
+  const [snapshot, tomorrowSnapshot, publicData, bulletinItems] = await Promise.all([
     getDisplaySnapshot(todayIsoDate),
     getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true }),
-    getPublicHomeData(synagogueId, { todayIso: todayIsoDate })
+    getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
+    getPublishedBulletinItems(synagogueId)
   ]);
   const displayConfig = await getDisplayConfig(synagogueId, minyanSelector);
 
@@ -186,6 +189,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       : null,
     prayerSchedule,
     timeSections,
-    shabbat
+    shabbat,
+    bulletinItems
   };
 }

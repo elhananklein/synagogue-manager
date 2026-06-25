@@ -20,7 +20,7 @@ function isOrdinalToken(s: string) {
 }
 
 export type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
-export type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat";
+export type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat" | "bulletin";
 export type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
 
 export type PrayerSetting = {
