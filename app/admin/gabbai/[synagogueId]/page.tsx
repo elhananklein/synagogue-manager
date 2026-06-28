@@ -13,6 +13,12 @@ type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "
 type PrayerMode = "fixed" | "relative" | "parasha";
 type PrayerCategory = "weekday" | "shabbat";
 
+function mapGabbaiSaveError(error?: string) {
+  if (error === "bulletin_invalid_dates") return "יש למלא תאריכי הצגה תקינים לכל הודעה";
+  if (error === "bulletin_until_before_from") return "תאריך «עד» חייב להיות ביום ההתחלה או אחריו";
+  return error ?? "שמירה נכשלה";
+}
+
 type PrayerSetting = {
   category: PrayerCategory;
   prayerType: PrayerType;
@@ -164,6 +170,8 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
           imageUrl: string | null;
           sortOrder: number;
           published: boolean;
+          displayFrom: string;
+          displayUntil: string;
         }>;
       };
       error?: string;
@@ -245,7 +253,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
       if (!payload.ok) {
-        setError(payload.error ?? "שמירה נכשלה");
+        setError(mapGabbaiSaveError(payload.error));
         return;
       }
       setMessage("הגדרות נשמרו בהצלחה");

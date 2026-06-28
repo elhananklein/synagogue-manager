@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { BulletinItemInput } from "@/lib/bulletin-board";
+import type { BulletinItemInput } from "@/lib/bulletin-board-types";
+import { addDaysIsoDate, todayJerusalemIso } from "@/lib/bulletin-board-dates";
 
 export type BulletinItemModel = BulletinItemInput & { localKey: string };
 
@@ -12,6 +13,7 @@ function newLocalKey() {
 }
 
 function createEmptyItem(kind: "text" | "image" = "text"): BulletinItemModel {
+  const today = todayJerusalemIso();
   return {
     localKey: newLocalKey(),
     kind,
@@ -19,8 +21,17 @@ function createEmptyItem(kind: "text" | "image" = "text"): BulletinItemModel {
     bodyText: "",
     imageUrl: "",
     sortOrder: 0,
-    published: true
+    published: true,
+    displayFrom: today,
+    displayUntil: addDaysIsoDate(today, 7)
   };
+}
+
+function bulletinScheduleLabel(displayFrom: string, displayUntil: string) {
+  const today = todayJerusalemIso();
+  if (displayUntil < today) return "פג תוקף";
+  if (displayFrom > today) return "מתוזמן לעתיד";
+  return "פעיל כעת";
 }
 
 export function BulletinBoardEditor({
@@ -79,14 +90,20 @@ export function BulletinBoardEditor({
       <CardHeader>
         <CardTitle>לוח מודעות</CardTitle>
         <p className="text-sm text-muted-foreground">
-          הודעות טקסט או תמונה. יש להוסיף מסך «לוח מודעות» בהגדרות המניין. משך ההצגה במסך = זמן לכל הודעה.
+          הודעות טקסט או תמונה. קבעו תאריך התחלה וסיום — לאחר תאריך הסיום ההודעה והתמונה נמחקות אוטומטית מהמערכת.
+          יש להוסיף מסך «לוח מודעות» בהגדרות המניין.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         {items.map((item, index) => (
           <div key={item.localKey} className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-semibold">הודעה {index + 1}</span>
+              <span className="text-sm font-semibold">
+                הודעה {index + 1}
+                <span className="me-2 text-xs font-normal text-muted-foreground">
+                  ({bulletinScheduleLabel(item.displayFrom, item.displayUntil)})
+                </span>
+              </span>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" size="sm" disabled={index === 0} onClick={() => moveItem(item.localKey, -1)}>
                   ↑
@@ -124,6 +141,30 @@ export function BulletinBoardEditor({
                   className="h-10 w-full rounded-md border border-border bg-background px-3"
                   value={item.title ?? ""}
                   onChange={(e) => updateItem(item.localKey, { title: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium">הצגה מ-</label>
+                <input
+                  type="date"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3"
+                  value={item.displayFrom}
+                  onChange={(e) => updateItem(item.localKey, { displayFrom: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">הצגה עד (כולל — למחרת נמחק)</label>
+                <input
+                  type="date"
+                  className="h-10 w-full rounded-md border border-border bg-background px-3"
+                  value={item.displayUntil}
+                  min={item.displayFrom}
+                  onChange={(e) => updateItem(item.localKey, { displayUntil: e.target.value })}
+                  required
                 />
               </div>
             </div>
@@ -232,8 +273,11 @@ export function mapBulletinFromApi(
     imageUrl: string | null;
     sortOrder: number;
     published: boolean;
+    displayFrom: string;
+    displayUntil: string;
   }>
 ): BulletinItemModel[] {
+  const today = todayJerusalemIso();
   return rows.map((row) => ({
     localKey: row.id,
     id: row.id,
@@ -242,7 +286,9 @@ export function mapBulletinFromApi(
     bodyText: row.bodyText ?? "",
     imageUrl: row.imageUrl ?? "",
     sortOrder: row.sortOrder,
-    published: row.published
+    published: row.published,
+    displayFrom: row.displayFrom?.slice(0, 10) || today,
+    displayUntil: row.displayUntil?.slice(0, 10) || today
   }));
 }
 
@@ -254,6 +300,8 @@ export function mapBulletinForSave(items: BulletinItemModel[]): BulletinItemInpu
     bodyText: item.bodyText?.trim() || null,
     imageUrl: item.imageUrl?.trim() || null,
     sortOrder: index + 1,
-    published: item.published !== false
+    published: item.published !== false,
+    displayFrom: item.displayFrom,
+    displayUntil: item.displayUntil
   }));
 }
