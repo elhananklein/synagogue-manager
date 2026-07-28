@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getAllBulletinItemsForAdmin, saveBulletinItems, type BulletinItemInput } from "@/lib/bulletin-board";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
+import { sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
 
 type PrayerSettingInput = {
   category: "weekday" | "shabbat";
@@ -28,6 +29,8 @@ type MinyanInput = {
   displayStyle: "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
   /** לוח במסך הראשי: כל הזמנים או רק תפילות */
   scheduleTimesListMode: "all" | "prayers_only";
+  /** אילו זמנים הלכתיים להציג בלוח המסך הראשי (מפתחות Hebcal) */
+  scheduleZmanimKeys?: string[] | null;
   /** טקסט חופשי לכותרת תחתונה בתצוגה */
   footerText?: string | null;
   prayerSettings: PrayerSettingInput[];
@@ -56,7 +59,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
 
   const minyanRes = await supabase
     .from("minyanim")
-    .select("id, name, display_style, is_active, schedule_times_list, display_footer_text")
+    .select("id, name, display_style, is_active, schedule_times_list, schedule_zmanim_keys, display_footer_text")
     .eq("synagogue_id", synagogueId)
     .order("created_at", { ascending: true });
   const minyanIds = (minyanRes.data ?? []).map((m) => m.id);
@@ -94,6 +97,9 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     isActive: minyan.is_active,
     scheduleTimesListMode:
       (minyan as { schedule_times_list?: string }).schedule_times_list === "prayers_only" ? "prayers_only" : "all",
+    scheduleZmanimKeys: sanitizeScheduleZmanimKeys(
+      (minyan as { schedule_zmanim_keys?: string[] | null }).schedule_zmanim_keys
+    ),
     footerText: (minyan as { display_footer_text?: string | null }).display_footer_text ?? null,
     prayerSettings: (prayerRes.data ?? [])
       .filter((p) => p.minyan_id === minyan.id)
@@ -201,6 +207,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           name: minyan.name.trim(),
           display_style: minyan.displayStyle,
           schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
+          schedule_zmanim_keys: sanitizeScheduleZmanimKeys(minyan.scheduleZmanimKeys),
           display_footer_text: minyan.footerText?.trim() ? minyan.footerText.trim() : null,
           is_active: true
         })
@@ -215,6 +222,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           name: minyan.name.trim(),
           display_style: minyan.displayStyle,
           schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
+          schedule_zmanim_keys: sanitizeScheduleZmanimKeys(minyan.scheduleZmanimKeys),
           display_footer_text: minyan.footerText?.trim() ? minyan.footerText.trim() : null,
           is_active: true
         })

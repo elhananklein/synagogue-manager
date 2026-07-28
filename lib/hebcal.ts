@@ -1,4 +1,5 @@
 import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
+import { DEFAULT_SCHEDULE_ZMANIM_KEYS, resolveScheduleZmanimKeys, zmanLabelForKey } from "@/lib/zmanim-catalog";
 
 type HebcalConverterResponse = {
   gy: number;
@@ -102,7 +103,7 @@ const DAF_YOMI_MASECHTOT_HEBREW: Record<string, string> = {
   Niddah: "נידה"
 };
 
-function formatHmTime(iso: string) {
+export function formatHmTime(iso: string) {
   const date = new Date(iso);
   return new Intl.DateTimeFormat("he-IL", {
     hour: "2-digit",
@@ -110,6 +111,23 @@ function formatHmTime(iso: string) {
     hour12: false,
     timeZone: "Asia/Jerusalem"
   }).format(date);
+}
+
+/**
+ * בונה שורות זמנים לתצוגה מתוך זמני המקור של Hebcal, לפי מפתחות נבחרים.
+ * הסדר נקבע ע"י קטלוג הזמנים; מפתחות ללא ערך מסוננים החוצה.
+ */
+export function buildZmanimRows(
+  sourceTimes: Record<string, string>,
+  keys: string[] | null | undefined
+): Array<{ label: string; time: string }> {
+  return resolveScheduleZmanimKeys(keys)
+    .map((key) => {
+      const value = sourceTimes[key];
+      if (!value) return null;
+      return { label: zmanLabelForKey(key), time: formatHmTime(value) };
+    })
+    .filter((row): row is { label: string; time: string } => Boolean(row));
 }
 
 function isWinterSeason(hm: string, hd: number) {
@@ -467,23 +485,7 @@ export async function getDisplaySnapshot(
   const candleLighting = candleItem?.title?.split(": ").slice(1).join(": ") ?? null;
   const havdalah = havdalahItem?.title?.split(": ").slice(1).join(": ") ?? null;
 
-  const selectedZmanimKeys = [
-    { key: "alotHaShachar", label: "עלות השחר" },
-    { key: "sunrise", label: "הנץ החמה" },
-    { key: "sofZmanShma", label: "סוף זמן קריאת שמע" },
-    { key: "chatzot", label: "חצות היום" },
-    { key: "minchaGedola", label: "מנחה גדולה" },
-    { key: "sunset", label: "שקיעה" },
-    { key: "tzeit85deg", label: "צאת הכוכבים" }
-  ];
-
-  const zmanimRows = selectedZmanimKeys
-    .map(({ key, label }) => {
-      const value = zmanim.times?.[key];
-      if (!value) return null;
-      return { label, time: formatHmTime(value) };
-    })
-    .filter((row): row is { label: string; time: string } => Boolean(row));
+  const zmanimRows = buildZmanimRows(zmanim.times ?? {}, DEFAULT_SCHEDULE_ZMANIM_KEYS);
 
   const winter = isWinterSeason(converter.hm, converter.hd);
   const omerText = extractOmerText(events);

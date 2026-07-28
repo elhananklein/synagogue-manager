@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { BulletinBoardEditor, mapBulletinForSave, mapBulletinFromApi, type BulletinItemModel } from "@/components/admin/bulletin-board-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DEFAULT_SCHEDULE_ZMANIM_KEYS, ZMANIM_CATALOG } from "@/lib/zmanim-catalog";
 
 type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
 type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
@@ -38,6 +39,8 @@ type MinyanModel = {
   displayStyle: DisplayStyle;
   /** לוח זמנים במסך הראשי */
   scheduleTimesListMode: ScheduleTimesListMode;
+  /** אילו זמנים הלכתיים להציג בלוח המסך הראשי (מפתחות Hebcal) */
+  scheduleZmanimKeys: string[];
   /** הודעת גבאי בת שורה אחת המוצגת בתחתית כל המסכים, בכל הסגנונות */
   footerText: string;
   prayerSettings: PrayerSetting[];
@@ -104,6 +107,7 @@ function createDefaultMinyan(): MinyanModel {
     name: "",
     displayStyle: "classic",
     scheduleTimesListMode: "all",
+    scheduleZmanimKeys: [...DEFAULT_SCHEDULE_ZMANIM_KEYS],
     footerText: "",
     prayerSettings: [createPrayer("weekday"), createPrayer("shabbat")],
     screens: [
@@ -177,6 +181,9 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
       ...m,
       footerText: typeof m.footerText === "string" ? m.footerText : "",
       scheduleTimesListMode: (m.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all") as ScheduleTimesListMode,
+      scheduleZmanimKeys: Array.isArray(m.scheduleZmanimKeys)
+        ? m.scheduleZmanimKeys
+        : [...DEFAULT_SCHEDULE_ZMANIM_KEYS],
       prayerSettings: m.prayerSettings.map((p) => ({
         ...p,
         mode: (p.mode === "parasha" ? "parasha" : p.mode === "relative" ? "relative" : "fixed") as PrayerMode,
@@ -391,6 +398,78 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                   <p className="mt-1 text-xs text-muted-foreground">הודעה חופשית בת שורה אחת שמוצגת בתחתית כל המסכים, בכל הסגנונות (למשל הקדשה לע&quot;נ או פנייה להערות). השאר ריק כדי לא להציג.</p>
                 </div>
               </div>
+
+              {minyan.scheduleTimesListMode !== "prayers_only" ? (
+                <div className="rounded-md border border-border bg-muted/30 p-3">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-semibold">זמני היום להצגה במסך הראשי</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        בחר אילו זמנים הלכתיים יוצגו בלוח &quot;זמני היום ותפילות&quot;, מעבר לזמני התפילות.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setMinyanim((prev) =>
+                            prev.map((m, i) =>
+                              i === minyanIndex ? { ...m, scheduleZmanimKeys: ZMANIM_CATALOG.map((z) => z.key) } : m
+                            )
+                          )
+                        }
+                      >
+                        בחר הכל
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setMinyanim((prev) =>
+                            prev.map((m, i) => (i === minyanIndex ? { ...m, scheduleZmanimKeys: [] } : m))
+                          )
+                        }
+                      >
+                        נקה הכל
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {ZMANIM_CATALOG.map((zman) => {
+                      const checked = minyan.scheduleZmanimKeys.includes(zman.key);
+                      return (
+                        <label key={zman.key} className="inline-flex items-center gap-2 rounded border border-border bg-background px-2 py-1.5 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) =>
+                              setMinyanim((prev) =>
+                                prev.map((m, i) =>
+                                  i === minyanIndex
+                                    ? {
+                                        ...m,
+                                        scheduleZmanimKeys: e.target.checked
+                                          ? [...m.scheduleZmanimKeys, zman.key]
+                                          : m.scheduleZmanimKeys.filter((k) => k !== zman.key)
+                                      }
+                                    : m
+                                )
+                              )
+                            }
+                          />
+                          {zman.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {minyan.scheduleZmanimKeys.length === 0 ? (
+                    <p className="mt-2 text-xs text-amber-600">לא נבחרו זמני יום — יוצגו זמני התפילות בלבד.</p>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div className="border-t border-border/60 pt-4">
                 <div className="mb-2 flex items-center justify-between">

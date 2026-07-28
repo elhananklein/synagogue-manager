@@ -1,5 +1,5 @@
 import { getPublishedBulletinItems, type BulletinItem } from "@/lib/bulletin-board";
-import { addDaysIsoDate, getDisplaySnapshot, getTomorrowIsoDateFrom, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
+import { addDaysIsoDate, buildZmanimRows, getDisplaySnapshot, getTomorrowIsoDateFrom, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
 import { getDisplayConfig, type DisplayStyle, type ScheduleTimesListMode, type ScreenSetting } from "@/lib/display-config";
 import { getPublicHomeData } from "@/lib/data/public-content";
 import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule } from "@/lib/build-prayer-schedule";
@@ -146,10 +146,18 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
 
   const includeZmanimInTimesList = displayConfig.scheduleTimesListMode !== "prayers_only";
   const todayZmanimItems = includeZmanimInTimesList
-    ? snapshot.zmanim.map((row) => ({ label: row.label, time: row.time, kind: "zman" as const }))
+    ? buildZmanimRows(snapshot.zmanimSourceTimes, displayConfig.scheduleZmanimKeys).map((row) => ({
+        label: row.label,
+        time: row.time,
+        kind: "zman" as const
+      }))
     : [];
   const tomorrowZmanimItems = includeZmanimInTimesList
-    ? tomorrowSnapshot.zmanim.map((row) => ({ label: row.label, time: row.time, kind: "zman" as const }))
+    ? buildZmanimRows(tomorrowSnapshot.zmanimSourceTimes, displayConfig.scheduleZmanimKeys).map((row) => ({
+        label: row.label,
+        time: row.time,
+        kind: "zman" as const
+      }))
     : [];
   const timeSections: DisplayTimeSection[] = [
     {
