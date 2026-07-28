@@ -170,7 +170,7 @@ export function DisplayRotator({
 
   useEffect(() => {
     // Keep unattended displays up-to-date without full page reload.
-    const refreshIntervalMs = 5 * 60 * 1000;
+    const refreshIntervalMs = 30 * 60 * 1000;
     const intervalId = setInterval(() => {
       router.refresh();
     }, refreshIntervalMs);
@@ -459,7 +459,22 @@ export function DisplayRotator({
                   <LiveClock showSeconds={style !== "classic"} />
                 </div>
               )}
-              <div className="display-ws-lozenge display-ws-lozenge--hebrew-date">{snapshot.hebrewDate}</div>
+              <div
+                className="display-ws-lozenge display-ws-lozenge--hebrew-date display-ws-lozenge--refresh"
+                role="button"
+                tabIndex={0}
+                onClick={() => router.refresh()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.refresh();
+                  }
+                }}
+                aria-label="רענון נתוני התצוגה"
+                title="רענון"
+              >
+                {snapshot.hebrewDate}
+              </div>
             </div>
           ) : (
             <>

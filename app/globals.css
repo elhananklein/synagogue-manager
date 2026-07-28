@@ -77,6 +77,16 @@ body {
     display: block;
   }
 
+  /* לשונית התאריך העברי לחיצה = רענון נתוני התצוגה (השעון נשאר קישור לניהול) */
+  .display-ws-lozenge--refresh {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .display-ws-lozenge--refresh:focus-visible {
+    outline: 3px solid currentColor;
+    outline-offset: 3px;
+  }
+
   .display-header-clock {
     display: flex;
     align-items: center;
@@ -613,7 +623,7 @@ body {
   .display-prayer-times-groups {
     display: flex;
     flex-direction: column;
-    gap: clamp(1rem, 2.2vh, 1.5rem);
+    gap: clamp(0.6rem, 2vh, 1.5rem);
     width: 100%;
     max-width: min(92vw, 96rem);
     margin-inline: auto;
@@ -651,8 +661,8 @@ body {
     flex: 1 1 11rem;
     min-width: min(13.5rem, 42vw);
     max-width: min(24rem, 46vw);
-    padding: clamp(1.35rem, 3.2vh, 2.25rem) clamp(1.5rem, 3.5vw, 2.4rem);
-    min-height: clamp(7.5rem, 16vh, 11rem);
+    padding: clamp(0.9rem, 2.6vh, 2.25rem) clamp(1.1rem, 3.5vw, 2.4rem);
+    min-height: clamp(4.5rem, 13vh, 11rem);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -668,7 +678,7 @@ body {
     text-align: center;
     font-size: unset;
     flex: 1;
-    min-height: clamp(4.5rem, 10vh, 7rem);
+    min-height: clamp(2.5rem, 8vh, 7rem);
   }
 
   .display-prayer-times-row-line .display-prayer-times-cell .display-time-value-wrap {
@@ -692,8 +702,8 @@ body {
   .display-prayer-times-row-line .display-time-row--next {
     margin-block: 0;
     transform: none;
-    padding-top: clamp(1.45rem, 3.4vh, 2.4rem);
-    padding-bottom: clamp(1.45rem, 3.4vh, 2.4rem);
+    padding-top: clamp(1rem, 2.8vh, 2.4rem);
+    padding-bottom: clamp(1rem, 2.8vh, 2.4rem);
   }
 
   /* מסך "מידע מרכזי" — כל תוכן צד ימין של המסך הראשי, ממורכז ומוגדל */
@@ -711,10 +721,12 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: clamp(1rem, 2.8vh, 2.25rem);
+    gap: clamp(0.5rem, 2.4vh, 2.25rem);
     width: 100%;
     max-width: min(92vw, 72rem);
+    min-height: 0;
     max-height: 100%;
+    overflow: hidden;
   }
   .display-info-stack .display-main-date-card,
   .display-info-stack .display-daf-card,
@@ -725,13 +737,13 @@ body {
     max-width: min(90vw, 64rem);
   }
   .display-info-stack .display-main-date-content {
-    min-height: clamp(8rem, 18vh, 14rem);
+    min-height: clamp(5rem, 16vh, 14rem);
   }
   .display-info-stack .display-addition-content {
-    min-height: clamp(5rem, 11vh, 9rem);
+    min-height: clamp(3.25rem, 10vh, 9rem);
   }
   .display-info-stack .display-daf-content {
-    min-height: clamp(4.5rem, 10vh, 8rem);
+    min-height: clamp(3rem, 9vh, 8rem);
   }
   /* טיפוגרפיה מוגדלת (specificity של 3 מחלקות כדי לגבור על כוונון ה-themes) */
   .display-info-screen .display-info-stack .display-parasha {
@@ -860,10 +872,12 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: clamp(0.75rem, 2.4vh, 1.75rem);
+    gap: clamp(0.5rem, 2vh, 1.75rem);
     width: 100%;
     max-width: min(92vw, 72rem);
+    min-height: 0;
     max-height: 100%;
+    overflow: hidden;
   }
   .display-shabbat-title {
     font-size: clamp(1.5rem, 3vw, 2.4rem);
@@ -894,7 +908,7 @@ body {
     flex-direction: column;
     align-items: center;
     gap: clamp(0.25rem, 1vh, 0.75rem);
-    padding: clamp(1rem, 3vh, 2rem);
+    padding: clamp(0.6rem, 2.4vh, 2rem);
   }
   .display-shabbat-zman-label {
     font-size: clamp(1.4rem, 2.8vw, 2.2rem);
@@ -913,8 +927,8 @@ body {
   .display-shabbat-prayers {
     display: flex;
     flex-direction: column;
-    gap: clamp(0.35rem, 1.1vh, 0.9rem);
-    padding: clamp(1rem, 2.6vh, 1.75rem) clamp(1.25rem, 3vw, 2.5rem);
+    gap: clamp(0.3rem, 1vh, 0.9rem);
+    padding: clamp(0.6rem, 2vh, 1.75rem) clamp(1.25rem, 3vw, 2.5rem);
   }
   .display-shabbat-prayer-row {
     display: flex;
@@ -1718,7 +1732,7 @@ body {
     justify-content: space-between;
     gap: clamp(0.35rem, 1.2vw, 0.85rem);
     width: 100%;
-    min-height: clamp(4.75rem, 13vh, 8.5rem);
+    min-height: clamp(3.5rem, 12vh, 8.5rem);
   }
 
   .display--classic .display-ws-lozenge {
@@ -1728,8 +1742,8 @@ body {
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: clamp(0.7rem, 1.8vh, 1.35rem) clamp(0.45rem, 1.5vw, 0.9rem);
-    min-height: clamp(3.5rem, 9vh, 6.25rem);
+    padding: clamp(0.55rem, 1.6vh, 1.35rem) clamp(0.45rem, 1.5vw, 0.9rem);
+    min-height: clamp(2.75rem, 8vh, 6.25rem);
     font-weight: 900;
     font-size: clamp(1.1rem, 2.6vw, 1.65rem);
     line-height: 1.28;
@@ -1751,9 +1765,10 @@ body {
 
   .display--classic .display-ws-clock-circle {
     flex: 0 0 auto;
-    width: clamp(7.5rem, 21vh, 13rem);
-    height: clamp(7.5rem, 21vh, 13rem);
+    width: clamp(8.5rem, 25vh, 14rem);
+    height: clamp(8.5rem, 25vh, 14rem);
     border-radius: 9999px;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1766,10 +1781,10 @@ body {
   }
 
   .display--classic .display-ws-clock-circle .display-clock-text {
-    font-size: clamp(2.2rem, 9vh, 4rem);
+    font-size: clamp(2.2rem, 7.5vh, 4rem);
     font-weight: 900;
     color: #ffffff;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
     line-height: 1;
     text-shadow:
       0 0 2px rgb(0 0 0 / 0.9),

@@ -82,7 +82,8 @@ const BAVLI_MASECHTA: Record<string, string> = {
   Niddah: "נידה"
 };
 
-function bavliPathToHebrew(path: string): string | null {
+function bavliPathToHebrew(path: string, opts?: { includeAmud?: boolean }): string | null {
+  const includeAmud = opts?.includeAmud ?? true;
   const cleaned = path.replaceAll("/", "").trim();
   const match = cleaned.match(/^([A-Za-z' ]+?)[\s._-]+(\d+)([ab])?$/i);
   if (!match) return null;
@@ -93,6 +94,8 @@ function bavliPathToHebrew(path: string): string | null {
   const masechetHe = BAVLI_MASECHTA[masechetKey] ?? BAVLI_MASECHTA[rawMasechet];
   if (!masechetHe || Number.isNaN(dafNumber)) return null;
   const dafHe = numberToHebrew(dafNumber);
+  // דף יומי הוא תמיד דף שלם (שני עמודים), לכן משמיטים את "עמוד א׳/ב׳".
+  if (!includeAmud) return `${masechetHe} ${dafHe}`;
   if (side === "a") return `${masechetHe} ${dafHe} עמוד א׳`;
   if (side === "b") return `${masechetHe} ${dafHe} עמוד ב׳`;
   return `${masechetHe} ${dafHe}`;
@@ -441,7 +444,7 @@ export function toHebrewDailyLearningDetail(id: string, block: string, englishFa
   const eng = englishFallback.trim();
 
   if (id === "dafyomi" && path) {
-    const h = bavliPathToHebrew(path);
+    const h = bavliPathToHebrew(path, { includeAmud: false });
     if (h) return h;
   }
   if ((id === "dirshuAmudYomi" || id === "dafWeekly") && path) {
