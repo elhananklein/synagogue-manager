@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LiveClock } from "@/components/display/live-clock";
@@ -110,6 +110,80 @@ function toHebrewNumber(num: number) {
   }
   if (n > 0) out += ones[n];
   return out;
+}
+
+/**
+ * מקטין אוטומטית את התוכן כדי שייכנס בגובה (ורוחב) הזמין — ללא חיתוך.
+ * קריטי לתצוגת קיר/טלוויזיה שבה אי-אפשר לגלול: כשיש הרבה זמני תפילה או תוספות,
+ * במקום לחתוך את השורות העליונות/התחתונות אנחנו מכווצים מעט את כל הבלוק כך שהכול נראה.
+ * לעולם לא מגדילים (scale<=1) — כך שבמצב רגיל אין שינוי כלל.
+ */
+function AutoFit({
+  className,
+  contentClassName,
+  deps = [],
+  children
+}: {
+  className?: string;
+  contentClassName?: string;
+  deps?: unknown[];
+  children: ReactNode;
+}) {
+  const outerRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = useState(1);
+
+  useLayoutEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+
+    // offsetWidth/Height מודדים את הגודל הטבעי (transform לא משפיע על ה-layout),
+    // לכן אפשר למדוד גם כשה-scale כבר מוחל — בלי לולאות.
+    const measure = () => {
+      const availH = outer.clientHeight;
+      const availW = outer.clientWidth;
+      const needH = inner.offsetHeight;
+      const needW = inner.offsetWidth;
+      if (!availH || !availW || !needH || !needW) return;
+      const next = Math.min(1, availH / needH, availW / needW);
+      const safe = Number.isFinite(next) && next > 0 ? next : 1;
+      setScale((prev) => (Math.abs(prev - safe) > 0.004 ? safe : prev));
+    };
+
+    measure();
+
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(outer);
+    ro.observe(inner);
+
+    let cancelled = false;
+    if (typeof document !== "undefined" && "fonts" in document) {
+      (document as Document & { fonts: FontFaceSet }).fonts.ready
+        .then(() => {
+          if (!cancelled) measure();
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      cancelled = true;
+      ro.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  return (
+    <div ref={outerRef} className={cn("display-autofit", className)}>
+      <div
+        ref={innerRef}
+        className={cn("display-autofit-inner", contentClassName)}
+        style={scale < 1 ? { transform: `scale(${scale})` } : undefined}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export function DisplayRotator({
@@ -610,6 +684,7 @@ export function DisplayRotator({
               {prayerTimesScreenGroups.length === 0 ? (
                 <p className="display-daily-learning-empty">אין זמני תפילה מוגדרים להיום.</p>
               ) : (
+                <AutoFit className="display-prayer-times-fit" deps={[currentScreen, prayerTimesScreenGroups, prayerTimesNextBanner]}>
                 <div className="display-prayer-times-groups">
                   {prayerTimesScreenGroups.map(({ group, title, rows }) => (
                     <div key={group} className="display-prayer-times-group">
@@ -653,6 +728,7 @@ export function DisplayRotator({
                     </div>
                   ))}
                 </div>
+                </AutoFit>
               )}
             </CardContent>
           </Card>
@@ -768,6 +844,7 @@ export function DisplayRotator({
 
         {currentScreen === "mainInfo" ? (
           <section className="display-info-screen">
+            <AutoFit className="display-info-fit" deps={[currentScreen, snapshot, amidahAddition, nextPrayer]}>
             <div className="display-info-stack">
               {nextPrayer ? (
                 <p className="display-info-next-prayer">
@@ -781,6 +858,7 @@ export function DisplayRotator({
                 hasBothExtraAdditions={hasBothExtraAdditions}
               />
             </div>
+            </AutoFit>
           </section>
         ) : null}
 
@@ -793,6 +871,7 @@ export function DisplayRotator({
 
         {currentScreen === "shabbat" ? (
           <section className="display-shabbat-screen">
+            <AutoFit className="display-shabbat-fit" deps={[currentScreen, shabbat, snapshot]}>
             <div className="display-shabbat-inner">
               <p className="display-shabbat-title">שבת קודש</p>
               <p className="display-shabbat-parasha">{shabbat?.parasha ?? snapshot.parasha}</p>
@@ -829,6 +908,7 @@ export function DisplayRotator({
                 </Card>
               ) : null}
             </div>
+            </AutoFit>
           </section>
         ) : null}
 
