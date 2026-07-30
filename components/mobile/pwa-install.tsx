@@ -32,7 +32,20 @@ function PwaServiceWorkerRegister() {
   return null;
 }
 
-export function PwaInstallBanner({ className }: { className?: string }) {
+export function PwaInstallBanner({
+  className,
+  title,
+  description,
+  installLabel
+}: {
+  className?: string;
+  /** כותרת מותאמת (למשל עבור אפליקציית הניהול) */
+  title?: string;
+  /** תיאור מותאם */
+  description?: string;
+  /** תווית כפתור ההתקנה (אנדרואיד) */
+  installLabel?: string;
+}) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
   const [hidden, setHidden] = useState(true);
@@ -83,7 +96,7 @@ export function PwaInstallBanner({ className }: { className?: string }) {
         <div className="min-w-0 flex-1">
           {showIosHint ? (
             <>
-              <p className="font-semibold">התקנת האפליקציה</p>
+              <p className="font-semibold">{title ?? "התקנת האפליקציה"}</p>
               <p className="mt-1 text-emerald-800/90">
                 ב-Safari: לחצו על <Share className="mx-0.5 inline h-4 w-4 align-text-bottom" /> שיתוף, ואז «הוסף למסך
                 הבית».
@@ -91,8 +104,10 @@ export function PwaInstallBanner({ className }: { className?: string }) {
             </>
           ) : (
             <>
-              <p className="font-semibold">התקינו את האפליקציה</p>
-              <p className="mt-1 text-emerald-800/90">גישה מהירה לזמני תפילה והלכה ישירות ממסך הבית.</p>
+              <p className="font-semibold">{title ?? "התקינו את האפליקציה"}</p>
+              <p className="mt-1 text-emerald-800/90">
+                {description ?? "גישה מהירה לזמני תפילה והלכה ישירות ממסך הבית."}
+              </p>
             </>
           )}
         </div>
@@ -113,7 +128,7 @@ export function PwaInstallBanner({ className }: { className?: string }) {
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 font-semibold text-white active:scale-[0.99]"
         >
           <Download className="h-4 w-4" />
-          התקן אפליקציה
+          {installLabel ?? "התקן אפליקציה"}
         </button>
       ) : null}
     </div>

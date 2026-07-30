@@ -1,6 +1,7 @@
 import { DailyHalachaForm } from "@/app/admin/daily-halacha-form";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { PwaInstallBanner } from "@/components/mobile/pwa-install";
 
 export default function AdminPage() {
   return (
@@ -9,6 +10,13 @@ export default function AdminPage() {
       <p className="mt-3 text-muted-foreground">
         ממשק מפוצל: מנהל מערכת (יצירת בתי כנסת) וגבאי (ניהול בית כנסת ספציפי).
       </p>
+
+      <PwaInstallBanner
+        className="mt-5 max-w-3xl"
+        title="התקינו את אפליקציית הניהול"
+        description="הוסיפו את ממשק הניהול כאייקון נפרד במסך הבית, לצד אפליקציית התצוגה."
+        installLabel="התקן אפליקציית ניהול"
+      />
 
       <div className="mt-4 flex gap-3">
         <Button asChild variant="outline">
