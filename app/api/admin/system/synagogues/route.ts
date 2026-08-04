@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
+import { getAdminContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+
+/** בודק שהמשתמש המחובר הוא מנהל-מערכת. מחזיר NextResponse במקרה של דחייה. */
+async function requireSystemAdmin(): Promise<NextResponse | null> {
+  const ctx = await getAdminContext();
+  if (!ctx) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  if (ctx.role !== "system") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  return null;
+}
 
 const SELECT_COLUMNS =
   "id, name, created_at, locality, latitude, longitude, elevation, timezone, candle_lighting_minutes, havdalah_mode, havdalah_minutes";
@@ -80,6 +89,9 @@ function parseLocationSettings(body: RawSettingsBody): { settings: LocationSetti
 }
 
 export async function GET() {
+  const denied = await requireSystemAdmin();
+  if (denied) return denied;
+
   const supabase = getSupabaseAdminClient();
   if (!supabase) {
     return NextResponse.json({ ok: false, error: "missing_service_role_key" }, { status: 500 });
@@ -97,6 +109,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const denied = await requireSystemAdmin();
+  if (denied) return denied;
+
   const supabase = getSupabaseAdminClient();
   if (!supabase) {
     return NextResponse.json({ ok: false, error: "missing_service_role_key" }, { status: 500 });
@@ -127,6 +142,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const denied = await requireSystemAdmin();
+  if (denied) return denied;
+
   const supabase = getSupabaseAdminClient();
   if (!supabase) {
     return NextResponse.json({ ok: false, error: "missing_service_role_key" }, { status: 500 });

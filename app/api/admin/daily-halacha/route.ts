@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getAdminContext } from "@/lib/auth";
 
 type HalachaPayload = {
   displayDay: number;
@@ -32,6 +33,9 @@ const ADMIN_HALACHA_SOURCE_KEY = "manual";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const ctx = await getAdminContext();
+  if (!ctx) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+
   const supabase = getSupabaseAdminClient();
 
   if (!supabase) {
@@ -54,6 +58,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const ctx = await getAdminContext();
+  if (!ctx) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  if (ctx.role !== "system") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+
   const supabase = getSupabaseAdminClient();
 
   if (!supabase) {

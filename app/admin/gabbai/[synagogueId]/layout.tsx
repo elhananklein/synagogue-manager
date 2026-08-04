@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
+import { canManageSynagogue, getAdminContext } from "@/lib/auth";
 
 /**
  * מטא-דאטה פר-בית-כנסת: מקשר ל-manifest הדינמי כדי שהתקנת האפליקציה
@@ -39,6 +41,19 @@ export async function generateMetadata({
   };
 }
 
-export default function GabbaiSynagogueLayout({ children }: { children: React.ReactNode }) {
+export default async function GabbaiSynagogueLayout({
+  children,
+  params
+}: {
+  children: React.ReactNode;
+  params: Promise<{ synagogueId: string }>;
+}) {
+  const { synagogueId } = await params;
+  const id = (synagogueId ?? "").trim().toLowerCase();
+
+  const ctx = await getAdminContext();
+  if (!ctx) redirect("/admin/login");
+  if (!canManageSynagogue(ctx, id)) redirect("/admin");
+
   return <>{children}</>;
 }

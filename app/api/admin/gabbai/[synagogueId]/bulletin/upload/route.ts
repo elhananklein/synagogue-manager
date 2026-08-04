@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
+import { canManageSynagogue, getAdminContext } from "@/lib/auth";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 export async function POST(request: Request, context: { params: Promise<{ synagogueId: string }> }) {
   const { synagogueId } = await context.params;
+
+  const ctx = await getAdminContext();
+  if (!ctx) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  if (!canManageSynagogue(ctx, synagogueId))
+    return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+
   const supabase = getSupabaseAdminClient();
   if (!supabase) {
     return NextResponse.json({ ok: false, error: "missing_service_role_key" }, { status: 500 });

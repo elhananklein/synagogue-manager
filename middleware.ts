@@ -1,4 +1,5 @@
 import { NextResponse, userAgent, type NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/ssr-middleware";
 
 /** עוגיה לדריסת זיהוי המכשיר: "full" = תצוגת דסקטופ/קיר, "mobile" = תצוגת מובייל. */
 const VIEW_COOKIE = "viewMode";
@@ -14,9 +15,54 @@ function isMobileRequest(request: NextRequest): boolean {
   return MOBILE_UA_RE.test(ua);
 }
 
-export function middleware(request: NextRequest) {
+const LOGIN_PATH = "/admin/login";
+const CHANGE_PASSWORD_PATH = "/admin/change-password";
+
+/** שער הזדהות לכל דפי /admin: מחייב סשן, ומפנה להחלפת סיסמה בכניסה ראשונה. */
+async function adminAuthMiddleware(request: NextRequest): Promise<NextResponse> {
+  const path = request.nextUrl.pathname;
+  const { response, user } = await updateSession(request);
+
+  const isLogin = path === LOGIN_PATH;
+  const isChangePassword = path === CHANGE_PASSWORD_PATH;
+
+  if (!user) {
+    if (isLogin) return response;
+    const url = request.nextUrl.clone();
+    url.pathname = LOGIN_PATH;
+    url.search = "";
+    url.searchParams.set("next", path);
+    return NextResponse.redirect(url);
+  }
+
+  // מחובר אך חייב להחליף סיסמה (סיסמה זמנית) — חוסמים הכל חוץ מדף ההחלפה.
+  const mustChange = Boolean((user.app_metadata as { must_change_password?: boolean })?.must_change_password);
+  if (mustChange && !isChangePassword) {
+    const url = request.nextUrl.clone();
+    url.pathname = CHANGE_PASSWORD_PATH;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  // כבר מחובר ותקין — אין טעם להישאר בדף ההתחברות.
+  if (isLogin) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  return response;
+}
+
+export async function middleware(request: NextRequest) {
   const { nextUrl } = request;
   const path = nextUrl.pathname;
+
+  if (path.startsWith("/admin")) {
+    return adminAuthMiddleware(request);
+  }
+
   const viewParam = nextUrl.searchParams.get("view");
 
   // דריסה מפורשת דרך ?view= — שומרים בעוגיה ומנקים את הכתובת בהפניה חד־פעמית.
@@ -48,7 +94,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.rewrite(rewriteUrl);
 }
 
-/** רץ רק על הדפים הציבוריים; /m, /admin, /api וסטטיים לא מטופלים. */
+/** רץ על הדפים הציבוריים (תצוגת מובייל) ועל כל /admin (הזדהות). */
 export const config = {
-  matcher: ["/", "/display", "/contact"]
+  matcher: ["/", "/display", "/contact", "/admin/:path*"]
 };

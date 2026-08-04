@@ -3,6 +3,16 @@ import { cookies } from "next/headers";
 import { getAllBulletinItemsForAdmin, saveBulletinItems, type BulletinItemInput } from "@/lib/bulletin-board";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
+import { canManageSynagogue, getAdminContext } from "@/lib/auth";
+
+/** בודק שלמשתמש המחובר יש הרשאה לנהל את בית הכנסת. מחזיר NextResponse בדחייה. */
+async function requireSynagogueAccess(synagogueId: string): Promise<NextResponse | null> {
+  const ctx = await getAdminContext();
+  if (!ctx) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  if (!canManageSynagogue(ctx, synagogueId))
+    return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  return null;
+}
 
 type PrayerSettingInput = {
   category: "weekday" | "shabbat";
@@ -47,6 +57,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_: Request, context: { params: Promise<{ synagogueId: string }> }) {
   const { synagogueId } = await context.params;
+  const denied = await requireSynagogueAccess(synagogueId);
+  if (denied) return denied;
+
   const supabase = getSupabaseAdminClient();
   if (!supabase) {
     return NextResponse.json({ ok: false, error: "missing_service_role_key" }, { status: 500 });
@@ -145,6 +158,9 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
 
 export async function POST(request: Request, context: { params: Promise<{ synagogueId: string }> }) {
   const { synagogueId } = await context.params;
+  const denied = await requireSynagogueAccess(synagogueId);
+  if (denied) return denied;
+
   const supabase = getSupabaseAdminClient();
   if (!supabase) {
     return NextResponse.json({ ok: false, error: "missing_service_role_key" }, { status: 500 });

@@ -8,6 +8,8 @@ import {
   SynagogueLocationForm,
   type SynagogueLocationValue
 } from "@/components/admin/synagogue-location-form";
+import { GabbaimManager } from "@/components/admin/gabbaim-manager";
+import { LogoutButton } from "@/components/admin/logout-button";
 
 type SynagogueItem = {
   id: string;
@@ -137,8 +139,15 @@ export default function SystemAdminPage() {
 
   return (
     <main className="container py-10">
-      <h1 className="text-2xl font-bold">ממשק מנהל מערכת</h1>
-      <p className="mt-2 text-muted-foreground">כאן יוצרים בתי כנסת חדשים, מגדירים מיקום ומנהג, ומקבלים מזהה לניהול גבאים.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">ממשק מנהל מערכת</h1>
+          <p className="mt-2 text-muted-foreground">
+            כאן יוצרים בתי כנסת חדשים, מגדירים מיקום ומנהג, ומנהלים גבאים.
+          </p>
+        </div>
+        <LogoutButton />
+      </div>
 
       <Card className="mt-6 max-w-3xl">
         <CardHeader>
@@ -227,6 +236,8 @@ export default function SystemAdminPage() {
           </ul>
         </CardContent>
       </Card>
+
+      <GabbaimManager synagogues={items.map((i) => ({ id: i.id, name: i.name }))} />
     </main>
   );
 }
