@@ -10,6 +10,18 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 const DISMISS_KEY = "pwa-install-dismissed";
+const PROMPT_CAPTURED_EVENT = "pwa-prompt-captured";
+
+// תפיסה מוקדמת: האירוע עלול להיות מופעל לפני שהרכיב נטען. שומרים אותו גלובלית
+// כדי שהכפתור יופיע גם אם ה-effect רץ מאוחר יותר.
+let capturedPrompt: BeforeInstallPromptEvent | null = null;
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    capturedPrompt = e as BeforeInstallPromptEvent;
+    window.dispatchEvent(new Event(PROMPT_CAPTURED_EVENT));
+  });
+}
 
 function isIos() {
   if (typeof navigator === "undefined") return false;
@@ -62,13 +74,24 @@ export function PwaInstallBanner({
 
     // אנדרואיד: מציגים את הבאנר תמיד; אם אירוע ההתקנה נורה — נוסיף כפתור התקנה.
     setHidden(false);
+
+    // אם האירוע כבר נתפס לפני הטעינה — משתמשים בו מיד.
+    if (capturedPrompt) setDeferredPrompt(capturedPrompt);
+
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
+    const onCaptured = () => {
+      if (capturedPrompt) setDeferredPrompt(capturedPrompt);
+    };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
-    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+    window.addEventListener(PROMPT_CAPTURED_EVENT, onCaptured);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+      window.removeEventListener(PROMPT_CAPTURED_EVENT, onCaptured);
+    };
   }, []);
 
   const dismiss = () => {
@@ -80,6 +103,7 @@ export function PwaInstallBanner({
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
     await deferredPrompt.userChoice;
+    capturedPrompt = null;
     setDeferredPrompt(null);
     setHidden(true);
   };
