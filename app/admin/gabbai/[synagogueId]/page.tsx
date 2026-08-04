@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { BulletinBoardEditor, mapBulletinForSave, mapBulletinFromApi, type BulletinItemModel } from "@/components/admin/bulletin-board-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PwaInstallBanner } from "@/components/mobile/pwa-install";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, ZMANIM_CATALOG } from "@/lib/zmanim-catalog";
 
 type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
@@ -276,6 +277,13 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
     <main className="container py-10">
       <h1 className="text-2xl font-bold">{title}</h1>
       <p className="mt-2 text-muted-foreground">ניהול שם בית כנסת, מניינים, זמני תפילות, מסכים וסגנון תצוגה.</p>
+
+      <PwaInstallBanner
+        className="mt-4"
+        title="התקינו את אפליקציית הניהול של בית הכנסת"
+        description="הוסיפו קיצור למסך הבית — לחיצה על האייקון תפתח ישירות את ניהול בית הכנסת הזה."
+        installLabel="התקן אפליקציית ניהול"
+      />
 
       <Card className="mt-6">
         <CardHeader>

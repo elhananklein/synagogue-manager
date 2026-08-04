@@ -23,6 +23,34 @@ function isOrdinalToken(s: string) {
 
 export type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
 export type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat" | "bulletin";
+
+export type HavdalahMode = "tzeit" | "minutes";
+
+/**
+ * מיקום ומנהג פר-בית-כנסת לחישוב זמנים.
+ * כש-latitude/longitude ריקים — הקוד נופל חזרה לירושלים (תאימות לאחור).
+ */
+export type SynagogueZmanimLocation = {
+  locality: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  elevation: number | null;
+  timezone: string;
+  candleLightingMinutes: number;
+  havdalahMode: HavdalahMode;
+  havdalahMinutes: number;
+};
+
+export const DEFAULT_ZMANIM_LOCATION: SynagogueZmanimLocation = {
+  locality: null,
+  latitude: null,
+  longitude: null,
+  elevation: null,
+  timezone: "Asia/Jerusalem",
+  candleLightingMinutes: 40,
+  havdalahMode: "tzeit",
+  havdalahMinutes: 72
+};
 export type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
 
 export type PrayerSetting = {
@@ -50,6 +78,8 @@ export type ScheduleTimesListMode = "all" | "prayers_only";
 export type DisplayConfig = {
   synagogueName: string;
   minyanName: string | null;
+  /** מיקום ומנהג לחישוב זמני היום וכניסת/יציאת שבת */
+  location: SynagogueZmanimLocation;
   displayStyle: DisplayStyle;
   /** לוח זמנים במסך הראשי: כל הזמנים או רק תפילות */
   scheduleTimesListMode: ScheduleTimesListMode;
@@ -64,6 +94,7 @@ export type DisplayConfig = {
 const DEFAULT_CONFIG: DisplayConfig = {
   synagogueName: "בית כנסת",
   minyanName: null,
+  location: DEFAULT_ZMANIM_LOCATION,
   displayStyle: "classic",
   scheduleTimesListMode: "all",
   scheduleZmanimKeys: DEFAULT_SCHEDULE_ZMANIM_KEYS,
@@ -86,8 +117,37 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase || !synagogueId) return DEFAULT_CONFIG;
 
-  const synagogueRes = await supabase.from("synagogues").select("id, name").eq("id", synagogueId).maybeSingle();
+  const synagogueRes = await supabase
+    .from("synagogues")
+    .select(
+      "id, name, locality, latitude, longitude, elevation, timezone, candle_lighting_minutes, havdalah_mode, havdalah_minutes"
+    )
+    .eq("id", synagogueId)
+    .maybeSingle();
   if (synagogueRes.error || !synagogueRes.data) return DEFAULT_CONFIG;
+
+  const syn = synagogueRes.data as {
+    name: string;
+    locality: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    elevation: number | null;
+    timezone: string | null;
+    candle_lighting_minutes: number | null;
+    havdalah_mode: string | null;
+    havdalah_minutes: number | null;
+  };
+  const location: SynagogueZmanimLocation = {
+    locality: syn.locality ?? null,
+    latitude: typeof syn.latitude === "number" ? syn.latitude : null,
+    longitude: typeof syn.longitude === "number" ? syn.longitude : null,
+    elevation: typeof syn.elevation === "number" ? syn.elevation : null,
+    timezone: syn.timezone?.trim() || "Asia/Jerusalem",
+    candleLightingMinutes:
+      typeof syn.candle_lighting_minutes === "number" ? syn.candle_lighting_minutes : 40,
+    havdalahMode: syn.havdalah_mode === "minutes" ? "minutes" : "tzeit",
+    havdalahMinutes: typeof syn.havdalah_minutes === "number" ? syn.havdalah_minutes : 72
+  };
 
   const token = minyanSelector?.trim() ?? "";
 
@@ -135,7 +195,8 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   if (!chosenMinyan) {
     return {
       ...DEFAULT_CONFIG,
-      synagogueName: synagogueRes.data.name
+      synagogueName: syn.name,
+      location
     };
   }
   const [screensRes, prayerRes] = await Promise.all([
@@ -186,8 +247,9 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
       : null;
 
   return {
-    synagogueName: synagogueRes.data.name,
+    synagogueName: syn.name,
     minyanName: chosenMinyan.name,
+    location,
     displayStyle: (chosenMinyan.display_style as DisplayStyle) ?? "classic",
     scheduleTimesListMode: normalizeScheduleTimesListMode(chosenMinyan.schedule_times_list),
     scheduleZmanimKeys: sanitizeScheduleZmanimKeys(chosenMinyan.schedule_zmanim_keys) ?? DEFAULT_SCHEDULE_ZMANIM_KEYS,

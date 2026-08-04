@@ -1,5 +1,6 @@
 import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, resolveScheduleZmanimKeys, zmanLabelForKey } from "@/lib/zmanim-catalog";
+import type { SynagogueZmanimLocation } from "@/lib/display-config";
 
 type HebcalConverterResponse = {
   gy: number;
@@ -57,7 +58,21 @@ export type DisplaySnapshot = {
 export type DisplaySnapshotOptions = {
   /** כשמושך צילום ליום אחר (למשל מחר) בלי צורך בלימוד יומי — חוסך בקשת רשת */
   omitDailyLearning?: boolean;
+  /** מיקום ומנהג לחישוב זמנים; ריק => ירושלים (תאימות לאחור) */
+  location?: SynagogueZmanimLocation;
 };
+
+/** בונה מקטע geo לכתובות Hebcal — נקודה מדויקת אם יש קואורדינטות, אחרת ירושלים. */
+function buildHebcalGeoQuery(location?: SynagogueZmanimLocation): string {
+  if (location && location.latitude != null && location.longitude != null) {
+    const tzid = encodeURIComponent(location.timezone?.trim() || "Asia/Jerusalem");
+    const base = `geo=pos&latitude=${location.latitude}&longitude=${location.longitude}&tzid=${tzid}`;
+    return location.elevation != null
+      ? `${base}&elev=${Math.round(location.elevation)}&ue=on`
+      : base;
+  }
+  return "geo=city&city=IL-Jerusalem";
+}
 
 const HEBREW_MONTHS_WINTER = new Set(["Kislev", "Tevet", "Sh'vat", "Adar", "Adar I", "Adar II"]);
 const DAF_YOMI_MASECHTOT_HEBREW: Record<string, string> = {
@@ -440,8 +455,13 @@ export async function getDisplaySnapshot(
 ): Promise<DisplaySnapshot> {
   const now = new Date();
   const civilIso = targetIsoDate ?? toIsoDateJerusalem(now);
-  const zmanimUrl = `https://www.hebcal.com/zmanim?cfg=json&geo=city&city=IL-Jerusalem&date=${civilIso}`;
-  const shabbatUrl = "https://www.hebcal.com/shabbat?cfg=json&geo=city&city=IL-Jerusalem&M=on";
+  const location = options?.location;
+  const geoQuery = buildHebcalGeoQuery(location);
+  const candleMinutes = location?.candleLightingMinutes ?? 40;
+  const havdalahQuery =
+    location?.havdalahMode === "minutes" ? `m=${location.havdalahMinutes ?? 72}` : "M=on";
+  const zmanimUrl = `https://www.hebcal.com/zmanim?cfg=json&${geoQuery}&date=${civilIso}`;
+  const shabbatUrl = `https://www.hebcal.com/shabbat?cfg=json&${geoQuery}&b=${candleMinutes}&${havdalahQuery}`;
 
   const [shabbatRes, zmanimRes] = await Promise.all([
     fetch(shabbatUrl, hebcalDisplayFetch),
@@ -458,7 +478,7 @@ export async function getDisplaySnapshot(
   const halachicIso = halachicCivilIsoForConverter(civilIso, now, zmanim.times?.tzeit85deg);
   const [hy, hm, hd] = halachicIso.split("-").map(Number);
   const converterUrl = `https://www.hebcal.com/converter?cfg=json&g2h=1&gy=${hy}&gm=${hm}&gd=${hd}`;
-  const learningUrl = `https://www.hebcal.com/learning/${civilIso}?cfg=json&geo=city&city=IL-Jerusalem`;
+  const learningUrl = `https://www.hebcal.com/learning/${civilIso}?cfg=json&${geoQuery}`;
 
   const converterRes = await fetch(converterUrl, hebcalDisplayFetch);
   const learningRes =

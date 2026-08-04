@@ -82,13 +82,16 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   }).format(new Date());
   const tomorrowIsoDate = getTomorrowIsoDateFrom(todayIsoDate);
 
+  // נשלף קודם את הגדרות בית הכנסת כדי לקבל את המיקום, ואז נחשב את הזמנים לפיו.
+  const displayConfig = await getDisplayConfig(synagogueId, minyanSelector);
+  const location = displayConfig.location;
+
   const [snapshot, tomorrowSnapshot, publicData, bulletinItems] = await Promise.all([
-    getDisplaySnapshot(todayIsoDate),
-    getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true }),
+    getDisplaySnapshot(todayIsoDate, { location }),
+    getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, location }),
     getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
     getPublishedBulletinItems(synagogueId)
   ]);
-  const displayConfig = await getDisplayConfig(synagogueId, minyanSelector);
 
   const styleOverrideRaw = singleQueryParam(params.style);
   const styleOverride = ALLOWED_STYLES.find((s) => s === styleOverrideRaw) ?? null;
@@ -129,8 +132,8 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     const saturdayIso = addDaysIsoDate(todayIsoDate, daysUntilSaturday);
     const fridayIso = addDaysIsoDate(saturdayIso, -1);
     const [fridaySnapshot, saturdaySnapshot] = await Promise.all([
-      getDisplaySnapshot(fridayIso, { omitDailyLearning: true }),
-      getDisplaySnapshot(saturdayIso, { omitDailyLearning: true })
+      getDisplaySnapshot(fridayIso, { omitDailyLearning: true, location }),
+      getDisplaySnapshot(saturdayIso, { omitDailyLearning: true, location })
     ]);
     shabbat = {
       parasha: snapshot.parasha,

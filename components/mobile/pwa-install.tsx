@@ -60,10 +60,11 @@ export function PwaInstallBanner({
       return;
     }
 
+    // אנדרואיד: מציגים את הבאנר תמיד; אם אירוע ההתקנה נורה — נוסיף כפתור התקנה.
+    setHidden(false);
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setHidden(false);
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
@@ -130,6 +131,12 @@ export function PwaInstallBanner({
           <Download className="h-4 w-4" />
           {installLabel ?? "התקן אפליקציה"}
         </button>
+      ) : null}
+
+      {!showIosHint && !deferredPrompt ? (
+        <p className="mt-2 text-xs text-emerald-800/90">
+          אם כפתור ההתקנה אינו מופיע — פתחו את תפריט הדפדפן ובחרו «התקנת אפליקציה» / «הוסף למסך הבית».
+        </p>
       ) : null}
     </div>
   );
