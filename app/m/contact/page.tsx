@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Mail, Phone } from "lucide-react";
+import { ContactForm } from "@/components/contact/contact-form";
 
 export default function MobileContactPage() {
   return (
@@ -14,9 +15,9 @@ export default function MobileContactPage() {
       <main className="flex-1 px-4 py-6">
         <p className="mb-5 text-sm text-slate-500">לשאלות, תמיכה או בקשות שיפור אפשר לפנות אלינו:</p>
 
-        <div className="space-y-3">
+        <div className="mb-6 space-y-3">
           <a
-            href="tel:+972500000000"
+            href="tel:+972526480000"
             className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm active:scale-[0.99]"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
@@ -24,12 +25,12 @@ export default function MobileContactPage() {
             </span>
             <span>
               <span className="block text-sm text-slate-500">טלפון</span>
-              <span className="block text-base font-semibold">050-000-0000</span>
+              <span className="block text-base font-semibold">052-6480000</span>
             </span>
           </a>
 
           <a
-            href="mailto:info@example.com"
+            href="mailto:synagogues.manager@gmail.com"
             className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm active:scale-[0.99]"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
@@ -37,9 +38,14 @@ export default function MobileContactPage() {
             </span>
             <span>
               <span className="block text-sm text-slate-500">דוא״ל</span>
-              <span className="block text-base font-semibold">info@example.com</span>
+              <span className="block text-base font-semibold">synagogues.manager@gmail.com</span>
             </span>
           </a>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="mb-3 text-base font-semibold">שלחו לנו הודעה</h2>
+          <ContactForm />
         </div>
       </main>
     </div>

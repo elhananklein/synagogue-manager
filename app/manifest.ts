@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "מערכת ניהול לבתי כנסת",
-    short_name: "בתי כנסת",
-    description: "זמני תפילה, הלכה יומית ולימוד — לכל בית כנסת",
+    name: "מערכת לניהול בית הכנסת",
+    short_name: "ניהול בית כנסת",
+    description: "מערכת לניהול בתי כנסת — זמני תפילה, הלכה יומית ותצוגה",
     start_url: "/",
     scope: "/",
     display: "standalone",

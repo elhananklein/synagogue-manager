@@ -17,6 +17,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.511.0",
     "next": "^15.5.15",
+    "nodemailer": "^9.0.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-leaflet": "^5.0.0",
@@ -25,6 +26,7 @@
   "devDependencies": {
     "@types/leaflet": "^1.9.22",
     "@types/node": "^20.17.10",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "autoprefixer": "^10.4.20",

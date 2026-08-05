@@ -17,13 +17,13 @@ const frankRuhl = Frank_Ruhl_Libre({
 });
 
 export const metadata: Metadata = {
-  title: "בית כנסת בית רימון",
-  description: "מערכת ניהול לבית כנסת - זמני תפילה, הלכה יומית וניהול קהילה",
-  applicationName: "מערכת בתי כנסת",
+  title: "מערכת לניהול בית הכנסת",
+  description: "מערכת לניהול בתי כנסת — זמני תפילה, הלכה יומית וניהול תצוגה",
+  applicationName: "מערכת לניהול בית הכנסת",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "בתי כנסת"
+    title: "ניהול בית כנסת"
   },
   formatDetection: {
     telephone: false
