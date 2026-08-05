@@ -331,8 +331,9 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
       <PwaInstallBanner
         className="mt-4"
         title="התקינו את אפליקציית הניהול של בית הכנסת"
-        description="הוסיפו קיצור למסך הבית — לחיצה על האייקון תפתח ישירות את ניהול בית הכנסת הזה."
+        description="הוסיפו למסך הבית — לחיצה על האייקון תפתח ישירות את ניהול בית הכנסת הזה."
         installLabel="התקן אפליקציית ניהול"
+        dismissKey="pwa-install-dismissed-admin-gabbai"
       />
 
       <div className="mt-6">

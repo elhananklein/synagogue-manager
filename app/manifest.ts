@@ -2,10 +2,12 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "מערכת לניהול בית הכנסת",
     short_name: "ניהול בית כנסת",
     description: "מערכת לניהול בתי כנסת — זמני תפילה, הלכה יומית ותצוגה",
     start_url: "/",
+    // scope רחב עלול למנוע מ-Chrome להציע התקנה נפרדת ל-/admin — לכן מזהה ייחודי ב-id.
     scope: "/",
     display: "standalone",
     orientation: "portrait",

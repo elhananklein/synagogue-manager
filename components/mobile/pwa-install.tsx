@@ -9,11 +9,10 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-const DISMISS_KEY = "pwa-install-dismissed";
+const DEFAULT_DISMISS_KEY = "pwa-install-dismissed";
 const PROMPT_CAPTURED_EVENT = "pwa-prompt-captured";
 
-// תפיסה מוקדמת: האירוע עלול להיות מופעל לפני שהרכיב נטען. שומרים אותו גלובלית
-// כדי שהכפתור יופיע גם אם ה-effect רץ מאוחר יותר.
+// תפיסה מוקדמת: האירוע עלול להיות מופעל לפני שהרכיב נטען.
 let capturedPrompt: BeforeInstallPromptEvent | null = null;
 if (typeof window !== "undefined") {
   window.addEventListener("beforeinstallprompt", (e) => {
@@ -25,7 +24,8 @@ if (typeof window !== "undefined") {
 
 function isIos() {
   if (typeof navigator === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
 function isStandalone() {
@@ -39,7 +39,10 @@ function isStandalone() {
 function PwaServiceWorkerRegister() {
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
-    void navigator.serviceWorker.register("/sw.js").catch(() => {});
+    void navigator.serviceWorker
+      .register("/sw.js")
+      .then((reg) => reg.update())
+      .catch(() => {});
   }, []);
   return null;
 }
@@ -48,23 +51,25 @@ export function PwaInstallBanner({
   className,
   title,
   description,
-  installLabel
+  installLabel,
+  dismissKey = DEFAULT_DISMISS_KEY
 }: {
   className?: string;
-  /** כותרת מותאמת (למשל עבור אפליקציית הניהול) */
   title?: string;
-  /** תיאור מותאם */
   description?: string;
-  /** תווית כפתור ההתקנה (אנדרואיד) */
   installLabel?: string;
+  /** מפתח נפרד לסגירה (למשל לאפליקציית ניהול) */
+  dismissKey?: string;
 }) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
   const [hidden, setHidden] = useState(true);
+  const [showManual, setShowManual] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (isStandalone()) return;
-    if (sessionStorage.getItem(DISMISS_KEY) === "1") return;
+    if (sessionStorage.getItem(dismissKey) === "1") return;
 
     if (isIos()) {
       setShowIosHint(true);
@@ -72,10 +77,7 @@ export function PwaInstallBanner({
       return;
     }
 
-    // אנדרואיד: מציגים את הבאנר תמיד; אם אירוע ההתקנה נורה — נוסיף כפתור התקנה.
     setHidden(false);
-
-    // אם האירוע כבר נתפס לפני הטעינה — משתמשים בו מיד.
     if (capturedPrompt) setDeferredPrompt(capturedPrompt);
 
     const onBeforeInstall = (e: Event) => {
@@ -88,24 +90,45 @@ export function PwaInstallBanner({
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     window.addEventListener(PROMPT_CAPTURED_EVENT, onCaptured);
+
+    // לפעמים האירוע מגיע רק אחרי שה-SW פעיל.
+    if ("serviceWorker" in navigator) {
+      void navigator.serviceWorker.ready.catch(() => {});
+    }
+
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
       window.removeEventListener(PROMPT_CAPTURED_EVENT, onCaptured);
     };
-  }, []);
+  }, [dismissKey]);
 
   const dismiss = () => {
-    sessionStorage.setItem(DISMISS_KEY, "1");
+    sessionStorage.setItem(dismissKey, "1");
     setHidden(true);
   };
 
-  const install = async () => {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    capturedPrompt = null;
-    setDeferredPrompt(null);
-    setHidden(true);
+  const onInstallClick = async () => {
+    if (showIosHint) {
+      setShowManual(true);
+      return;
+    }
+
+    if (deferredPrompt) {
+      setBusy(true);
+      try {
+        await deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        capturedPrompt = null;
+        setDeferredPrompt(null);
+        setHidden(true);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    // אין beforeinstallprompt — מציגים הוראות התקנה ידניות (כפתור עדיין נראה ופעיל).
+    setShowManual((v) => !v);
   };
 
   if (hidden) return null;
@@ -119,22 +142,12 @@ export function PwaInstallBanner({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          {showIosHint ? (
-            <>
-              <p className="font-semibold">{title ?? "התקנת האפליקציה"}</p>
-              <p className="mt-1 text-emerald-800/90">
-                ב-Safari: לחצו על <Share className="mx-0.5 inline h-4 w-4 align-text-bottom" /> שיתוף, ואז «הוסף למסך
-                הבית».
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="font-semibold">{title ?? "התקינו את האפליקציה"}</p>
-              <p className="mt-1 text-emerald-800/90">
-                {description ?? "גישה מהירה לזמני תפילה והלכה ישירות ממסך הבית."}
-              </p>
-            </>
-          )}
+          <p className="font-semibold">{title ?? (showIosHint ? "התקנת האפליקציה" : "התקינו את האפליקציה")}</p>
+          <p className="mt-1 text-emerald-800/90">
+            {showIosHint
+              ? "ב-Safari: לחצו על כפתור ההתקנה למטה להוראות קצרות."
+              : description ?? "גישה מהירה ישירות ממסך הבית."}
+          </p>
         </div>
         <button
           type="button"
@@ -146,21 +159,40 @@ export function PwaInstallBanner({
         </button>
       </div>
 
-      {!showIosHint && deferredPrompt ? (
-        <button
-          type="button"
-          onClick={() => void install()}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 font-semibold text-white active:scale-[0.99]"
-        >
-          <Download className="h-4 w-4" />
-          {installLabel ?? "התקן אפליקציה"}
-        </button>
-      ) : null}
+      <button
+        type="button"
+        onClick={() => void onInstallClick()}
+        disabled={busy}
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 font-semibold text-white active:scale-[0.99] disabled:opacity-70"
+      >
+        {showIosHint ? <Share className="h-4 w-4" /> : <Download className="h-4 w-4" />}
+        {busy ? "פותח…" : installLabel ?? (showIosHint ? "איך להתקין ב-iPhone" : "התקן אפליקציה")}
+      </button>
 
-      {!showIosHint && !deferredPrompt ? (
-        <p className="mt-2 text-xs text-emerald-800/90">
-          אם כפתור ההתקנה אינו מופיע — פתחו את תפריט הדפדפן ובחרו «התקנת אפליקציה» / «הוסף למסך הבית».
-        </p>
+      {showManual ? (
+        <div className="mt-3 rounded-lg border border-emerald-200 bg-white/70 px-3 py-2 text-xs leading-relaxed text-emerald-900">
+          {showIosHint ? (
+            <ol className="list-decimal space-y-1 pr-4">
+              <li>
+                לחצו על <Share className="inline h-3.5 w-3.5 align-text-bottom" /> שיתוף בתחתית Safari
+              </li>
+              <li>גללו ובחרו «הוסף למסך הבית»</li>
+              <li>אשרו — האייקון ייפתח ישירות לניהול</li>
+            </ol>
+          ) : (
+            <ol className="list-decimal space-y-1 pr-4">
+              <li>פתחו את תפריט Chrome (⋮) בפינה העליונה</li>
+              <li>בחרו «התקנת אפליקציה» או «הוסף למסך הבית»</li>
+              <li>אשרו את ההתקנה</li>
+            </ol>
+          )}
+          {!showIosHint && !deferredPrompt ? (
+            <p className="mt-2 text-emerald-800/80">
+              אם האפשרות לא מופיעה — ייתכן שכבר מותקנת אפליקציה אחרת מהאתר. הסירו אותה ממסך הבית ונסו שוב, או
+              התקינו דרך התפריט מהדף הזה.
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

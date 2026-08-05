@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getPublicSiteUrl } from "@/lib/site-url";
 import { createSupabaseBrowserClient } from "@/lib/supabase/ssr-client";
 
 type Mode = "login" | "forgot";
@@ -49,9 +50,10 @@ function LoginForm() {
     setInfo(null);
     setLoading(true);
     const supabase = createSupabaseBrowserClient();
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-      "/admin/change-password?recovery=1"
-    )}`;
+    // חשוב: בלי query params — אחרת Supabase לא מזהה התאמה ל-Redirect URL
+    // (למשל .../auth/callback?next=...) ונופל חזרה ל-Site URL (לרוב localhost).
+    const origin = getPublicSiteUrl() || window.location.origin;
+    const redirectTo = `${origin}/auth/callback`;
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo
     });

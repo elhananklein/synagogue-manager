@@ -30,16 +30,17 @@ export async function GET(
   const manifest = {
     id: base,
     name: name ? `ניהול — ${name}` : "ניהול בית הכנסת",
-    short_name: "ניהול",
+    short_name: name ? `ניהול ${name}`.slice(0, 12) : "ניהול",
     description: "ניהול בית הכנסת שלי — זמני תפילה, מסכים והגדרות",
-    start_url: base,
+    start_url: `${base}?source=pwa`,
     scope: base,
     display: "standalone",
-    orientation: "portrait",
+    orientation: "any",
     dir: "rtl",
     lang: "he",
     background_color: "#0f172a",
     theme_color: "#4f46e5",
+    prefer_related_applications: false,
     icons: [
       { src: "/icons/admin-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icons/admin-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
@@ -53,6 +54,9 @@ export async function GET(
   };
 
   return NextResponse.json(manifest, {
-    headers: { "Content-Type": "application/manifest+json" }
+    headers: {
+      "Content-Type": "application/manifest+json",
+      "Cache-Control": "no-store"
+    }
   });
 }
