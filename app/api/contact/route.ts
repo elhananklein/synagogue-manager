@@ -21,6 +21,31 @@ function clean(value: unknown, max: number): string {
   return value.trim().slice(0, max);
 }
 
+/** Gmail מציג App Password עם רווחים — מסירים אותם. */
+function normalizeSecret(value: string): string {
+  return value.trim().replace(/\s+/g, "");
+}
+
+function classifyMailError(err: unknown): string {
+  const msg = String((err as { message?: string })?.message ?? err ?? "").toLowerCase();
+  const code = String((err as { code?: string })?.code ?? "").toLowerCase();
+  const responseCode = Number((err as { responseCode?: number })?.responseCode ?? 0);
+
+  if (
+    code === "eauth" ||
+    responseCode === 535 ||
+    msg.includes("invalid login") ||
+    msg.includes("username and password not accepted") ||
+    msg.includes("badcredentials") ||
+    msg.includes("authentication failed")
+  ) {
+    return "smtp_auth_failed";
+  }
+  if (code === "eenvelope" || msg.includes("envelope")) return "smtp_envelope_failed";
+  if (code === "econrefused" || code === "etimedout" || code === "esocket") return "smtp_connect_failed";
+  return "send_failed";
+}
+
 export async function POST(request: Request) {
   let body: Body;
   try {
@@ -46,21 +71,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "invalid_email" }, { status: 400 });
   }
 
-  const host = process.env.CONTACT_SMTP_HOST;
-  const user = process.env.CONTACT_SMTP_USER;
-  const pass = process.env.CONTACT_SMTP_PASS;
+  const host = (process.env.CONTACT_SMTP_HOST || "").trim();
+  const user = (process.env.CONTACT_SMTP_USER || "").trim();
+  const pass = normalizeSecret(process.env.CONTACT_SMTP_PASS || "");
   const port = Number(process.env.CONTACT_SMTP_PORT || "587");
 
   if (!host || !user || !pass) {
     return NextResponse.json({ ok: false, error: "mail_not_configured" }, { status: 500 });
   }
 
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass }
-  });
+  const isGmail = /gmail\.com$/i.test(host) || /gmail\.com$/i.test(user);
+  const transporter = nodemailer.createTransport(
+    isGmail
+      ? {
+          service: "gmail",
+          auth: { user, pass }
+        }
+      : {
+          host,
+          port,
+          secure: port === 465,
+          requireTLS: port === 587,
+          auth: { user, pass }
+        }
+  );
 
   const lines = [
     "פנייה חדשה מדף צור קשר",
@@ -81,8 +115,13 @@ export async function POST(request: Request) {
       subject: name ? `פנייה מאת ${name}` : "פנייה מדף צור קשר",
       text: lines.join("\n")
     });
-  } catch {
-    return NextResponse.json({ ok: false, error: "send_failed" }, { status: 500 });
+  } catch (err) {
+    console.error("[contact] sendMail failed:", {
+      code: (err as { code?: string })?.code,
+      responseCode: (err as { responseCode?: number })?.responseCode,
+      message: (err as { message?: string })?.message
+    });
+    return NextResponse.json({ ok: false, error: classifyMailError(err) }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

@@ -13,6 +13,12 @@ function mapError(error?: string) {
       return "כתובת האימייל אינה תקינה.";
     case "mail_not_configured":
       return "שליחת מייל אינה מוגדרת כרגע בשרת. נסו להתקשר או לשלוח מייל ישירות.";
+    case "smtp_auth_failed":
+      return "אימות מול Gmail נכשל. בדקו ש-CONTACT_SMTP_PASS הוא App Password בן 16 תווים (בלי רווחים).";
+    case "smtp_connect_failed":
+      return "לא ניתן להתחבר לשרת המייל. נסו שוב מאוחר יותר.";
+    case "smtp_envelope_failed":
+      return "כתובת השליחה אינה תקינה. בדקו את הגדרות CONTACT_SMTP_USER / CONTACT_TO_EMAIL.";
     case "send_failed":
       return "שליחת ההודעה נכשלה. נסו שוב מאוחר יותר.";
     default:
