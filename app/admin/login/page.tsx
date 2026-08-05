@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createSupabaseBrowserClient } from "@/lib/supabase/ssr-client";
@@ -16,6 +17,7 @@ function LoginForm() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(
     urlError === "recovery_failed" ? "קישור איפוס הסיסמה אינו תקף או שפג תוקפו. נסו שוב." : null
   );
@@ -80,14 +82,25 @@ function LoginForm() {
               required
             />
             <label className="text-sm font-medium">סיסמה</label>
-            <input
-              type="password"
-              autoComplete="current-password"
-              className="h-10 rounded-md border border-border bg-background px-3"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 pe-10"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 end-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "הסתר סיסמה" : "הצג סיסמה"}
+                title={showPassword ? "הסתר סיסמה" : "הצג סיסמה"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
             <Button type="submit" disabled={loading} className="mt-2">
               {loading ? "מתחבר…" : "כניסה"}
