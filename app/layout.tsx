@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   title: "מערכת לניהול בית הכנסת",
   description: "מערכת לניהול בתי כנסת — זמני תפילה, הלכה יומית וניהול תצוגה",
   applicationName: "מערכת לניהול בית הכנסת",
+  // חשוב: לא דרך app/manifest.ts — כדי שאזור /admin יוכל להחליף ל-manifest נפרד.
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

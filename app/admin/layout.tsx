@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AdminManifestLink } from "@/components/admin/admin-manifest-link";
 
 /**
  * מטא-דאטה נפרד לאזור הניהול — מאפשר להתקין את ממשק הניהול כאפליקציה נפרדת
@@ -23,5 +24,10 @@ export const metadata: Metadata = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      <AdminManifestLink />
+      {children}
+    </>
+  );
 }

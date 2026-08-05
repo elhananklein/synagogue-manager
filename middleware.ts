@@ -21,6 +21,12 @@ const CHANGE_PASSWORD_PATH = "/admin/change-password";
 /** שער הזדהות לכל דפי /admin: מחייב סשן, ומפנה להחלפת סיסמה בכניסה ראשונה. */
 async function adminAuthMiddleware(request: NextRequest): Promise<NextResponse> {
   const path = request.nextUrl.pathname;
+
+  // Manifest של PWA חייב להיות ציבורי — Chrome טוען אותו בלי cookies.
+  if (path.endsWith("/manifest") || path.endsWith(".webmanifest")) {
+    return NextResponse.next();
+  }
+
   const { response, user } = await updateSession(request);
 
   const isLogin = path === LOGIN_PATH;

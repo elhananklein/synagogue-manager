@@ -4,8 +4,9 @@ import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { canManageSynagogue, getAdminContext } from "@/lib/auth";
 
 /**
- * מטא-דאטה פר-בית-כנסת: מקשר ל-manifest הדינמי כדי שהתקנת האפליקציה
- * (אנדרואיד + אייפון) תיפתח ישר לניהול בית הכנסת הרלוונטי.
+ * מטא-דאטה לניהול בית כנסת.
+ * ה-PWA של הניהול משתמש ב-/admin.webmanifest (scope=/admin, start_url=/admin)
+ * כדי ש-Chrome ייצור אפליקציה אמיתית — לא קיצור לדף /gabbai/...
  */
 export async function generateMetadata({
   params
@@ -25,7 +26,7 @@ export async function generateMetadata({
   return {
     applicationName: name ? `ניהול — ${name}` : "ניהול בית הכנסת",
     title: name ? `ניהול — ${name}` : "ניהול בית הכנסת",
-    manifest: `/admin/gabbai/${id}/manifest`,
+    manifest: "/admin.webmanifest",
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
