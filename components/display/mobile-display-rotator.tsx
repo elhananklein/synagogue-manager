@@ -305,9 +305,17 @@ export function MobileDisplayRotator({
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold leading-tight">{synagogueName}</h1>
             {minyanName ? <p className="truncate text-sm text-slate-500">{minyanName}</p> : null}
-            <Link href="/?pick=1" className="text-xs text-emerald-600 underline-offset-2 hover:underline">
-              החלפת בית כנסת
-            </Link>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+              <Link href="/?pick=1" className="text-emerald-600 underline-offset-2 hover:underline">
+                החלפת בית כנסת
+              </Link>
+              <span className="text-slate-300" aria-hidden>
+                |
+              </span>
+              <Link href="/admin/login" className="text-slate-500 underline-offset-2 hover:underline">
+                כניסה כמנהל
+              </Link>
+            </div>
           </div>
           <div className="text-left">
             <LiveClock className="text-2xl font-bold tabular-nums tracking-tight" showSeconds={false} />

@@ -6,7 +6,6 @@ import { AdminTabs } from "@/components/admin/admin-tabs";
 import { BulletinBoardEditor, mapBulletinForSave, mapBulletinFromApi, type BulletinItemModel } from "@/components/admin/bulletin-board-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PwaInstallBanner } from "@/components/mobile/pwa-install";
 import { LogoutButton } from "@/components/admin/logout-button";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, ZMANIM_CATALOG } from "@/lib/zmanim-catalog";
 
@@ -327,14 +326,6 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
         </div>
         <LogoutButton />
       </div>
-
-      <PwaInstallBanner
-        className="mt-4"
-        title="התקינו את אפליקציית הניהול"
-        description="לאחר ההתקנה האייקון ייפתח לממשק הניהול (ואז לבית הכנסת שלכם). חשוב לבחור «התקן אפליקציה» ולא קיצור דרך."
-        installLabel="התקן אפליקציית ניהול"
-        dismissKey="pwa-install-dismissed-admin-gabbai"
-      />
 
       <div className="mt-6">
         <AdminTabs

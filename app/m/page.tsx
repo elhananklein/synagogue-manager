@@ -28,7 +28,7 @@ export default async function MobileHomePage() {
       </Suspense>
       <header className="flex items-center gap-2 border-b border-slate-200 bg-white/85 px-4 py-4 backdrop-blur">
         <Building2 className="h-5 w-5 text-emerald-600" />
-        <span className="text-base font-bold">מערכת ניהול לבתי כנסת</span>
+        <span className="text-base font-bold">מערכת לניהול בתי כנסת</span>
       </header>
 
       <main className="flex-1 px-4 py-6">
@@ -38,9 +38,15 @@ export default async function MobileHomePage() {
         <MobileSynagogueSelector synagogues={synagogues} />
       </main>
 
-      <footer className="flex items-center justify-center border-t border-slate-200 bg-white px-4 py-3 text-sm">
+      <footer className="flex items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-3 text-sm">
         <Link href="/contact" className="text-slate-600">
           צור קשר
+        </Link>
+        <span className="text-slate-300" aria-hidden>
+          |
+        </span>
+        <Link href="/admin/login" className="font-medium text-emerald-700">
+          כניסה כמנהל
         </Link>
       </footer>
     </div>
