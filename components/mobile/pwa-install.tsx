@@ -40,8 +40,13 @@ function PwaServiceWorkerRegister() {
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
     void navigator.serviceWorker
-      .register("/sw.js")
-      .then((reg) => reg.update())
+      .register("/sw.js", { scope: "/", updateViaCache: "none" })
+      .then(async (reg) => {
+        await reg.update();
+        // מבטיח שה-SW שולט בדף — קריטי ל-WebAPK באנדרואיד.
+        if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+        await navigator.serviceWorker.ready;
+      })
       .catch(() => {});
   }, []);
   return null;
@@ -181,15 +186,17 @@ export function PwaInstallBanner({
             </ol>
           ) : (
             <ol className="list-decimal space-y-1 pr-4">
-              <li>פתחו את תפריט Chrome (⋮) בפינה העליונה</li>
-              <li>בחרו «התקנת אפליקציה» או «הוסף למסך הבית»</li>
-              <li>אשרו את ההתקנה</li>
+              <li>פתחו את תפריט Chrome (⋮)</li>
+              <li>בחרו «הוסף למסך הבית»</li>
+              <li>
+                חשוב: בחרו <strong>«התקן אפליקציה»</strong> / Install app — לא «צור קיצור דרך»
+              </li>
             </ol>
           )}
           {!showIosHint && !deferredPrompt ? (
             <p className="mt-2 text-emerald-800/80">
-              אם האפשרות לא מופיעה — ייתכן שכבר מותקנת אפליקציה אחרת מהאתר. הסירו אותה ממסך הבית ונסו שוב, או
-              התקינו דרך התפריט מהדף הזה.
+              אם מופיע רק «צור קיצור דרך» — הסירו קיצורים/אפליקציות ישנות של האתר ממסך הבית, רעננו את הדף
+              (לאחר העדכון), ונסו שוב כשאתם מחוברים לניהול.
             </p>
           ) : null}
         </div>

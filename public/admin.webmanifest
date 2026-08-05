@@ -6,7 +6,7 @@
   "start_url": "/admin",
   "scope": "/admin",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "dir": "rtl",
   "lang": "he",
   "background_color": "#0f172a",

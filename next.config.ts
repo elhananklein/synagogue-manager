@@ -7,6 +7,17 @@ import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 export default function createNextConfig(phase: string): NextConfig {
   return {
     reactStrictMode: true,
-    distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next"
+    distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
+    async headers() {
+      return [
+        {
+          source: "/sw.js",
+          headers: [
+            { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+            { key: "Service-Worker-Allowed", value: "/" }
+          ]
+        }
+      ];
+    }
   };
 }
