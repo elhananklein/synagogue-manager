@@ -52,6 +52,8 @@ export type DisplaySnapshot = {
   omerText: string | null;
   /** תוספת תפילה: "יעלה ויבוא" (ר"ח / חוה"מ) או שם הרגל (פסח / שבועות / סוכות). */
   amidahAdditionText: string | null;
+  /** שבת מברכין + שם החודש (כשהיום הוא שבת מברכין לפי Hebcal). */
+  shabbatMevarchimText: string | null;
   sourceEvents: string[];
 };
 
@@ -178,6 +180,62 @@ function isCholHamoedEvent(event: string) {
 function isRoshChodeshEvent(event: string) {
   const plain = stripHebrewNiqqud(event);
   return /Rosh Chodesh/i.test(event) || plain.includes("ראש חודש");
+}
+
+/** שמות חודשים באנגלית (Hebcal) → עברית לתצוגה. */
+const HEBCAL_MONTH_HE: Record<string, string> = {
+  nisan: "ניסן",
+  iyar: "אייר",
+  iyyar: "אייר",
+  sivan: "סיוון",
+  tamuz: "תמוז",
+  tammuz: "תמוז",
+  av: "אב",
+  elul: "אלול",
+  tishrei: "תשרי",
+  cheshvan: "חשוון",
+  kislev: "כסלו",
+  tevet: "טבת",
+  shvat: "שבט",
+  "sh'vat": "שבט",
+  shevat: "שבט",
+  adar: "אדר",
+  "adar i": "אדר א׳",
+  "adar 1": "אדר א׳",
+  "adar ii": "אדר ב׳",
+  "adar 2": "אדר ב׳",
+  "adar aleph": "אדר א׳",
+  "adar bet": "אדר ב׳"
+};
+
+function hebrewMonthFromHebcalName(raw: string): string | null {
+  const key = raw.trim().toLowerCase().replace(/\s+/g, " ");
+  if (HEBCAL_MONTH_HE[key]) return HEBCAL_MONTH_HE[key];
+  // ניסיון לחלץ חודש עברי שכבר מגיע מ-Hebcal בעברית
+  const plain = stripHebrewNiqqud(raw).trim();
+  if (/^[א-ת׳'״"\s]+$/.test(plain) && plain.length >= 2) return plain;
+  return null;
+}
+
+/**
+ * שבת מברכין — מהאירועים של יום השבת (לא של שישי).
+ * דוגמה Hebcal: "Shabbat Mevarchim Chodesh Nisan"
+ */
+export function resolveShabbatMevarchimText(events: string[]): string | null {
+  for (const event of events) {
+    const en = event.match(/Shabbat\s+Mevarchim\s+Chodesh\s+(.+)/i);
+    if (en?.[1]) {
+      const monthHe = hebrewMonthFromHebcalName(en[1]);
+      return monthHe ? `שבת מברכין · חודש ${monthHe}` : "שבת מברכין";
+    }
+    const plain = stripHebrewNiqqud(event);
+    const he = plain.match(/שבת\s+מברכ(?:ים|ין)\s+חודש\s+(.+)/);
+    if (he?.[1]) {
+      const monthHe = hebrewMonthFromHebcalName(he[1]);
+      return monthHe ? `שבת מברכין · חודש ${monthHe}` : "שבת מברכין";
+    }
+  }
+  return null;
 }
 
 const REGEL_YOM_TOV_LABELS: Record<string, string> = {
@@ -546,6 +604,7 @@ export async function getDisplaySnapshot(
     blessingText: winter ? "ותן טל ומטר לברכה" : "ותן ברכה",
     omerText,
     amidahAdditionText: resolveAmidahAdditionText(events),
+    shabbatMevarchimText: resolveShabbatMevarchimText(events),
     sourceEvents: events
   };
 }

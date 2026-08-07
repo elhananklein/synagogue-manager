@@ -1,8 +1,9 @@
 import { getPublishedBulletinItems, type BulletinItem } from "@/lib/bulletin-board";
-import { addDaysIsoDate, buildZmanimRows, getDisplaySnapshot, getTomorrowIsoDateFrom, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
+import { addDaysIsoDate, buildZmanimRows, getDisplaySnapshot, getTomorrowIsoDateFrom, resolveShabbatMevarchimText, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
 import { getDisplayConfig, type DisplayStyle, type ScheduleTimesListMode, type ScreenSetting } from "@/lib/display-config";
 import { getPublicHomeData } from "@/lib/data/public-content";
 import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule } from "@/lib/build-prayer-schedule";
+import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
 
 export type DisplayViewParams = {
   synagogueId?: string | string[];
@@ -26,6 +27,10 @@ export type DisplayShabbat = {
   candleLighting: string | null;
   havdalah: string | null;
   prayers: Array<{ label: string; time: string }>;
+  /** שבת מברכין לשבת המוצגת (אם רלוונטי) */
+  mevarchimText: string | null;
+  /** לוח זמנים ידני של הגבאי (שעה אופציונלית + תוכן) */
+  agenda: Array<{ itemTime: string | null; content: string }>;
 };
 
 export type DisplayView = {
@@ -38,6 +43,8 @@ export type DisplayView = {
   screens: ScreenSetting[];
   dailyLearning: DailyLearningLine[];
   snapshot: DisplaySnapshot;
+  /** שבת מברכין של שבת השבוע — להצגה במסך הראשי בשישי/שבת */
+  shabbatMevarchimText: string | null;
   halacha: {
     title: string;
     text: string;
@@ -86,11 +93,12 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const displayConfig = await getDisplayConfig(synagogueId, minyanSelector);
   const location = displayConfig.location;
 
-  const [snapshot, tomorrowSnapshot, publicData, bulletinItems] = await Promise.all([
+  const [snapshot, tomorrowSnapshot, publicData, bulletinItems, shabbatAgendaItems] = await Promise.all([
     getDisplaySnapshot(todayIsoDate, { location }),
     getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, location }),
     getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
-    getPublishedBulletinItems(synagogueId)
+    getPublishedBulletinItems(synagogueId),
+    getPublishedShabbatAgendaItems(synagogueId)
   ]);
 
   const styleOverrideRaw = singleQueryParam(params.style);
@@ -126,15 +134,39 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const shabbatScreenEnabled = displayConfig.screens.some(
     (screen) => screen.screenKey === "shabbat" && screen.enabled
   );
-  let shabbat: DisplayShabbat | null = null;
+
+  const daysUntilSaturday = (6 - todayJsDay + 7) % 7;
+  const saturdayIso = addDaysIsoDate(todayIsoDate, daysUntilSaturday);
+  const fridayIso = addDaysIsoDate(saturdayIso, -1);
+
+  // שבת מברכין נקבעת לפי אירועי יום השבת (לא שישי).
+  let saturdayEvents: string[] = [];
+  let fridaySnapshot: DisplaySnapshot | null = null;
+  let saturdaySnapshot: DisplaySnapshot | null = null;
+
   if (shabbatScreenEnabled) {
-    const daysUntilSaturday = (6 - todayJsDay + 7) % 7;
-    const saturdayIso = addDaysIsoDate(todayIsoDate, daysUntilSaturday);
-    const fridayIso = addDaysIsoDate(saturdayIso, -1);
-    const [fridaySnapshot, saturdaySnapshot] = await Promise.all([
+    [fridaySnapshot, saturdaySnapshot] = await Promise.all([
       getDisplaySnapshot(fridayIso, { omitDailyLearning: true, location }),
       getDisplaySnapshot(saturdayIso, { omitDailyLearning: true, location })
     ]);
+    saturdayEvents = saturdaySnapshot.sourceEvents;
+  } else if (todayJsDay === 6) {
+    saturdayEvents = snapshot.sourceEvents;
+  } else if (todayJsDay === 5) {
+    saturdayEvents = tomorrowSnapshot.sourceEvents;
+  } else {
+    // באמצע השבוע — אם מסך שבת כבוי עדיין נרצה לדעת לשבת הקרובה רק אם נציג בראשי בשישי/שבת;
+    // אין צורך בקריאה נוספת באמצע השבוע.
+    saturdayEvents = [];
+  }
+
+  const weekMevarchimText = resolveShabbatMevarchimText(saturdayEvents);
+  // במסך הראשי: מציגים בשישי ובשבת של אותה שבת מברכין.
+  const shabbatMevarchimText =
+    weekMevarchimText && (todayJsDay === 5 || todayJsDay === 6) ? weekMevarchimText : null;
+
+  let shabbat: DisplayShabbat | null = null;
+  if (shabbatScreenEnabled && fridaySnapshot && saturdaySnapshot) {
     shabbat = {
       parasha: snapshot.parasha,
       candleLighting: snapshot.candleLighting,
@@ -143,7 +175,12 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
         displayConfig.prayerSettings,
         fridaySnapshot.zmanimSourceTimes,
         saturdaySnapshot.zmanimSourceTimes
-      )
+      ),
+      mevarchimText: weekMevarchimText,
+      agenda: shabbatAgendaItems.map((item) => ({
+        itemTime: item.itemTime,
+        content: item.content
+      }))
     };
   }
 
@@ -189,6 +226,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     screens: displayConfig.screens,
     dailyLearning: snapshot.dailyLearning,
     snapshot: displaySnapshot,
+    shabbatMevarchimText,
     halacha: publicData.halacha
       ? {
           title: publicData.halacha.title,

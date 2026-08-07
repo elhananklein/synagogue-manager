@@ -45,6 +45,7 @@ type MobileDisplayRotatorProps = {
   screens: RotatorScreen[];
   dailyLearning: DailyLearningLine[];
   snapshot: Snapshot;
+  shabbatMevarchimText?: string | null;
   halacha: {
     title: string;
     text: string;
@@ -107,6 +108,7 @@ export function MobileDisplayRotator({
   screens,
   dailyLearning,
   snapshot,
+  shabbatMevarchimText = null,
   halacha,
   prayerSchedule,
   timeSections,
@@ -282,8 +284,12 @@ export function MobileDisplayRotator({
     <>
       <ScreenHeading screenKey={screenKey} />
       <div className="mt-4">
-        {screenKey === "main" && <MainScreen snapshot={snapshot} timeSections={timeSections} />}
-        {screenKey === "mainInfo" && <MainInfoScreen snapshot={snapshot} nextPrayer={nextPrayer} />}
+        {screenKey === "main" && (
+          <MainScreen snapshot={snapshot} timeSections={timeSections} mevarchimText={shabbatMevarchimText} />
+        )}
+        {screenKey === "mainInfo" && (
+          <MainInfoScreen snapshot={snapshot} nextPrayer={nextPrayer} mevarchimText={shabbatMevarchimText} />
+        )}
         {screenKey === "clock" && <ClockScreen snapshot={snapshot} />}
         {screenKey === "halacha" && <HalachaScreen halacha={halacha} />}
         {screenKey === "dailyLearning" && <DailyLearningScreen lines={dailyLearning} />}
@@ -447,10 +453,21 @@ function TimeRow({ label, time, highlight }: { label: string; time: string; high
   );
 }
 
-function MainScreen({ snapshot, timeSections }: { snapshot: Snapshot; timeSections: DisplayTimeSection[] }) {
+function MainScreen({
+  snapshot,
+  timeSections,
+  mevarchimText
+}: {
+  snapshot: Snapshot;
+  timeSections: DisplayTimeSection[];
+  mevarchimText?: string | null;
+}) {
   return (
     <div className="space-y-4">
       <Badges snapshot={snapshot} />
+      {mevarchimText ? (
+        <p className="text-center text-base font-semibold text-emerald-800">{mevarchimText}</p>
+      ) : null}
       {timeSections.map((section) => {
         if (!section.items.length) return null;
         const items = [...section.items].sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
@@ -480,10 +497,12 @@ function InfoTile({ label, value }: { label: string; value: string }) {
 
 function MainInfoScreen({
   snapshot,
-  nextPrayer
+  nextPrayer,
+  mevarchimText
 }: {
   snapshot: Snapshot;
   nextPrayer: { label: string; time: string } | null;
+  mevarchimText?: string | null;
 }) {
   return (
     <div className="space-y-3">
@@ -495,6 +514,11 @@ function MainInfoScreen({
         <InfoTile label="דף יומי" value={snapshot.dafYomi} />
         {nextPrayer ? <InfoTile label="התפילה הבאה" value={`${nextPrayer.label} ${nextPrayer.time}`} /> : null}
       </div>
+      {mevarchimText ? (
+        <Card className="text-center">
+          <p className="text-base font-semibold text-emerald-800">{mevarchimText}</p>
+        </Card>
+      ) : null}
       <Badges snapshot={snapshot} />
     </div>
   );
@@ -607,17 +631,38 @@ function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
   if (!shabbat) {
     return <Card className="text-center text-slate-500">אין נתוני שבת להצגה כעת.</Card>;
   }
+  const hasAgenda = Boolean(shabbat.agenda?.length);
   return (
     <div className="space-y-3">
       <Card className="text-center">
         <p className="text-sm text-slate-500">פרשת השבוע</p>
         <p className="mt-1 text-xl font-bold">{shabbat.parasha}</p>
+        {shabbat.mevarchimText ? (
+          <p className="mt-2 text-base font-semibold text-emerald-800">{shabbat.mevarchimText}</p>
+        ) : null}
       </Card>
       <div className="grid grid-cols-2 gap-3">
         {shabbat.candleLighting ? <InfoTile label="הדלקת נרות" value={shabbat.candleLighting} /> : null}
         {shabbat.havdalah ? <InfoTile label="צאת השבת" value={shabbat.havdalah} /> : null}
       </div>
-      {shabbat.prayers.length ? (
+      {hasAgenda ? (
+        <Card>
+          <h3 className="mb-2 text-sm font-bold text-slate-500">סדר היום</h3>
+          <div className="space-y-1">
+            {shabbat.agenda.map((row, i) => (
+              <div
+                key={`${row.content}-${i}`}
+                className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 odd:bg-slate-50"
+              >
+                <span className="text-[15px]">{row.content}</span>
+                {row.itemTime ? (
+                  <span className="shrink-0 text-[15px] font-semibold tabular-nums">{row.itemTime}</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : shabbat.prayers.length ? (
         <Card>
           <h3 className="mb-2 text-sm font-bold text-slate-500">זמני תפילות שבת</h3>
           <div className="space-y-1">

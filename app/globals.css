@@ -245,6 +245,14 @@ body {
     font-weight: 600;
   }
 
+  .display-mevarchim {
+    margin-top: 0.35rem;
+    font-size: 1.35rem;
+    font-weight: 600;
+    opacity: 0.88;
+    letter-spacing: 0.02em;
+  }
+
   .display-hebrew-date {
     font-size: 1.875rem;
     font-weight: 700;
@@ -913,6 +921,14 @@ body {
     font-weight: 800;
     line-height: 1.1;
     text-align: center;
+  }
+  .display-shabbat-mevarchim {
+    margin-top: 0.35rem;
+    font-size: clamp(1.25rem, 2.8vw, 2rem);
+    font-weight: 600;
+    opacity: 0.9;
+    text-align: center;
+    letter-spacing: 0.03em;
   }
   .display-shabbat-zmanim {
     display: flex;

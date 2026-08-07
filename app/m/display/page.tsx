@@ -31,6 +31,7 @@ export default async function MobileDisplayPage({
       screens={view.screens}
       dailyLearning={view.dailyLearning}
       snapshot={view.snapshot}
+      shabbatMevarchimText={view.shabbatMevarchimText}
       halacha={view.halacha}
       prayerSchedule={view.prayerSchedule}
       timeSections={view.timeSections}

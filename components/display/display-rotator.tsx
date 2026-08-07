@@ -200,6 +200,7 @@ export function DisplayRotator({
   footerText,
   scheduleTimesListMode = "all",
   shabbat = null,
+  shabbatMevarchimText = null,
   bulletinItems = []
 }: {
   style: DisplayStyle;
@@ -215,12 +216,16 @@ export function DisplayRotator({
   footerText?: string | null;
   /** "prayers_only" — רשימת תפילות בלבד, נכנסת במלואה ולכן ללא גלילה אוטומטית */
   scheduleTimesListMode?: "all" | "prayers_only";
+  /** שבת מברכין להצגה במסך הראשי (שישי/שבת) */
+  shabbatMevarchimText?: string | null;
   /** נתוני מסך שבת: פרשה, כניסה/יציאה, וזמני תפילות שבת (כולל מנחה ערב שבת) */
   shabbat?: {
     parasha: string;
     candleLighting: string | null;
     havdalah: string | null;
     prayers: Array<{ label: string; time: string }>;
+    mevarchimText?: string | null;
+    agenda?: Array<{ itemTime: string | null; content: string }>;
   } | null;
   bulletinItems?: BulletinItem[];
 }) {
@@ -743,6 +748,7 @@ export function DisplayRotator({
                   isWoodSilverRevolution={isWoodSilverRevolution}
                   amidahAddition={amidahAddition}
                   hasBothExtraAdditions={hasBothExtraAdditions}
+                  mevarchimText={shabbatMevarchimText}
                 />
               </div>
             </div>
@@ -856,6 +862,7 @@ export function DisplayRotator({
                 isWoodSilverRevolution={isWoodSilverRevolution}
                 amidahAddition={amidahAddition}
                 hasBothExtraAdditions={hasBothExtraAdditions}
+                mevarchimText={shabbatMevarchimText}
               />
             </div>
             </AutoFit>
@@ -875,6 +882,9 @@ export function DisplayRotator({
             <div className="display-shabbat-inner">
               <p className="display-shabbat-title">שבת קודש</p>
               <p className="display-shabbat-parasha">{shabbat?.parasha ?? snapshot.parasha}</p>
+              {shabbat?.mevarchimText ? (
+                <p className="display-shabbat-mevarchim">{shabbat.mevarchimText}</p>
+              ) : null}
 
               <div className="display-shabbat-zmanim">
                 <Card className="display-card display-shabbat-zman-card">
@@ -895,7 +905,18 @@ export function DisplayRotator({
                 </Card>
               </div>
 
-              {shabbat?.prayers?.length ? (
+              {shabbat?.agenda?.length ? (
+                <Card className="display-card display-shabbat-prayers-card">
+                  <CardContent className="display-shabbat-prayers">
+                    {shabbat.agenda.map((row, agendaIndex) => (
+                      <div className="display-shabbat-prayer-row" key={`${row.content}-${agendaIndex}`}>
+                        <span className="display-shabbat-prayer-label">{row.content}</span>
+                        <span className="display-shabbat-prayer-time">{row.itemTime ?? ""}</span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : shabbat?.prayers?.length ? (
                 <Card className="display-card display-shabbat-prayers-card">
                   <CardContent className="display-shabbat-prayers">
                     {shabbat.prayers.map((prayer, prayerIndex) => (
@@ -928,18 +949,21 @@ function PrimaryInfoStack({
   snapshot,
   isWoodSilverRevolution,
   amidahAddition,
-  hasBothExtraAdditions
+  hasBothExtraAdditions,
+  mevarchimText
 }: {
   snapshot: Snapshot;
   isWoodSilverRevolution: boolean;
   amidahAddition: string | null;
   hasBothExtraAdditions: boolean;
+  mevarchimText?: string | null;
 }) {
   return (
     <>
       <Card className="display-card display-main-date-card">
         <CardContent className="display-main-date-content">
           <p className="display-parasha">{snapshot.parasha}</p>
+          {mevarchimText ? <p className="display-mevarchim">{mevarchimText}</p> : null}
           {isWoodSilverRevolution ? (
             <p className="display-gregorian-date">{snapshot.gregorianDate}</p>
           ) : (

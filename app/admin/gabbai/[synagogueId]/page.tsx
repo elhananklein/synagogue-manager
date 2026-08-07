@@ -4,6 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { AdminTabs } from "@/components/admin/admin-tabs";
 import { BulletinBoardEditor, mapBulletinForSave, mapBulletinFromApi, type BulletinItemModel } from "@/components/admin/bulletin-board-editor";
+import {
+  ShabbatAgendaEditor,
+  mapShabbatAgendaForSave,
+  mapShabbatAgendaFromApi,
+  type ShabbatAgendaItemModel
+} from "@/components/admin/shabbat-agenda-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogoutButton } from "@/components/admin/logout-button";
@@ -21,6 +27,8 @@ type MinyanInnerTab = "general" | "prayers" | "schedule" | "screens";
 function mapGabbaiSaveError(error?: string) {
   if (error === "bulletin_invalid_dates") return "יש למלא תאריכי הצגה תקינים לכל הודעה";
   if (error === "bulletin_until_before_from") return "תאריך «עד» חייב להיות ביום ההתחלה או אחריו";
+  if (error === "shabbat_agenda_requires_content") return "יש למלא תוכן בכל שורה בלוח הזמנים לשבת";
+  if (error === "shabbat_agenda_invalid_time") return "שעה לא תקינה בלוח הזמנים לשבת";
   return error ?? "שמירה נכשלה";
 }
 
@@ -159,6 +167,8 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
   const [deleteConfirmStep, setDeleteConfirmStep] = useState<1 | 2>(1);
   const [parashaCatalogKeys, setParashaCatalogKeys] = useState<string[]>([]);
   const [bulletinItems, setBulletinItems] = useState<BulletinItemModel[]>([]);
+  const [shabbatAgendaItems, setShabbatAgendaItems] = useState<ShabbatAgendaItemModel[]>([]);
+  const [shabbatParashaHint, setShabbatParashaHint] = useState<string | null>(null);
   const [topTab, setTopTab] = useState<TopTab>("shared");
   const [innerTab, setInnerTab] = useState<MinyanInnerTab>("general");
 
@@ -194,6 +204,14 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
           displayFrom: string;
           displayUntil: string;
         }>;
+        shabbatAgendaItems?: Array<{
+          id: string;
+          sortOrder: number;
+          itemTime: string | null;
+          content: string;
+          published: boolean;
+        }>;
+        currentParasha?: string | null;
       };
       error?: string;
     };
@@ -219,6 +237,9 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
     setMinyanim(normalized);
     setHalachaSettings(payload.data.halachaSettings);
     setBulletinItems(mapBulletinFromApi(payload.data.bulletinItems ?? []));
+    setShabbatAgendaItems(mapShabbatAgendaFromApi(payload.data.shabbatAgendaItems ?? []));
+    const parasha = payload.data.currentParasha?.trim();
+    setShabbatParashaHint(parasha && parasha !== "לא נמצא" ? parasha : null);
   }
 
   useEffect(() => {
@@ -298,7 +319,8 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
           synagogueName,
           minyanim,
           halachaSettings,
-          bulletinItems: mapBulletinForSave(bulletinItems)
+          bulletinItems: mapBulletinForSave(bulletinItems),
+          shabbatAgendaItems: mapShabbatAgendaForSave(shabbatAgendaItems)
         })
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
@@ -418,6 +440,12 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
             </Card>
 
             <BulletinBoardEditor synagogueId={synagogueId} items={bulletinItems} onChange={setBulletinItems} />
+
+            <ShabbatAgendaEditor
+              items={shabbatAgendaItems}
+              onChange={setShabbatAgendaItems}
+              parashaHint={shabbatParashaHint}
+            />
           </div>
         ) : selectedMinyan ? (
           <Card>

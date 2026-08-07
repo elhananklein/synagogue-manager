@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getAllBulletinItemsForAdmin, saveBulletinItems, type BulletinItemInput } from "@/lib/bulletin-board";
+import {
+  getAllShabbatAgendaItemsForAdmin,
+  saveShabbatAgendaItems,
+  type ShabbatAgendaItemInput
+} from "@/lib/shabbat-agenda";
+import { getDisplaySnapshot, toIsoDateJerusalem } from "@/lib/hebcal";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
 import { canManageSynagogue, getAdminContext } from "@/lib/auth";
@@ -144,6 +150,14 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     displayMode: (halachaSettingsRes.data?.display_mode as "summary" | "full") ?? "summary"
   };
   const bulletinItems = await getAllBulletinItemsForAdmin(synagogueId);
+  const shabbatAgendaItems = await getAllShabbatAgendaItemsForAdmin(synagogueId);
+  let currentParasha: string | null = null;
+  try {
+    const snap = await getDisplaySnapshot(toIsoDateJerusalem(), { omitDailyLearning: true });
+    currentParasha = snap.parasha && snap.parasha !== "לא נמצא" ? snap.parasha : null;
+  } catch {
+    currentParasha = null;
+  }
 
   return NextResponse.json({
     ok: true,
@@ -151,7 +165,9 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
       synagogue: synagogueRes.data,
       minyanim: mappedMinyanim,
       halachaSettings,
-      bulletinItems
+      bulletinItems,
+      shabbatAgendaItems,
+      currentParasha
     }
   });
 }
@@ -171,6 +187,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     minyanim: MinyanInput[];
     halachaSettings?: HalachaSettingsInput;
     bulletinItems?: BulletinItemInput[];
+    shabbatAgendaItems?: ShabbatAgendaItemInput[];
   };
 
   const synagogueName = payload.synagogueName?.trim();
@@ -302,6 +319,13 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     const bulletinResult = await saveBulletinItems(synagogueId, payload.bulletinItems);
     if (!bulletinResult.ok) {
       return NextResponse.json({ ok: false, error: bulletinResult.error }, { status: 500 });
+    }
+  }
+
+  if (payload.shabbatAgendaItems) {
+    const agendaResult = await saveShabbatAgendaItems(synagogueId, payload.shabbatAgendaItems);
+    if (!agendaResult.ok) {
+      return NextResponse.json({ ok: false, error: agendaResult.error }, { status: 500 });
     }
   }
 
