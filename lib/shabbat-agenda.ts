@@ -19,6 +19,7 @@ export type ShabbatAgendaItemInput = {
 
 type DbRow = {
   id: string;
+  minyan_id?: string;
   sort_order: number;
   item_time: string | null;
   content: string;
@@ -31,7 +32,6 @@ function normalizeItemTime(raw: string | null | undefined): string | null {
   if (raw == null) return null;
   const trimmed = String(raw).trim();
   if (!trimmed) return null;
-  // מאפשר גם HH:MM:SS מ-Postgres time
   const hhmm = trimmed.slice(0, 5);
   if (!TIME_RE.test(hhmm)) return null;
   const [h, m] = hhmm.split(":").map(Number);
@@ -50,17 +50,17 @@ function mapRow(row: DbRow): ShabbatAgendaItem {
 }
 
 export async function getPublishedShabbatAgendaItems(
-  synagogueId: string | null | undefined
+  minyanId: string | null | undefined
 ): Promise<ShabbatAgendaItem[]> {
-  if (!synagogueId?.trim()) return [];
+  if (!minyanId?.trim()) return [];
 
   const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) return [];
 
   const res = await supabase
-    .from("synagogue_shabbat_agenda_items")
+    .from("minyan_shabbat_agenda_items")
     .select("id, sort_order, item_time, content, published")
-    .eq("synagogue_id", synagogueId)
+    .eq("minyan_id", minyanId)
     .eq("published", true)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
@@ -71,25 +71,37 @@ export async function getPublishedShabbatAgendaItems(
     .filter((item) => item.content.trim().length > 0);
 }
 
-export async function getAllShabbatAgendaItemsForAdmin(
-  synagogueId: string
-): Promise<ShabbatAgendaItem[]> {
+/** טוען לוחות שבת לכל המניינים — לממשק גבאי */
+export async function getShabbatAgendaItemsByMinyanIds(
+  minyanIds: string[]
+): Promise<Record<string, ShabbatAgendaItem[]>> {
+  const result: Record<string, ShabbatAgendaItem[]> = {};
+  for (const id of minyanIds) result[id] = [];
+  if (!minyanIds.length) return result;
+
   const supabase = getSupabaseAdminClient();
-  if (!supabase) return [];
+  if (!supabase) return result;
 
   const res = await supabase
-    .from("synagogue_shabbat_agenda_items")
-    .select("id, sort_order, item_time, content, published")
-    .eq("synagogue_id", synagogueId)
+    .from("minyan_shabbat_agenda_items")
+    .select("id, minyan_id, sort_order, item_time, content, published")
+    .in("minyan_id", minyanIds)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
-  if (res.error || !res.data) return [];
-  return (res.data as DbRow[]).map(mapRow);
+  if (res.error || !res.data) return result;
+
+  for (const row of res.data as DbRow[]) {
+    const mid = row.minyan_id;
+    if (!mid) continue;
+    if (!result[mid]) result[mid] = [];
+    result[mid].push(mapRow(row));
+  }
+  return result;
 }
 
 export async function saveShabbatAgendaItems(
-  synagogueId: string,
+  minyanId: string,
   items: ShabbatAgendaItemInput[]
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = getSupabaseAdminClient();
@@ -106,22 +118,22 @@ export async function saveShabbatAgendaItems(
   }
 
   const { error: deleteError } = await supabase
-    .from("synagogue_shabbat_agenda_items")
+    .from("minyan_shabbat_agenda_items")
     .delete()
-    .eq("synagogue_id", synagogueId);
+    .eq("minyan_id", minyanId);
   if (deleteError) return { ok: false, error: deleteError.message };
 
   if (!items.length) return { ok: true };
 
   const rows = items.map((item, index) => ({
-    synagogue_id: synagogueId,
+    minyan_id: minyanId,
     sort_order: item.sortOrder ?? index + 1,
     item_time: normalizeItemTime(item.itemTime),
     content: item.content.trim(),
     published: item.published !== false
   }));
 
-  const { error: insertError } = await supabase.from("synagogue_shabbat_agenda_items").insert(rows);
+  const { error: insertError } = await supabase.from("minyan_shabbat_agenda_items").insert(rows);
   if (insertError) return { ok: false, error: insertError.message };
 
   return { ok: true };

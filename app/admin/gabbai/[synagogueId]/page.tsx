@@ -22,7 +22,7 @@ type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "
 type PrayerMode = "fixed" | "relative" | "parasha";
 type PrayerCategory = "weekday" | "shabbat";
 type TopTab = "shared" | `minyan-${number}`;
-type MinyanInnerTab = "general" | "prayers" | "schedule" | "screens";
+type MinyanInnerTab = "general" | "prayers" | "shabbatAgenda" | "schedule" | "screens";
 
 function mapGabbaiSaveError(error?: string) {
   if (error === "bulletin_invalid_dates") return "יש למלא תאריכי הצגה תקינים לכל הודעה";
@@ -60,6 +60,7 @@ type MinyanModel = {
   footerText: string;
   prayerSettings: PrayerSetting[];
   screens: ScreenSetting[];
+  shabbatAgendaItems: ShabbatAgendaItemModel[];
 };
 
 type HalachaSettingsModel = {
@@ -90,6 +91,7 @@ const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
 const MINYAN_INNER_TABS: Array<{ id: MinyanInnerTab; label: string; shortLabel: string }> = [
   { id: "general", label: "כללי", shortLabel: "כללי" },
   { id: "prayers", label: "זמני תפילות", shortLabel: "תפילות" },
+  { id: "shabbatAgenda", label: "לוח זמנים לשבת", shortLabel: "סדר שבת" },
   { id: "schedule", label: "לוח המסך הראשי", shortLabel: "לוח" },
   { id: "screens", label: "מסכי תצוגה", shortLabel: "מסכים" }
 ];
@@ -136,7 +138,8 @@ function createDefaultMinyan(): MinyanModel {
       { screenKey: "clock", sortOrder: 2, durationSeconds: 12, enabled: true },
       { screenKey: "halacha", sortOrder: 3, durationSeconds: 18, enabled: true },
       { screenKey: "dailyLearning", sortOrder: 4, durationSeconds: 22, enabled: false }
-    ]
+    ],
+    shabbatAgendaItems: []
   };
 }
 
@@ -167,7 +170,6 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
   const [deleteConfirmStep, setDeleteConfirmStep] = useState<1 | 2>(1);
   const [parashaCatalogKeys, setParashaCatalogKeys] = useState<string[]>([]);
   const [bulletinItems, setBulletinItems] = useState<BulletinItemModel[]>([]);
-  const [shabbatAgendaItems, setShabbatAgendaItems] = useState<ShabbatAgendaItemModel[]>([]);
   const [shabbatParashaHint, setShabbatParashaHint] = useState<string | null>(null);
   const [topTab, setTopTab] = useState<TopTab>("shared");
   const [innerTab, setInnerTab] = useState<MinyanInnerTab>("general");
@@ -191,7 +193,17 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
       ok: boolean;
       data?: {
         synagogue: { id: string; name: string };
-        minyanim: MinyanModel[];
+        minyanim: Array<
+          Omit<MinyanModel, "shabbatAgendaItems"> & {
+            shabbatAgendaItems?: Array<{
+              id: string;
+              sortOrder: number;
+              itemTime: string | null;
+              content: string;
+              published: boolean;
+            }>;
+          }
+        >;
         halachaSettings: HalachaSettingsModel;
         bulletinItems?: Array<{
           id: string;
@@ -203,13 +215,6 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
           published: boolean;
           displayFrom: string;
           displayUntil: string;
-        }>;
-        shabbatAgendaItems?: Array<{
-          id: string;
-          sortOrder: number;
-          itemTime: string | null;
-          content: string;
-          published: boolean;
         }>;
         currentParasha?: string | null;
       };
@@ -232,12 +237,12 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
         mode: (p.mode === "parasha" ? "parasha" : p.mode === "relative" ? "relative" : "fixed") as PrayerMode,
         parashaKey: p.parashaKey ?? null,
         roundMode: p.roundMode ?? "none"
-      }))
+      })),
+      shabbatAgendaItems: mapShabbatAgendaFromApi(m.shabbatAgendaItems ?? [])
     }));
     setMinyanim(normalized);
     setHalachaSettings(payload.data.halachaSettings);
     setBulletinItems(mapBulletinFromApi(payload.data.bulletinItems ?? []));
-    setShabbatAgendaItems(mapShabbatAgendaFromApi(payload.data.shabbatAgendaItems ?? []));
     const parasha = payload.data.currentParasha?.trim();
     setShabbatParashaHint(parasha && parasha !== "לא נמצא" ? parasha : null);
   }
@@ -317,10 +322,12 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           synagogueName,
-          minyanim,
+          minyanim: minyanim.map((m) => ({
+            ...m,
+            shabbatAgendaItems: mapShabbatAgendaForSave(m.shabbatAgendaItems ?? [])
+          })),
           halachaSettings,
-          bulletinItems: mapBulletinForSave(bulletinItems),
-          shabbatAgendaItems: mapShabbatAgendaForSave(shabbatAgendaItems)
+          bulletinItems: mapBulletinForSave(bulletinItems)
         })
       });
       const payload = (await response.json()) as { ok: boolean; error?: string };
@@ -440,12 +447,6 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
             </Card>
 
             <BulletinBoardEditor synagogueId={synagogueId} items={bulletinItems} onChange={setBulletinItems} />
-
-            <ShabbatAgendaEditor
-              items={shabbatAgendaItems}
-              onChange={setShabbatAgendaItems}
-              parashaHint={shabbatParashaHint}
-            />
           </div>
         ) : selectedMinyan ? (
           <Card>
@@ -522,6 +523,16 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                     </Button>
                   </div>
                 </div>
+              ) : null}
+
+              {innerTab === "shabbatAgenda" ? (
+                <ShabbatAgendaEditor
+                  items={selectedMinyan.shabbatAgendaItems}
+                  onChange={(items) =>
+                    updateMinyan(selectedMinyanIndex, (m) => ({ ...m, shabbatAgendaItems: items }))
+                  }
+                  parashaHint={shabbatParashaHint}
+                />
               ) : null}
 
               {innerTab === "prayers" ? (

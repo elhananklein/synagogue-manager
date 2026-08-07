@@ -23,12 +23,14 @@ function createEmptyItem(): ShabbatAgendaItemModel {
 export function ShabbatAgendaEditor({
   items,
   onChange,
-  parashaHint
+  parashaHint,
+  className
 }: {
   items: ShabbatAgendaItemModel[];
   onChange: (items: ShabbatAgendaItemModel[]) => void;
   /** למשל «פרשת ראה» — להקשר בלבד */
   parashaHint?: string | null;
+  className?: string;
 }) {
   const updateItem = (localKey: string, patch: Partial<ShabbatAgendaItemModel>) => {
     onChange(items.map((item) => (item.localKey === localKey ? { ...item, ...patch } : item)));
@@ -54,11 +56,11 @@ export function ShabbatAgendaEditor({
   };
 
   return (
-    <Card className="mt-6">
+    <Card className={className}>
       <CardHeader>
         <CardTitle>לוח זמנים לשבת</CardTitle>
         <p className="text-sm text-muted-foreground">
-          סדר היום לשבת הקרובה
+          סדר היום לשבת הקרובה למניין זה
           {parashaHint ? (
             <>
               {" "}
@@ -66,7 +68,7 @@ export function ShabbatAgendaEditor({
             </>
           ) : null}
           . לכל שורה תוכן (חובה) ושעה אופציונלית. לדוגמה: כניסת שבת, שיר השירים, קריאת התורה, קידוש.
-          מוצג במסך «שבת» בתצוגה.
+          מוצג במסך «שבת» של המניין.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -142,21 +144,25 @@ export function ShabbatAgendaEditor({
 
 export function mapShabbatAgendaFromApi(
   rows: Array<{
-    id: string;
+    id?: string;
     sortOrder: number;
-    itemTime: string | null;
-    content: string;
-    published: boolean;
+    itemTime?: string | null;
+    content?: string;
+    published?: boolean;
+    localKey?: string;
   }>
 ): ShabbatAgendaItemModel[] {
-  return rows.map((row) => ({
-    localKey: row.id,
-    id: row.id,
-    sortOrder: row.sortOrder,
-    itemTime: row.itemTime ?? "",
-    content: row.content ?? "",
-    published: row.published
-  }));
+  return rows.map((row, index) => {
+    const id = row.id?.trim() || undefined;
+    return {
+      localKey: row.localKey || id || `sa-load-${index}-${Date.now()}`,
+      id,
+      sortOrder: row.sortOrder,
+      itemTime: row.itemTime ?? "",
+      content: row.content ?? "",
+      published: row.published !== false
+    };
+  });
 }
 
 export function mapShabbatAgendaForSave(items: ShabbatAgendaItemModel[]): ShabbatAgendaItemInput[] {

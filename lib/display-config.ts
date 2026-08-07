@@ -77,6 +77,7 @@ export type ScheduleTimesListMode = "all" | "prayers_only";
 
 export type DisplayConfig = {
   synagogueName: string;
+  minyanId: string | null;
   minyanName: string | null;
   /** מיקום ומנהג לחישוב זמני היום וכניסת/יציאת שבת */
   location: SynagogueZmanimLocation;
@@ -93,6 +94,7 @@ export type DisplayConfig = {
 
 const DEFAULT_CONFIG: DisplayConfig = {
   synagogueName: "בית כנסת",
+  minyanId: null,
   minyanName: null,
   location: DEFAULT_ZMANIM_LOCATION,
   displayStyle: "classic",
@@ -248,6 +250,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
 
   return {
     synagogueName: syn.name,
+    minyanId: chosenMinyan.id,
     minyanName: chosenMinyan.name,
     location,
     displayStyle: (chosenMinyan.display_style as DisplayStyle) ?? "classic",

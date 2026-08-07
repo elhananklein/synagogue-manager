@@ -98,7 +98,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, location }),
     getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
     getPublishedBulletinItems(synagogueId),
-    getPublishedShabbatAgendaItems(synagogueId)
+    getPublishedShabbatAgendaItems(displayConfig.minyanId)
   ]);
 
   const styleOverrideRaw = singleQueryParam(params.style);

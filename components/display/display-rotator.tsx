@@ -880,29 +880,33 @@ export function DisplayRotator({
           <section className="display-shabbat-screen">
             <AutoFit className="display-shabbat-fit" deps={[currentScreen, shabbat, snapshot]}>
             <div className="display-shabbat-inner">
-              <p className="display-shabbat-title">שבת קודש</p>
-              <p className="display-shabbat-parasha">{shabbat?.parasha ?? snapshot.parasha}</p>
-              {shabbat?.mevarchimText ? (
-                <p className="display-shabbat-mevarchim">{shabbat.mevarchimText}</p>
-              ) : null}
+              <div className="display-shabbat-hero">
+                <div className="display-shabbat-heading">
+                  <p className="display-shabbat-title">שבת קודש</p>
+                  <p className="display-shabbat-parasha">{shabbat?.parasha ?? snapshot.parasha}</p>
+                  {shabbat?.mevarchimText ? (
+                    <p className="display-shabbat-mevarchim">{shabbat.mevarchimText}</p>
+                  ) : null}
+                </div>
 
-              <div className="display-shabbat-zmanim">
-                <Card className="display-card display-shabbat-zman-card">
-                  <CardContent className="display-shabbat-zman-content">
-                    <span className="display-shabbat-zman-label">כניסת שבת</span>
-                    <span className="display-shabbat-zman-time display-accent">
-                      {shabbat?.candleLighting ?? snapshot.candleLighting ?? "—"}
-                    </span>
-                  </CardContent>
-                </Card>
-                <Card className="display-card display-shabbat-zman-card">
-                  <CardContent className="display-shabbat-zman-content">
-                    <span className="display-shabbat-zman-label">צאת שבת</span>
-                    <span className="display-shabbat-zman-time display-accent">
-                      {shabbat?.havdalah ?? snapshot.havdalah ?? "—"}
-                    </span>
-                  </CardContent>
-                </Card>
+                <div className="display-shabbat-zmanim">
+                  <Card className="display-card display-shabbat-zman-card">
+                    <CardContent className="display-shabbat-zman-content">
+                      <span className="display-shabbat-zman-label">כניסת שבת</span>
+                      <span className="display-shabbat-zman-time display-accent">
+                        {shabbat?.candleLighting ?? snapshot.candleLighting ?? "—"}
+                      </span>
+                    </CardContent>
+                  </Card>
+                  <Card className="display-card display-shabbat-zman-card">
+                    <CardContent className="display-shabbat-zman-content">
+                      <span className="display-shabbat-zman-label">צאת שבת</span>
+                      <span className="display-shabbat-zman-time display-accent">
+                        {shabbat?.havdalah ?? snapshot.havdalah ?? "—"}
+                      </span>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
 
               {shabbat?.agenda?.length ? (

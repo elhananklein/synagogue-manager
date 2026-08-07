@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getAllBulletinItemsForAdmin, saveBulletinItems, type BulletinItemInput } from "@/lib/bulletin-board";
 import {
-  getAllShabbatAgendaItemsForAdmin,
+  getShabbatAgendaItemsByMinyanIds,
   saveShabbatAgendaItems,
   type ShabbatAgendaItemInput
 } from "@/lib/shabbat-agenda";
@@ -51,6 +51,7 @@ type MinyanInput = {
   footerText?: string | null;
   prayerSettings: PrayerSettingInput[];
   screens: ScreenInput[];
+  shabbatAgendaItems?: ShabbatAgendaItemInput[];
 };
 
 type HalachaSettingsInput = {
@@ -150,7 +151,11 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     displayMode: (halachaSettingsRes.data?.display_mode as "summary" | "full") ?? "summary"
   };
   const bulletinItems = await getAllBulletinItemsForAdmin(synagogueId);
-  const shabbatAgendaItems = await getAllShabbatAgendaItemsForAdmin(synagogueId);
+  const agendaByMinyan = await getShabbatAgendaItemsByMinyanIds(minyanIds);
+  const minyanimWithAgenda = mappedMinyanim.map((minyan) => ({
+    ...minyan,
+    shabbatAgendaItems: minyan.id ? (agendaByMinyan[minyan.id] ?? []) : []
+  }));
   let currentParasha: string | null = null;
   try {
     const snap = await getDisplaySnapshot(toIsoDateJerusalem(), { omitDailyLearning: true });
@@ -163,10 +168,9 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     ok: true,
     data: {
       synagogue: synagogueRes.data,
-      minyanim: mappedMinyanim,
+      minyanim: minyanimWithAgenda,
       halachaSettings,
       bulletinItems,
-      shabbatAgendaItems,
       currentParasha
     }
   });
@@ -187,7 +191,6 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     minyanim: MinyanInput[];
     halachaSettings?: HalachaSettingsInput;
     bulletinItems?: BulletinItemInput[];
-    shabbatAgendaItems?: ShabbatAgendaItemInput[];
   };
 
   const synagogueName = payload.synagogueName?.trim();
@@ -300,6 +303,17 @@ export async function POST(request: Request, context: { params: Promise<{ synago
       );
       if (insertScreenError) return NextResponse.json({ ok: false, error: insertScreenError.message }, { status: 500 });
     }
+
+    if (!minyanId) {
+      return NextResponse.json({ ok: false, error: "minyan_id_missing" }, { status: 500 });
+    }
+
+    if (minyan.shabbatAgendaItems) {
+      const agendaResult = await saveShabbatAgendaItems(minyanId, minyan.shabbatAgendaItems);
+      if (!agendaResult.ok) {
+        return NextResponse.json({ ok: false, error: agendaResult.error }, { status: 500 });
+      }
+    }
   }
 
   const { error: halachaSettingsError } = await supabase.from("synagogue_halacha_settings").upsert(
@@ -319,13 +333,6 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     const bulletinResult = await saveBulletinItems(synagogueId, payload.bulletinItems);
     if (!bulletinResult.ok) {
       return NextResponse.json({ ok: false, error: bulletinResult.error }, { status: 500 });
-    }
-  }
-
-  if (payload.shabbatAgendaItems) {
-    const agendaResult = await saveShabbatAgendaItems(synagogueId, payload.shabbatAgendaItems);
-    if (!agendaResult.ok) {
-      return NextResponse.json({ ok: false, error: agendaResult.error }, { status: 500 });
     }
   }
 

@@ -1,4 +1,6 @@
--- לוח זמנים / סדר יום לשבת — פריטים חופשיים לכל בית כנסת (שעה אופציונלית + תוכן)
+-- לוח זמנים / סדר יום לשבת — גרסה ראשונה (ברמת בית כנסת).
+-- הוחלף ב־shabbat-agenda-minyan-migration.sql (ברמת מניין + העתקת נתונים).
+-- אין צורך להריץ קובץ זה בסביבות חדשות אם מריצים ישירות את מיגרציית המניין.
 
 create table if not exists public.synagogue_shabbat_agenda_items (
   id uuid primary key default gen_random_uuid(),
