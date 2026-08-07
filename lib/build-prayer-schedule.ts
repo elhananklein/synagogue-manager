@@ -31,9 +31,37 @@ function formatWithOffset(baseIso: string, offsetMinutes: number, roundMode: "no
   }).format(rounded);
 }
 
+function resolveFixedOrRelativeRow(
+  setting: PrayerSetting,
+  zmanimSourceTimes: Record<string, string>
+): { label: string; time: string; details: string } | null {
+  if (setting.mode === "fixed" && setting.fixedTime) {
+    return {
+      label: setting.prayerType,
+      time: setting.fixedTime.slice(0, 5),
+      details: ""
+    };
+  }
+  if (setting.mode === "relative" && setting.zmanAnchor && setting.zmanAnchor in zmanimSourceTimes) {
+    return {
+      label: setting.prayerType,
+      time: formatWithOffset(
+        zmanimSourceTimes[setting.zmanAnchor],
+        setting.offsetMinutes ?? 0,
+        setting.roundMode ?? "none"
+      ),
+      details: ""
+    };
+  }
+  return null;
+}
+
 /**
  * בונה רשימת זמני תפילה ליום אחד.
  * `parashaKeyForDay` — אותה מחרוזת כמו `snapshot.parasha` מאותו יום (Hebcal); null = לא להפעיל התאמת פרשה.
+ *
+ * שישי: תפילות חול של היום + «מנחה ערב שבת» (במקום מנחה/ערבית של חול כשיש הגדרת ערב שבת).
+ * שבת: תפילות קטגוריית שבת ללא «מנחה ערב שבת» (ששייכת ליום שישי).
  */
 export function buildPrayerScheduleForDay(
   prayerSettings: PrayerSetting[],
@@ -44,42 +72,36 @@ export function buildPrayerScheduleForDay(
 ): Array<{ label: string; time: string; details: string }> {
   const weekdaySettings = prayerSettings.filter((setting) => setting.category === "weekday");
   const shabbatSettings = prayerSettings.filter((setting) => setting.category === "shabbat");
-  const weekdayForToday = weekdaySettings.filter((setting) => !setting.daysOfWeek.length || setting.daysOfWeek.includes(jsDay));
-
-  const relevantSettings = (() => {
-    if (isShabbat) {
-      if (shabbatSettings.length) return shabbatSettings;
-      if (weekdayForToday.length) return weekdayForToday;
-      return weekdaySettings;
-    }
-    if (weekdayForToday.length) return weekdayForToday;
-    return weekdaySettings;
-  })();
+  const weekdayForToday = weekdaySettings.filter(
+    (setting) => !setting.daysOfWeek.length || setting.daysOfWeek.includes(jsDay)
+  );
+  const erevShabbatSettings = shabbatSettings.filter((setting) => setting.prayerType === "מנחה ערב שבת");
+  const saturdayShabbatSettings = shabbatSettings.filter((setting) => setting.prayerType !== "מנחה ערב שבת");
 
   if (isShabbat) {
+    const relevantSettings = saturdayShabbatSettings.length
+      ? saturdayShabbatSettings
+      : weekdayForToday.length
+        ? weekdayForToday
+        : weekdaySettings;
     return relevantSettings
-      .map((setting): { label: string; time: string; details: string } | null => {
-        if (setting.mode === "fixed" && setting.fixedTime) {
-          return {
-            label: setting.prayerType,
-            time: setting.fixedTime.slice(0, 5),
-            details: ""
-          };
-        }
-        if (setting.mode === "relative" && setting.zmanAnchor && setting.zmanAnchor in zmanimSourceTimes) {
-          const anchorTime = zmanimSourceTimes[setting.zmanAnchor];
-          const offsetMinutes = setting.offsetMinutes ?? 0;
-          const roundMode = setting.roundMode ?? "none";
-          return {
-            label: setting.prayerType,
-            time: formatWithOffset(anchorTime, offsetMinutes, roundMode),
-            details: ""
-          };
-        }
-        return null;
-      })
+      .map((setting) => resolveFixedOrRelativeRow(setting, zmanimSourceTimes))
       .filter((item): item is { label: string; time: string; details: string } => item !== null);
   }
+
+  const isFriday = jsDay === 5;
+  const baseWeekday = weekdayForToday.length ? weekdayForToday : weekdaySettings;
+  const relevantSettings = (() => {
+    if (!isFriday) return baseWeekday;
+    // בשישי: אם הוגדרה מנחה ערב שבת — היא מחליפה מנחה/ערבית של חול בלוח «היום» וב«התפילה הבאה».
+    if (erevShabbatSettings.length) {
+      const fridayMorningAndExtras = baseWeekday.filter(
+        (setting) => setting.prayerType !== "מנחה" && setting.prayerType !== "ערבית"
+      );
+      return [...fridayMorningAndExtras, ...erevShabbatSettings];
+    }
+    return baseWeekday;
+  })();
 
   const eligibleParsha =
     parashaKeyForDay &&
@@ -98,6 +120,13 @@ export function buildPrayerScheduleForDay(
 
   const out: Array<{ label: string; time: string; details: string }> = [];
   for (const setting of sorted) {
+    // תפילות ערב שבת — רק fixed/relative (לא parasha)
+    if (setting.category === "shabbat") {
+      const row = resolveFixedOrRelativeRow(setting, zmanimSourceTimes);
+      if (row) out.push(row);
+      continue;
+    }
+
     const winner = parshaWinnerByType.get(setting.prayerType);
     if (winner) {
       if (setting === winner && setting.mode === "parasha" && setting.fixedTime) {
@@ -111,24 +140,8 @@ export function buildPrayerScheduleForDay(
     }
     if (setting.mode === "parasha") continue;
 
-    if (setting.mode === "fixed" && setting.fixedTime) {
-      out.push({
-        label: setting.prayerType,
-        time: setting.fixedTime.slice(0, 5),
-        details: ""
-      });
-      continue;
-    }
-    if (setting.mode === "relative" && setting.zmanAnchor && setting.zmanAnchor in zmanimSourceTimes) {
-      const anchorTime = zmanimSourceTimes[setting.zmanAnchor];
-      const offsetMinutes = setting.offsetMinutes ?? 0;
-      const roundMode = setting.roundMode ?? "none";
-      out.push({
-        label: setting.prayerType,
-        time: formatWithOffset(anchorTime, offsetMinutes, roundMode),
-        details: ""
-      });
-    }
+    const row = resolveFixedOrRelativeRow(setting, zmanimSourceTimes);
+    if (row) out.push(row);
   }
   return out;
 }
