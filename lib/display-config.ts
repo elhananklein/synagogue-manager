@@ -22,7 +22,16 @@ function isOrdinalToken(s: string) {
 }
 
 export type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
-export type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat" | "bulletin";
+export type ScreenKey =
+  | "main"
+  | "mainInfo"
+  | "clock"
+  | "halacha"
+  | "dailyLearning"
+  | "prayerTimes"
+  | "shabbat"
+  | "bulletin"
+  | "fullSchedule";
 
 export type HavdalahMode = "tzeit" | "minutes";
 

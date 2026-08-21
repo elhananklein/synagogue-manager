@@ -42,6 +42,32 @@ body {
     padding: 1rem;
   }
 
+  .display-screen-stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: display-screen-enter 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes display-screen-enter {
+    from {
+      opacity: 0;
+      transform: translateY(0.55rem) scale(0.992);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .display-screen-stage {
+      animation: none;
+    }
+  }
+
   /* עטיפת "כיווץ-כדי-להיכנס": ממלאת את המרחב הזמין, ממרכזת ומקטינה את התוכן במידת הצורך
      כדי שדבר לא ייחתך בתצוגת קיר/טלוויזיה (ללא גלילה). */
   .display-autofit {
@@ -105,6 +131,56 @@ body {
   .display-ws-lozenge--refresh:focus-visible {
     outline: 3px solid currentColor;
     outline-offset: 3px;
+  }
+
+  .display-ws-side {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: clamp(0.35rem, 1vh, 0.65rem);
+  }
+
+  .display-ws-side .display-ws-lozenge {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .display-ws-header-band--shabbat {
+    align-items: center;
+  }
+
+  .display-ws-shabbat-zman {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem 0.55rem;
+    padding: 0.2rem 0.35rem;
+    text-align: center;
+    line-height: 1.15;
+    color: #0a0a0a;
+  }
+
+  .display-ws-shabbat-zman-icon {
+    width: clamp(1.05rem, 2.2vw, 1.55rem);
+    height: clamp(1.05rem, 2.2vw, 1.55rem);
+    flex-shrink: 0;
+  }
+
+  .display-ws-shabbat-zman-label {
+    font-size: clamp(0.85rem, 1.55vw, 1.15rem);
+    font-weight: 700;
+    opacity: 0.88;
+  }
+
+  .display-ws-shabbat-zman-time {
+    font-size: clamp(1.15rem, 2.35vw, 1.75rem);
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
   }
 
   .display-header-clock {
@@ -670,10 +746,13 @@ body {
   /* כותרת הקבוצה כתווית צד (בימין ב־RTL) ליד שורת הזמנים — שורה אחת לכל תפילה */
   .display-prayer-times-group .display-time-section-title {
     flex: 0 0 auto;
-    width: clamp(5rem, 11vw, 9.5rem);
+    width: clamp(5.5rem, 14vw, 14rem);
+    max-width: min(34vw, 15rem);
     text-align: center;
     margin-bottom: 0;
-    font-size: clamp(1.2rem, 2.4vw, 1.95rem);
+    font-size: clamp(1.05rem, 2.1vw, 1.75rem);
+    line-height: 1.2;
+    white-space: normal;
   }
 
   .display-prayer-times-row-line {
@@ -735,6 +814,88 @@ body {
     transform: none;
     padding-top: clamp(1rem, 2.8vh, 2.4rem);
     padding-bottom: clamp(1rem, 2.8vh, 2.4rem);
+  }
+
+  .display-full-schedule-card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-width: none;
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  .display-full-schedule-header {
+    flex-shrink: 0;
+    padding-bottom: 0.35rem;
+  }
+
+  .display-full-schedule-body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding-top: 0.5rem;
+    padding-bottom: 0.85rem;
+  }
+
+  .display-full-schedule-fit {
+    width: 100%;
+    height: 100%;
+  }
+
+  .display-full-schedule-fit .display-full-schedule-tiles {
+    max-height: none;
+  }
+
+  .display-full-schedule-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    gap: clamp(0.85rem, 2vh, 1.35rem) clamp(0.9rem, 2vw, 1.5rem);
+    width: 100%;
+    align-content: start;
+  }
+
+  .display-full-schedule-tile.display-time-row {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: clamp(0.95rem, 2.4vh, 1.65rem) clamp(1rem, 2.4vw, 1.6rem);
+    min-height: clamp(5.5rem, 14vh, 9rem);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .display-full-schedule-tile-main.display-time-main {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 0.55rem;
+    font-size: clamp(1.2rem, 2.35vw, 1.7rem);
+    text-align: center;
+  }
+
+  .display-full-schedule-tile .display-time-label {
+    line-height: 1.2;
+    word-break: break-word;
+  }
+
+  .display-full-schedule-tile .display-time-value-wrap {
+    align-items: center;
+  }
+
+  .display-full-schedule-tile .display-time-value {
+    font-size: clamp(1.85rem, 4vw, 2.85rem);
+  }
+
+  .display-full-schedule-tile .display-time-details {
+    margin-top: 0.35rem;
+    text-align: center;
+    font-size: clamp(0.95rem, 1.6vw, 1.2rem);
   }
 
   /* מסך "מידע מרכזי" — כל תוכן צד ימין של המסך הראשי, ממורכז ומוגדל */
@@ -1497,6 +1658,10 @@ body {
     min-height: clamp(4.75rem, 13vh, 7.5rem);
   }
 
+  .display--woodSilver .display-ws-header-band--shabbat {
+    min-height: clamp(6.25rem, 17vh, 9.75rem);
+  }
+
   .display--woodSilver .display-ws-lozenge {
     flex: 1 1 0;
     min-width: 0;
@@ -1521,6 +1686,25 @@ body {
     overflow: hidden;
     word-break: break-word;
     text-shadow: 0 1px 0 rgb(255 255 255 / 0.35);
+  }
+
+  .display--woodSilver .display-ws-side .display-ws-lozenge {
+    flex: 0 0 auto;
+  }
+
+  .display--woodSilver .display-ws-header-band--shabbat .display-ws-lozenge {
+    min-height: clamp(3.1rem, 8.5vh, 5.5rem);
+    padding: clamp(0.65rem, 1.6vh, 1.15rem) 0.5rem;
+    font-size: clamp(1.05rem, 2.35vw, 1.65rem);
+  }
+
+  .display--woodSilver .display-ws-shabbat-zman--in,
+  .display--woodSilver .display-ws-shabbat-zman--out {
+    color: #0a0a0a;
+  }
+  .display--woodSilver .display-ws-shabbat-zman--in .display-ws-shabbat-zman-icon,
+  .display--woodSilver .display-ws-shabbat-zman--out .display-ws-shabbat-zman-icon {
+    color: #0a0a0a;
   }
 
   .display--woodSilver .display-ws-lozenge--hebrew-date {
@@ -1868,6 +2052,10 @@ body {
     min-height: clamp(3.5rem, 12vh, 8.5rem);
   }
 
+  .display--classic .display-ws-header-band--shabbat {
+    min-height: clamp(5.5rem, 16vh, 10.5rem);
+  }
+
   .display--classic .display-ws-lozenge {
     flex: 1 1 0;
     min-width: 0;
@@ -1890,6 +2078,25 @@ body {
       0 6px 20px rgb(0 0 0 / 0.35),
       inset 0 2px 0 rgb(255 255 255 / 0.95);
     text-shadow: 0 1px 0 rgb(255 255 255 / 0.6);
+  }
+
+  .display--classic .display-ws-side .display-ws-lozenge {
+    flex: 0 0 auto;
+  }
+
+  .display--classic .display-ws-header-band--shabbat .display-ws-lozenge {
+    min-height: clamp(2.85rem, 8vh, 5.5rem);
+    padding: clamp(0.55rem, 1.5vh, 1.1rem) clamp(0.4rem, 1.2vw, 0.75rem);
+    font-size: clamp(1rem, 2.2vw, 1.5rem);
+  }
+
+  .display--classic .display-ws-shabbat-zman--in,
+  .display--classic .display-ws-shabbat-zman--out {
+    color: #0a0a0a;
+  }
+  .display--classic .display-ws-shabbat-zman--in .display-ws-shabbat-zman-icon,
+  .display--classic .display-ws-shabbat-zman--out .display-ws-shabbat-zman-icon {
+    color: #0a0a0a;
   }
 
   .display--classic .display-ws-lozenge--hebrew-date {
@@ -2091,6 +2298,11 @@ body {
     width: 100%;
     min-height: clamp(4.75rem, 13vh, 8.5rem);
   }
+
+  .display--royalBlue .display-ws-header-band--shabbat {
+    min-height: clamp(6.25rem, 17vh, 10.5rem);
+  }
+
   .display--royalBlue .display-ws-lozenge {
     flex: 1 1 0;
     min-width: 0;
@@ -2110,6 +2322,28 @@ body {
     border-image: url("/display/royal/gold-frame.svg") 38 / 14px / 0 round;
     background: var(--royal-parchment);
     background-clip: padding-box;
+  }
+
+  .display--royalBlue .display-ws-side .display-ws-lozenge {
+    flex: 0 0 auto;
+  }
+
+  .display--royalBlue .display-ws-header-band--shabbat .display-ws-lozenge {
+    min-height: clamp(3.1rem, 8.5vh, 5.6rem);
+    padding: clamp(0.55rem, 1.4vh, 1rem) clamp(0.5rem, 1.4vw, 1rem);
+    font-size: clamp(1.05rem, 2.25vw, 1.6rem);
+  }
+
+  .display--royalBlue .display-ws-shabbat-zman {
+    font-family: var(--royal-font);
+  }
+  .display--royalBlue .display-ws-shabbat-zman--in,
+  .display--royalBlue .display-ws-shabbat-zman--out {
+    color: #0a0a0a;
+  }
+  .display--royalBlue .display-ws-shabbat-zman--in .display-ws-shabbat-zman-icon,
+  .display--royalBlue .display-ws-shabbat-zman--out .display-ws-shabbat-zman-icon {
+    color: #0a0a0a;
   }
   .display--royalBlue .display-ws-lozenge--hebrew-date {
     font-size: clamp(1.28rem, 2.8vw, 2rem);

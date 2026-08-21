@@ -1,8 +1,15 @@
 import type { PrayerSetting, PrayerType } from "@/lib/display-config";
 
+/** תווית תצוגה למנחה ערב שבת (כולל קבלת שבת) — במסד נשאר המפתח «מנחה ערב שבת». */
+export const EREV_SHABBAT_DISPLAY_LABEL = "מנחה ערב שבת וקבלת שבת";
+
 /** ימי א׳–ה׳ בלבד — שישי ושבת לא רלוונטיים לחוק "לפי פרשה". */
 export function isParashaScheduleWeekday(jsDay: number) {
   return jsDay >= 0 && jsDay <= 4;
+}
+
+function displayLabelForPrayerType(prayerType: PrayerType | string): string {
+  return prayerType === "מנחה ערב שבת" ? EREV_SHABBAT_DISPLAY_LABEL : prayerType;
 }
 
 function roundToFiveMinutes(date: Date, mode: "none" | "up" | "down") {
@@ -37,14 +44,14 @@ function resolveFixedOrRelativeRow(
 ): { label: string; time: string; details: string } | null {
   if (setting.mode === "fixed" && setting.fixedTime) {
     return {
-      label: setting.prayerType,
+      label: displayLabelForPrayerType(setting.prayerType),
       time: setting.fixedTime.slice(0, 5),
       details: ""
     };
   }
   if (setting.mode === "relative" && setting.zmanAnchor && setting.zmanAnchor in zmanimSourceTimes) {
     return {
-      label: setting.prayerType,
+      label: displayLabelForPrayerType(setting.prayerType),
       time: formatWithOffset(
         zmanimSourceTimes[setting.zmanAnchor],
         setting.offsetMinutes ?? 0,
@@ -60,7 +67,7 @@ function resolveFixedOrRelativeRow(
  * בונה רשימת זמני תפילה ליום אחד.
  * `parashaKeyForDay` — אותה מחרוזת כמו `snapshot.parasha` מאותו יום (Hebcal); null = לא להפעיל התאמת פרשה.
  *
- * שישי: תפילות חול של היום + «מנחה ערב שבת» (במקום מנחה/ערבית של חול כשיש הגדרת ערב שבת).
+ * שישי: תפילות בוקר של חול + «מנחה ערב שבת וקבלת שבת» בלבד לערב (בלי מנחה/ערבית של חול).
  * שבת: תפילות קטגוריית שבת ללא «מנחה ערב שבת» (ששייכת ליום שישי).
  */
 export function buildPrayerScheduleForDay(
@@ -78,13 +85,9 @@ export function buildPrayerScheduleForDay(
   const erevShabbatSettings = shabbatSettings.filter((setting) => setting.prayerType === "מנחה ערב שבת");
   const saturdayShabbatSettings = shabbatSettings.filter((setting) => setting.prayerType !== "מנחה ערב שבת");
 
-  if (isShabbat) {
-    const relevantSettings = saturdayShabbatSettings.length
-      ? saturdayShabbatSettings
-      : weekdayForToday.length
-        ? weekdayForToday
-        : weekdaySettings;
-    return relevantSettings
+  if (isShabbat || jsDay === 6) {
+    // בשבת — רק תפילות שבת (בלי מנחה ערב שבת, ובלי נפילה חזרה לתפילות חול).
+    return saturdayShabbatSettings
       .map((setting) => resolveFixedOrRelativeRow(setting, zmanimSourceTimes))
       .filter((item): item is { label: string; time: string; details: string } => item !== null);
   }
@@ -93,14 +96,13 @@ export function buildPrayerScheduleForDay(
   const baseWeekday = weekdayForToday.length ? weekdayForToday : weekdaySettings;
   const relevantSettings = (() => {
     if (!isFriday) return baseWeekday;
-    // בשישי: אם הוגדרה מנחה ערב שבת — היא מחליפה מנחה/ערבית של חול בלוח «היום» וב«התפילה הבאה».
-    if (erevShabbatSettings.length) {
-      const fridayMorningAndExtras = baseWeekday.filter(
-        (setting) => setting.prayerType !== "מנחה" && setting.prayerType !== "ערבית"
-      );
-      return [...fridayMorningAndExtras, ...erevShabbatSettings];
-    }
-    return baseWeekday;
+    // ערב שבת: אין ערבית של חול; מנחה ערב שבת (+קבלת שבת) מחליפה מנחה של חול כשקיימת.
+    const fridayWeekday = baseWeekday.filter((setting) => {
+      if (setting.prayerType === "ערבית") return false;
+      if (erevShabbatSettings.length && setting.prayerType === "מנחה") return false;
+      return true;
+    });
+    return [...fridayWeekday, ...erevShabbatSettings];
   })();
 
   const eligibleParsha =
@@ -131,7 +133,7 @@ export function buildPrayerScheduleForDay(
     if (winner) {
       if (setting === winner && setting.mode === "parasha" && setting.fixedTime) {
         out.push({
-          label: setting.prayerType,
+          label: displayLabelForPrayerType(setting.prayerType),
           time: setting.fixedTime.slice(0, 5),
           details: ""
         });
@@ -172,13 +174,13 @@ export function buildShabbatPrayerSchedule(
       if (!time) return null;
       const orderIndex = SHABBAT_PRAYER_ORDER.indexOf(setting.prayerType);
       return {
-        label: setting.prayerType,
+        label: displayLabelForPrayerType(setting.prayerType),
         time,
         order: orderIndex === -1 ? SHABBAT_PRAYER_ORDER.length : orderIndex,
         inputIndex
       };
     })
-    .filter((row): row is { label: PrayerType; time: string; order: number; inputIndex: number } => row !== null);
+    .filter((row): row is { label: string; time: string; order: number; inputIndex: number } => row !== null);
 
   return resolved
     .sort((a, b) => a.order - b.order || a.inputIndex - b.inputIndex)

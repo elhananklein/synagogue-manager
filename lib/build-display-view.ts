@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { getPublishedBulletinItems, type BulletinItem } from "@/lib/bulletin-board";
 import { addDaysIsoDate, buildZmanimRows, getDisplaySnapshot, getTomorrowIsoDateFrom, resolveShabbatMevarchimText, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
 import { getDisplayConfig, type DisplayStyle, type ScheduleTimesListMode, type ScreenSetting } from "@/lib/display-config";
@@ -65,10 +66,31 @@ function singleQueryParam(value: string | string[] | undefined | null): string |
   return s.length ? s : null;
 }
 
+/** synagogueId מה־URL, אחרת מה־cookie / ברירת מחדל — בלי זה אין תפילות בלוח. */
+async function resolveSynagogueId(params: DisplayViewParams): Promise<string | null> {
+  const fromQuery = singleQueryParam(params.synagogueId);
+  if (fromQuery) return fromQuery;
+  try {
+    const cookieStore = await cookies();
+    const fromCookie = cookieStore.get("synagogue_id")?.value?.trim();
+    if (fromCookie) return fromCookie;
+  } catch {
+    /* cookies() לא זמין מחוץ ל־request */
+  }
+  const fromEnv = process.env.NEXT_PUBLIC_DEFAULT_SYNAGOGUE_ID?.trim();
+  return fromEnv || null;
+}
+
 function getHebrewWeekdayLabel(isoDate: string) {
   const [year, month, day] = isoDate.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return new Intl.DateTimeFormat("he-IL", { weekday: "long", timeZone: "Asia/Jerusalem" }).format(date);
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  return new Intl.DateTimeFormat("he-IL", { weekday: "long", timeZone: "UTC" }).format(date);
+}
+
+/** יום בשבוע (0=ראשון … 6=שבת) מתאריך אזרחי YYYY-MM-DD — בלי תלות ב־timezone של השרת. */
+function jsWeekdayFromIsoDate(isoDate: string): number {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getUTCDay();
 }
 
 const ALLOWED_STYLES: DisplayStyle[] = ["classic", "modern", "minimal", "woodSilver", "royalBlue"];
@@ -78,7 +100,7 @@ const ALLOWED_STYLES: DisplayStyle[] = ["classic", "modern", "minimal", "woodSil
  * כדי שתצוגת הקיר ותצוגת המובייל יישארו מסונכרנות לחלוטין.
  */
 export async function buildDisplayView(params: DisplayViewParams): Promise<DisplayView> {
-  const synagogueId = singleQueryParam(params.synagogueId);
+  const synagogueId = await resolveSynagogueId(params);
   const minyanSelector = singleQueryParam(params.minyan) ?? singleQueryParam(params.minyanId);
 
   const todayIsoDate = new Intl.DateTimeFormat("en-CA", {
@@ -105,7 +127,8 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const styleOverride = ALLOWED_STYLES.find((s) => s === styleOverrideRaw) ?? null;
   const effectiveStyle = styleOverride ?? displayConfig.displayStyle;
 
-  const todayJsDay = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" })).getDay();
+  const todayJsDay = jsWeekdayFromIsoDate(todayIsoDate);
+  const tomorrowJsDay = jsWeekdayFromIsoDate(tomorrowIsoDate);
   const isShabbatToday = todayJsDay === 6;
   const prayerSchedule = buildPrayerScheduleForDay(
     displayConfig.prayerSettings,
@@ -114,9 +137,6 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     isShabbatToday,
     snapshot.parasha
   );
-  const tomorrowWeekday = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
-  tomorrowWeekday.setDate(tomorrowWeekday.getDate() + 1);
-  const tomorrowJsDay = tomorrowWeekday.getDay();
   const tomorrowPrayerSchedule = buildPrayerScheduleForDay(
     displayConfig.prayerSettings,
     tomorrowSnapshot.zmanimSourceTimes,

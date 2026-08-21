@@ -33,7 +33,16 @@ type PrayerSettingInput = {
 };
 
 type ScreenInput = {
-  screenKey: "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat" | "bulletin";
+  screenKey:
+    | "main"
+    | "mainInfo"
+    | "clock"
+    | "halacha"
+    | "dailyLearning"
+    | "prayerTimes"
+    | "shabbat"
+    | "bulletin"
+    | "fullSchedule";
   sortOrder: number;
   durationSeconds: number;
   enabled: boolean;

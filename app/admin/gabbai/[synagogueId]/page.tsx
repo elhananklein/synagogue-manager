@@ -18,7 +18,16 @@ import { DEFAULT_SCHEDULE_ZMANIM_KEYS, ZMANIM_CATALOG } from "@/lib/zmanim-catal
 type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
 type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
 type ScheduleTimesListMode = "all" | "prayers_only";
-type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat" | "bulletin";
+type ScreenKey =
+  | "main"
+  | "mainInfo"
+  | "clock"
+  | "halacha"
+  | "dailyLearning"
+  | "prayerTimes"
+  | "shabbat"
+  | "bulletin"
+  | "fullSchedule";
 type PrayerMode = "fixed" | "relative" | "parasha";
 type PrayerCategory = "weekday" | "shabbat";
 type TopTab = "shared" | `minyan-${number}`;
@@ -84,6 +93,7 @@ const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "halacha", label: "הלכה יומית" },
   { key: "dailyLearning", label: "לימוד יומי" },
   { key: "prayerTimes", label: "זמני תפילות" },
+  { key: "fullSchedule", label: "לוח זמנים מלא" },
   { key: "shabbat", label: "שבת" },
   { key: "bulletin", label: "לוח מודעות" }
 ];
@@ -930,7 +940,7 @@ function PrayerEditor({
         >
           {prayerOptions.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {option === "מנחה ערב שבת" ? "מנחה ערב שבת וקבלת שבת" : option}
             </option>
           ))}
         </select>

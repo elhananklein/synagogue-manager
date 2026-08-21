@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText, Megaphone } from "lucide-react";
+import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText, Megaphone, Flame, MoonStar } from "lucide-react";
 import { DisplayBulletinScreen } from "@/components/display/display-bulletin-screen";
 import { LiveClock } from "@/components/display/live-clock";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,16 @@ import type {
   DisplayTimeSection
 } from "@/lib/build-display-view";
 
-type ScreenKey = "main" | "mainInfo" | "clock" | "halacha" | "dailyLearning" | "prayerTimes" | "shabbat" | "bulletin";
+type ScreenKey =
+  | "main"
+  | "mainInfo"
+  | "clock"
+  | "halacha"
+  | "dailyLearning"
+  | "prayerTimes"
+  | "shabbat"
+  | "bulletin"
+  | "fullSchedule";
 
 type RotatorScreen = {
   screenKey: ScreenKey;
@@ -66,6 +75,7 @@ const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> =
   halacha: { title: "הלכה יומית", Icon: ScrollText },
   dailyLearning: { title: "לימוד יומי", Icon: BookOpen },
   prayerTimes: { title: "זמני תפילות", Icon: CalendarDays },
+  fullSchedule: { title: "לוח זמנים מלא", Icon: CalendarDays },
   shabbat: { title: "שבת", Icon: Sun },
   bulletin: { title: "לוח מודעות", Icon: Megaphone }
 };
@@ -81,7 +91,7 @@ const PRAYER_GROUP_TITLES: Record<PrayerGroupId, string> = {
 };
 
 const SWIPE_THRESHOLD = 48;
-const SLIDE_MS = 320;
+const SLIDE_MS = 520;
 
 function prayerGroupIdFromLabel(label: string): PrayerGroupId {
   const t = label.trim();
@@ -89,6 +99,13 @@ function prayerGroupIdFromLabel(label: string): PrayerGroupId {
   if (t.includes("מנחה")) return "מנחה";
   if (t.includes("ערבית")) return "ערבית";
   return "אחר";
+}
+
+function prayerGroupTitle(group: PrayerGroupId, rows: Array<{ label: string }>): string {
+  if (group === "מנחה" && rows.length > 0 && rows.every((r) => r.label.includes("ערב שבת"))) {
+    return rows[0]!.label;
+  }
+  return PRAYER_GROUP_TITLES[group];
 }
 
 function nowJerusalemMinutes() {
@@ -116,7 +133,16 @@ export function MobileDisplayRotator({
   bulletinItems = []
 }: MobileDisplayRotatorProps) {
   const router = useRouter();
-  const enabledScreens = useMemo(() => screens.filter((s) => s.enabled), [screens]);
+  const enabledScreens = useMemo(() => {
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
+    const jsDay = now.getDay();
+    const isFriOrSat = jsDay === 5 || jsDay === 6;
+    return screens.filter((s) => {
+      if (!s.enabled) return false;
+      if (s.screenKey === "shabbat" && !isFriOrSat) return false;
+      return true;
+    });
+  }, [screens]);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -208,6 +234,15 @@ export function MobileDisplayRotator({
   }, [snapshot.halachicDayRollIso, router]);
 
   const nowMinutes = nowJerusalemMinutes();
+  const jerusalemJsDay = (() => {
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
+    return now.getDay();
+  })();
+  const headerCandleLighting = shabbat?.candleLighting ?? snapshot.candleLighting;
+  const headerHavdalah = shabbat?.havdalah ?? snapshot.havdalah;
+  const showHeaderShabbatZmanim =
+    (jerusalemJsDay === 5 || jerusalemJsDay === 6) &&
+    Boolean(headerCandleLighting || headerHavdalah);
   const todayPrayers = (timeSections[0]?.items ?? [])
     .filter((item) => item.kind === "prayer")
     .map((item) => ({ ...item, totalMinutes: toMinutes(item.time) }))
@@ -296,6 +331,9 @@ export function MobileDisplayRotator({
         {screenKey === "prayerTimes" && (
           <PrayerTimesScreen prayerSchedule={prayerSchedule} nowMinutes={nowMinutes} />
         )}
+        {screenKey === "fullSchedule" && (
+          <FullScheduleScreen timeSections={timeSections} nowMinutes={nowMinutes} />
+        )}
         {screenKey === "shabbat" && <ShabbatScreen shabbat={shabbat} />}
         {screenKey === "bulletin" && (
           <DisplayBulletinScreen items={bulletinItems} secondsPerItem={secondsPerItem} />
@@ -328,6 +366,24 @@ export function MobileDisplayRotator({
             <p className="text-xs text-slate-500">{snapshot.hebrewDate}</p>
           </div>
         </div>
+        {showHeaderShabbatZmanim ? (
+          <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+            {headerCandleLighting ? (
+              <div className="flex items-center justify-center gap-1.5 rounded-lg bg-amber-50 px-2 py-1.5 font-semibold text-black">
+                <Flame className="h-4 w-4 shrink-0 text-black" aria-hidden />
+                <span className="truncate">כניסה</span>
+                <span className="tabular-nums">{headerCandleLighting}</span>
+              </div>
+            ) : null}
+            {headerHavdalah ? (
+              <div className="flex items-center justify-center gap-1.5 rounded-lg bg-slate-100 px-2 py-1.5 font-semibold text-black">
+                <MoonStar className="h-4 w-4 shrink-0 text-black" aria-hidden />
+                <span className="truncate">יציאה</span>
+                <span className="tabular-nums">{headerHavdalah}</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {nextPrayer ? (
           <div className="mt-2 flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
             <span>התפילה הבאה: {nextPrayer.label}</span>
@@ -353,7 +409,10 @@ export function MobileDisplayRotator({
         }}
       >
         <div
-          className={cn("flex h-full will-change-transform", !isDragging && "transition-transform ease-out")}
+          className={cn(
+            "flex h-full will-change-transform",
+            !isDragging && "transition-transform ease-[cubic-bezier(0.22,1,0.36,1)]"
+          )}
           style={{
             width: viewportWidth > 0 ? viewportWidth * screenCount : `${screenCount * 100}%`,
             transform: trackTransform,
@@ -567,6 +626,51 @@ function DailyLearningScreen({ lines }: { lines: DailyLearningLine[] }) {
   );
 }
 
+function FullScheduleScreen({
+  timeSections,
+  nowMinutes
+}: {
+  timeSections: DisplayTimeSection[];
+  nowMinutes: number;
+}) {
+  const rows = [...(timeSections[0]?.items ?? [])]
+    .map((row) => ({ ...row, totalMinutes: toMinutes(row.time) }))
+    .sort((a, b) => a.totalMinutes - b.totalMinutes);
+
+  if (!rows.length) {
+    return <Card className="text-center text-slate-500">אין זמנים להצגה.</Card>;
+  }
+
+  const nextToday = rows.find((row) => row.totalMinutes >= nowMinutes) ?? null;
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {rows.map((row, i) => {
+        const isPrayer = row.kind === "prayer";
+        const isNext =
+          nextToday !== null && row.label === nextToday.label && row.time === nextToday.time;
+        return (
+          <div
+            key={`today-${row.kind}-${row.label}-${row.time}-${i}`}
+            className={cn(
+              "rounded-lg border px-3 py-3 shadow-sm",
+              isPrayer
+                ? "border-amber-300 border-s-4 border-s-amber-400 bg-amber-50"
+                : "border-slate-200 bg-white",
+              isNext && "ring-2 ring-emerald-500"
+            )}
+          >
+            <div className="text-sm font-semibold leading-tight text-slate-700">
+              {isPrayer ? `תפילת ${row.label}` : row.label}
+            </div>
+            <div className="mt-1.5 text-xl font-bold tabular-nums text-slate-900">{row.time}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function PrayerTimesScreen({
   prayerSchedule,
   nowMinutes
@@ -574,14 +678,16 @@ function PrayerTimesScreen({
   prayerSchedule: DisplayPrayerSlot[];
   nowMinutes: number;
 }) {
-  if (!prayerSchedule.length) {
-    return <Card className="text-center text-slate-500">אין זמני תפילות מוגדרים.</Card>;
+  const rows = prayerSchedule
+    .map((row) => ({ ...row, totalMinutes: toMinutes(row.time) }))
+    .filter((row) => row.totalMinutes >= nowMinutes);
+
+  if (!rows.length) {
+    return <Card className="text-center text-slate-500">אין תפילות נוספות להיום.</Card>;
   }
 
-  const rows = prayerSchedule.map((row) => ({ ...row, totalMinutes: toMinutes(row.time) }));
   const nextTotalMinutes = rows
     .map((row) => row.totalMinutes)
-    .filter((m) => m >= nowMinutes)
     .sort((a, b) => a - b)[0];
 
   const byGroup = new Map<PrayerGroupId, typeof rows>();
@@ -592,18 +698,28 @@ function PrayerTimesScreen({
     byGroup.set(group, list);
   }
 
-  const groups = PRAYER_GROUP_ORDER.filter((g) => byGroup.has(g)).map((group) => ({
-    group,
-    title: PRAYER_GROUP_TITLES[group],
-    rows: byGroup.get(group)!.sort((a, b) => a.totalMinutes - b.totalMinutes)
-  }));
+  const groups = PRAYER_GROUP_ORDER.filter((g) => byGroup.has(g)).map((group) => {
+    const groupRows = byGroup.get(group)!.sort((a, b) => a.totalMinutes - b.totalMinutes);
+    return {
+      group,
+      title: prayerGroupTitle(group, groupRows),
+      rows: groupRows
+    };
+  });
 
   return (
     <Card className="p-3">
       <div className="space-y-2">
         {groups.map(({ group, title, rows: groupRows }) => (
           <div key={group} className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-2">
-            <span className="w-14 shrink-0 text-sm font-bold text-slate-500">{title}</span>
+            <span
+              className={cn(
+                "shrink-0 text-sm font-bold text-slate-500",
+                title.length > 8 ? "w-28 leading-tight" : "w-14"
+              )}
+            >
+              {title}
+            </span>
             <div className="flex flex-1 flex-wrap justify-end gap-1.5">
               {groupRows.map((row, i) => {
                 const isNext = row.totalMinutes === nextTotalMinutes;
