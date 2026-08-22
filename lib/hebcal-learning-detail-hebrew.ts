@@ -5,8 +5,6 @@
 
 function numberToHebrew(num: number) {
   if (!Number.isInteger(num) || num <= 0) return String(num);
-  if (num === 15) return 'ט"ו';
-  if (num === 16) return 'ט"ז';
 
   const hundreds = ["", "ק", "ר"];
   const tens = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"];
@@ -20,10 +18,17 @@ function numberToHebrew(num: number) {
     else chars.push("ק".repeat(h));
   }
 
-  const t = Math.floor(rem / 10);
-  const o = rem % 10;
-  if (t > 0) chars.push(tens[t]);
-  if (o > 0) chars.push(ones[o]);
+  // ט״ו / ט״ז — לא י״ה / י״ו (וגם לא קי״ה / קי״ו וכו׳)
+  if (rem === 15) {
+    chars.push("טו");
+  } else if (rem === 16) {
+    chars.push("טז");
+  } else {
+    const t = Math.floor(rem / 10);
+    const o = rem % 10;
+    if (t > 0) chars.push(tens[t]);
+    if (o > 0) chars.push(ones[o]);
+  }
 
   const raw = chars.join("");
   if (!raw) return String(num);

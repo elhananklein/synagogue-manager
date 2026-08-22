@@ -75,11 +75,11 @@ function sortedSectionItemsWithMinutes(
     .sort((a, b) => a.totalMinutes - b.totalMinutes);
 }
 
-/** חלון קבוע ללוח זמנים: הזמן הקודם + 7 קדימה (8 סה״כ). */
+/** חלון קבוע ללוח זמנים: הזמן הקודם + 9 קדימה (10 סה״כ, 5 בכל שורה). */
 function fullScheduleWindow<T extends { totalMinutes: number; dayOffset: number }>(
   rows: T[],
   nowMinutes: number,
-  windowSize = 8
+  windowSize = 10
 ): { visible: T[]; nextLocalIdx: number } {
   if (!rows.length) return { visible: [], nextLocalIdx: -1 };
 
@@ -934,7 +934,7 @@ export function DisplayRotator({
                 if (!timeline.length) {
                   return <p className="display-daily-learning-empty">אין זמנים להצגה.</p>;
                 }
-                const { visible, nextLocalIdx } = fullScheduleWindow(timeline, nowMinutes, 8);
+                const { visible, nextLocalIdx } = fullScheduleWindow(timeline, nowMinutes, 10);
                 return (
                   <AutoFit
                     className="display-full-schedule-fit"

@@ -657,8 +657,8 @@ function FullScheduleScreen({
   );
   const effectiveNext = nextIdx === -1 ? timeline.length : nextIdx;
   let start = Math.max(0, effectiveNext - 1);
-  if (start + 8 > timeline.length) start = Math.max(0, timeline.length - 8);
-  const visible = timeline.slice(start, start + 8);
+  if (start + 10 > timeline.length) start = Math.max(0, timeline.length - 10);
+  const visible = timeline.slice(start, start + 10);
   const nextLocalIdx = visible.findIndex(
     (row) => row.dayOffset > 0 || row.totalMinutes >= nowMinutes
   );

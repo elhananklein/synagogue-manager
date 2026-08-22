@@ -384,8 +384,6 @@ function halachicCivilIsoForConverter(civilIso: string, now: Date, tzeitIso?: st
 
 function numberToHebrew(num: number) {
   if (num <= 0) return String(num);
-  if (num === 15) return 'ט"ו';
-  if (num === 16) return 'ט"ז';
 
   const hundreds = ["", "ק", "ר"];
   const tens = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"];
@@ -393,7 +391,7 @@ function numberToHebrew(num: number) {
   const chars: string[] = [];
 
   const h = Math.floor(num / 100);
-  const remainderAfterHundreds = num % 100;
+  const rem = num % 100;
   if (h > 0) {
     if (h < hundreds.length) {
       chars.push(hundreds[h]);
@@ -402,10 +400,17 @@ function numberToHebrew(num: number) {
     }
   }
 
-  const t = Math.floor(remainderAfterHundreds / 10);
-  const o = remainderAfterHundreds % 10;
-  if (t > 0) chars.push(tens[t]);
-  if (o > 0) chars.push(ones[o]);
+  // ט״ו / ט״ז — לא י״ה / י״ו (וגם לא קי״ה / קי״ו וכו׳)
+  if (rem === 15) {
+    chars.push("טו");
+  } else if (rem === 16) {
+    chars.push("טז");
+  } else {
+    const t = Math.floor(rem / 10);
+    const o = rem % 10;
+    if (t > 0) chars.push(tens[t]);
+    if (o > 0) chars.push(ones[o]);
+  }
 
   const raw = chars.join("");
   if (!raw) return String(num);

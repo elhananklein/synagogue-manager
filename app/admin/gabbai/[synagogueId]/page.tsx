@@ -111,6 +111,19 @@ function nextAvailableScreenKey(screens: ScreenSetting[]): ScreenKey | null {
   return SCREEN_OPTIONS.find((o) => !used.has(o.key))?.key ?? null;
 }
 
+function renumberScreens(screens: ScreenSetting[]): ScreenSetting[] {
+  return screens.map((screen, index) => ({ ...screen, sortOrder: index + 1 }));
+}
+
+function moveScreen(screens: ScreenSetting[], index: number, direction: -1 | 1): ScreenSetting[] {
+  const next = index + direction;
+  if (next < 0 || next >= screens.length) return screens;
+  const copy = [...screens];
+  const [row] = copy.splice(index, 1);
+  copy.splice(next, 0, row);
+  return renumberScreens(copy);
+}
+
 const WEEKDAY_OPTIONS = [
   { value: 0, label: "א'" },
   { value: 1, label: "ב'" },
@@ -248,6 +261,9 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
         parashaKey: p.parashaKey ?? null,
         roundMode: p.roundMode ?? "none"
       })),
+      screens: renumberScreens(
+        [...(m.screens ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
+      ),
       shabbatAgendaItems: mapShabbatAgendaFromApi(m.shabbatAgendaItems ?? [])
     }));
     setMinyanim(normalized);
@@ -726,7 +742,9 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <h3 className="text-sm font-semibold">מסכים מתחלפים בתצוגה</h3>
-                      <p className="text-xs text-muted-foreground">הפעלה, סדר ומשך הצגה לכל מסך.</p>
+                      <p className="text-xs text-muted-foreground">
+                        הפעלה ומשך הצגה. סדר ההופעה לפי סדר השורות — העלו או הורידו שורה.
+                      </p>
                     </div>
                     <Button
                       type="button"
@@ -736,12 +754,16 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                       onClick={() => {
                         const key = nextAvailableScreenKey(selectedMinyan.screens);
                         if (!key) return;
-                        const maxOrder = selectedMinyan.screens.reduce((acc, s) => Math.max(acc, s.sortOrder), 0);
                         updateMinyan(selectedMinyanIndex, (m) => ({
                           ...m,
                           screens: [
                             ...m.screens,
-                            { screenKey: key, sortOrder: maxOrder + 1, durationSeconds: 20, enabled: true }
+                            {
+                              screenKey: key,
+                              sortOrder: m.screens.length + 1,
+                              durationSeconds: 20,
+                              enabled: true
+                            }
                           ]
                         }));
                       }}
@@ -754,94 +776,114 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                     {selectedMinyan.screens.map((screen, screenIndex) => (
                       <div
                         key={`${screen.screenKey}-${screenIndex}`}
-                        className="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-[minmax(0,1.4fr)_auto_5rem_5rem_auto]"
+                        className="space-y-2 rounded-md border border-border p-3"
                       >
-                        <select
-                          className="h-10 w-full rounded-md border border-border bg-background px-3"
-                          aria-label="סוג מסך"
-                          value={screen.screenKey}
-                          onChange={(e) => {
-                            const nextKey = e.target.value as ScreenKey;
-                            updateMinyan(selectedMinyanIndex, (m) => ({
-                              ...m,
-                              screens: m.screens.map((s, j) =>
-                                j === screenIndex ? { ...s, screenKey: nextKey } : s
-                              )
-                            }));
-                          }}
-                        >
-                          {SCREEN_OPTIONS.map((opt) => {
-                            const takenByOther = selectedMinyan.screens.some(
-                              (s, j) => j !== screenIndex && s.screenKey === opt.key
-                            );
-                            return (
-                              <option key={opt.key} value={opt.key} disabled={takenByOther}>
-                                {opt.label}
-                              </option>
-                            );
-                          })}
-                        </select>
-                        <label className="inline-flex h-10 items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={screen.enabled}
-                            onChange={(e) =>
-                              updateMinyan(selectedMinyanIndex, (m) => ({
-                                ...m,
-                                screens: m.screens.map((s, j) =>
-                                  j === screenIndex ? { ...s, enabled: e.target.checked } : s
-                                )
-                              }))
-                            }
-                          />
-                          פעיל
-                        </label>
-                        <div>
-                          <label className="mb-0.5 block text-[11px] text-muted-foreground">סדר</label>
-                          <input
-                            type="number"
-                            className="h-10 w-full rounded-md border border-border bg-background px-2"
-                            value={screen.sortOrder}
-                            onChange={(e) =>
-                              updateMinyan(selectedMinyanIndex, (m) => ({
-                                ...m,
-                                screens: m.screens.map((s, j) =>
-                                  j === screenIndex ? { ...s, sortOrder: Number(e.target.value) } : s
-                                )
-                              }))
-                            }
-                          />
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">מסך {screenIndex + 1}</span>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={screenIndex === 0}
+                              onClick={() =>
+                                updateMinyan(selectedMinyanIndex, (m) => ({
+                                  ...m,
+                                  screens: moveScreen(m.screens, screenIndex, -1)
+                                }))
+                              }
+                            >
+                              ↑
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={screenIndex === selectedMinyan.screens.length - 1}
+                              onClick={() =>
+                                updateMinyan(selectedMinyanIndex, (m) => ({
+                                  ...m,
+                                  screens: moveScreen(m.screens, screenIndex, 1)
+                                }))
+                              }
+                            >
+                              ↓
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                updateMinyan(selectedMinyanIndex, (m) => ({
+                                  ...m,
+                                  screens: renumberScreens(m.screens.filter((_, j) => j !== screenIndex))
+                                }))
+                              }
+                            >
+                              הסר
+                            </Button>
+                          </div>
                         </div>
-                        <div>
-                          <label className="mb-0.5 block text-[11px] text-muted-foreground">שניות</label>
-                          <input
-                            type="number"
-                            className="h-10 w-full rounded-md border border-border bg-background px-2"
-                            value={screen.durationSeconds}
-                            onChange={(e) =>
+                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1.4fr)_auto_5rem]">
+                          <select
+                            className="h-10 w-full rounded-md border border-border bg-background px-3"
+                            aria-label="סוג מסך"
+                            value={screen.screenKey}
+                            onChange={(e) => {
+                              const nextKey = e.target.value as ScreenKey;
                               updateMinyan(selectedMinyanIndex, (m) => ({
                                 ...m,
                                 screens: m.screens.map((s, j) =>
-                                  j === screenIndex ? { ...s, durationSeconds: Number(e.target.value) } : s
+                                  j === screenIndex ? { ...s, screenKey: nextKey } : s
                                 )
-                              }))
-                            }
-                          />
+                              }));
+                            }}
+                          >
+                            {SCREEN_OPTIONS.map((opt) => {
+                              const takenByOther = selectedMinyan.screens.some(
+                                (s, j) => j !== screenIndex && s.screenKey === opt.key
+                              );
+                              return (
+                                <option key={opt.key} value={opt.key} disabled={takenByOther}>
+                                  {opt.label}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <label className="inline-flex h-10 items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={screen.enabled}
+                              onChange={(e) =>
+                                updateMinyan(selectedMinyanIndex, (m) => ({
+                                  ...m,
+                                  screens: m.screens.map((s, j) =>
+                                    j === screenIndex ? { ...s, enabled: e.target.checked } : s
+                                  )
+                                }))
+                              }
+                            />
+                            פעיל
+                          </label>
+                          <div>
+                            <label className="mb-0.5 block text-[11px] text-muted-foreground">שניות</label>
+                            <input
+                              type="number"
+                              className="h-10 w-full rounded-md border border-border bg-background px-2"
+                              value={screen.durationSeconds}
+                              onChange={(e) =>
+                                updateMinyan(selectedMinyanIndex, (m) => ({
+                                  ...m,
+                                  screens: m.screens.map((s, j) =>
+                                    j === screenIndex
+                                      ? { ...s, durationSeconds: Number(e.target.value) }
+                                      : s
+                                  )
+                                }))
+                              }
+                            />
+                          </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-10"
-                          onClick={() =>
-                            updateMinyan(selectedMinyanIndex, (m) => ({
-                              ...m,
-                              screens: m.screens.filter((_, j) => j !== screenIndex)
-                            }))
-                          }
-                        >
-                          הסר
-                        </Button>
                       </div>
                     ))}
                     {!selectedMinyan.screens.length ? (

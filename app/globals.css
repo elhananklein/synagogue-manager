@@ -879,15 +879,15 @@ body {
   }
 
   .display-full-schedule-fit-inner {
-    width: min(92rem, 96vw);
+    width: min(98rem, 97vw);
   }
 
-  /* 8 אריחים: 4×2 — גודל בסיס קבוע; AutoFit מכווץ/מגדיל לפי המסך */
+  /* 10 אריחים: 5×2 — גודל בסיס קבוע; AutoFit מכווץ/מגדיל לפי המסך */
   .display-full-schedule-flow {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(0, 1fr));
-    gap: 1.1rem 1.25rem;
+    gap: 1.1rem 1rem;
     width: 100%;
     height: 28rem;
     align-content: stretch;
