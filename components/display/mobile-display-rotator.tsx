@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText, Megaphone, Flame, MoonStar } from "lucide-react";
+import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText, Megaphone, Flame, MoonStar, ChevronLeft } from "lucide-react";
 import { DisplayBulletinScreen } from "@/components/display/display-bulletin-screen";
 import { LiveClock } from "@/components/display/live-clock";
 import { cn } from "@/lib/utils";
@@ -633,37 +633,80 @@ function FullScheduleScreen({
   timeSections: DisplayTimeSection[];
   nowMinutes: number;
 }) {
-  const rows = [...(timeSections[0]?.items ?? [])]
-    .map((row) => ({ ...row, totalMinutes: toMinutes(row.time) }))
-    .sort((a, b) => a.totalMinutes - b.totalMinutes);
+  const timeline = [
+    ...(timeSections[0]?.items ?? []).map((row) => ({
+      ...row,
+      totalMinutes: toMinutes(row.time),
+      dayOffset: 0 as const,
+      dayTag: null as string | null
+    })),
+    ...(timeSections[1]?.items ?? []).map((row) => ({
+      ...row,
+      totalMinutes: toMinutes(row.time),
+      dayOffset: 1 as const,
+      dayTag: "מחר" as string | null
+    }))
+  ].sort((a, b) => a.dayOffset - b.dayOffset || a.totalMinutes - b.totalMinutes);
 
-  if (!rows.length) {
+  if (!timeline.length) {
     return <Card className="text-center text-slate-500">אין זמנים להצגה.</Card>;
   }
 
-  const nextToday = rows.find((row) => row.totalMinutes >= nowMinutes) ?? null;
+  const nextIdx = timeline.findIndex(
+    (row) => row.dayOffset > 0 || row.totalMinutes >= nowMinutes
+  );
+  const effectiveNext = nextIdx === -1 ? timeline.length : nextIdx;
+  let start = Math.max(0, effectiveNext - 1);
+  if (start + 8 > timeline.length) start = Math.max(0, timeline.length - 8);
+  const visible = timeline.slice(start, start + 8);
+  const nextLocalIdx = visible.findIndex(
+    (row) => row.dayOffset > 0 || row.totalMinutes >= nowMinutes
+  );
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {rows.map((row, i) => {
+    <div className="flex flex-wrap items-stretch justify-center gap-y-3" dir="rtl">
+      {visible.map((row, i) => {
         const isPrayer = row.kind === "prayer";
-        const isNext =
-          nextToday !== null && row.label === nextToday.label && row.time === nextToday.time;
+        const isNext = i === nextLocalIdx;
+        const isPast = nextLocalIdx === -1 ? true : i < nextLocalIdx;
         return (
-          <div
-            key={`today-${row.kind}-${row.label}-${row.time}-${i}`}
-            className={cn(
-              "rounded-lg border px-3 py-3 shadow-sm",
-              isPrayer
-                ? "border-amber-300 border-s-4 border-s-amber-400 bg-amber-50"
-                : "border-slate-200 bg-white",
-              isNext && "ring-2 ring-emerald-500"
-            )}
-          >
-            <div className="text-sm font-semibold leading-tight text-slate-700">
-              {isPrayer ? `תפילת ${row.label}` : row.label}
+          <div key={`${row.dayOffset}-${row.kind}-${row.label}-${row.time}-${i}`} className="flex min-w-0 items-stretch">
+            {i > 0 ? (
+              <div
+                className={cn(
+                  "flex w-5 shrink-0 items-center justify-center",
+                  isNext ? "text-amber-500" : "text-slate-300"
+                )}
+                aria-hidden
+              >
+                <ChevronLeft className="h-5 w-5" strokeWidth={2.5} />
+              </div>
+            ) : null}
+            <div
+              className={cn(
+                "relative min-w-[9.5rem] flex-1 rounded-lg border px-3 py-3 shadow-sm sm:min-w-[11rem]",
+                isPrayer
+                  ? "border-amber-300 border-s-4 border-s-amber-400 bg-amber-50"
+                  : "border-slate-200 bg-white",
+                isNext && "ring-2 ring-amber-400 ring-offset-1",
+                isPast && !isNext && "opacity-45 grayscale"
+              )}
+            >
+              {isNext ? (
+                <span className="absolute start-2 top-1.5 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-stone-900">
+                  הבא
+                </span>
+              ) : null}
+              {row.dayTag ? (
+                <span className="absolute end-2 top-1.5 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+                  {row.dayTag}
+                </span>
+              ) : null}
+              <div className={cn("text-sm font-semibold leading-tight text-slate-700", isNext && "pt-3")}>
+                {isPrayer ? `תפילת ${row.label}` : row.label}
+              </div>
+              <div className="mt-1.5 text-xl font-bold tabular-nums text-slate-900">{row.time}</div>
             </div>
-            <div className="mt-1.5 text-xl font-bold tabular-nums text-slate-900">{row.time}</div>
           </div>
         );
       })}

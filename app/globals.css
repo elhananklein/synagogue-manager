@@ -30,6 +30,7 @@ body {
   }
 
   .display-frame {
+    position: relative;
     margin: 1.5vh auto;
     height: 97vh;
     width: 97vw;
@@ -40,6 +41,35 @@ body {
     border-radius: 1rem;
     border-width: 1px;
     padding: 1rem;
+  }
+
+  /* פסי שוליים שקופים לדילוג מהיר בין מסכים (בדיקות / שליטה ידנית) — RTL: ימין=קודם, שמאל=הבא */
+  .display-nav-edge {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 40;
+    width: clamp(2.25rem, 4.5vw, 4.5rem);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .display-nav-edge--prev {
+    inset-inline-start: 0;
+  }
+  .display-nav-edge--next {
+    inset-inline-end: 0;
+  }
+  .display-nav-edge:hover,
+  .display-nav-edge:focus-visible {
+    background: rgb(255 255 255 / 0.06);
+  }
+  .display-nav-edge:focus-visible {
+    outline: 2px solid rgb(250 204 21 / 0.7);
+    outline-offset: -2px;
   }
 
   .display-screen-stage {
@@ -838,64 +868,184 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    padding-top: 0.5rem;
-    padding-bottom: 0.85rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.75rem;
   }
 
   .display-full-schedule-fit {
+    flex: 1;
     width: 100%;
-    height: 100%;
+    min-height: 0;
   }
 
-  .display-full-schedule-fit .display-full-schedule-tiles {
-    max-height: none;
+  .display-full-schedule-fit-inner {
+    width: min(92rem, 96vw);
   }
 
-  .display-full-schedule-tiles {
+  /* 8 אריחים: 4×2 — גודל בסיס קבוע; AutoFit מכווץ/מגדיל לפי המסך */
+  .display-full-schedule-flow {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
-    gap: clamp(0.85rem, 2vh, 1.35rem) clamp(0.9rem, 2vw, 1.5rem);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 1.1rem 1.25rem;
     width: 100%;
-    align-content: start;
+    height: 28rem;
+    align-content: stretch;
   }
 
-  .display-full-schedule-tile.display-time-row {
-    width: 100%;
+  .display-full-schedule-arrow {
+    position: absolute;
+    top: 50%;
+    inset-inline-start: -0.15rem;
+    transform: translate(-60%, -50%);
+    width: 1.35rem;
+    height: 1.35rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.55;
+    color: currentColor;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .display-full-schedule-arrow svg {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+
+  .display-full-schedule-arrow--to-next {
+    opacity: 1;
+    color: #facc15;
+    filter: drop-shadow(0 0 6px rgb(250 204 21 / 0.45));
+  }
+
+  .display-full-schedule-tile {
+    position: relative;
     min-width: 0;
+    min-height: 0;
     box-sizing: border-box;
-    padding: clamp(0.95rem, 2.4vh, 1.65rem) clamp(1rem, 2.4vw, 1.6rem);
-    min-height: clamp(5.5rem, 14vh, 9rem);
     display: flex;
     flex-direction: column;
-    justify-content: center;
-  }
-
-  .display-full-schedule-tile-main.display-time-main {
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: space-between;
-    gap: 0.55rem;
-    font-size: clamp(1.2rem, 2.35vw, 1.7rem);
-    text-align: center;
-  }
-
-  .display-full-schedule-tile .display-time-label {
-    line-height: 1.2;
-    word-break: break-word;
-  }
-
-  .display-full-schedule-tile .display-time-value-wrap {
     align-items: center;
-  }
-
-  .display-full-schedule-tile .display-time-value {
-    font-size: clamp(1.85rem, 4vw, 2.85rem);
-  }
-
-  .display-full-schedule-tile .display-time-details {
-    margin-top: 0.35rem;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 1.35rem 1.25rem;
+    border-radius: 0.65rem;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    background: rgb(0 0 0 / 0.2);
     text-align: center;
-    font-size: clamp(0.95rem, 1.6vw, 1.2rem);
+    overflow: visible;
+  }
+
+  .display-full-schedule-tile--prayer {
+    border-inline-start: 5px solid #facc15;
+    box-shadow: inset 4px 0 0 rgb(250 204 21 / 0.35);
+  }
+
+  .display-full-schedule-tile--past {
+    opacity: 0.42;
+    filter: grayscale(0.35);
+  }
+
+  .display-full-schedule-tile--next {
+    opacity: 1;
+    filter: none;
+    border-color: #fde047;
+    outline: 3px solid rgb(250 204 21 / 0.95);
+    outline-offset: 2px;
+    box-shadow:
+      0 0 0 1px rgb(250 204 21 / 0.35),
+      0 8px 28px rgb(0 0 0 / 0.25);
+    z-index: 1;
+  }
+
+  .display-full-schedule-next-badge {
+    position: absolute;
+    top: 0.4rem;
+    inset-inline-start: 0.5rem;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    font-size: clamp(0.7rem, 1.25vw, 0.95rem);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    background: #facc15;
+    color: #1c1917;
+    line-height: 1.2;
+  }
+
+  .display-full-schedule-day-tag {
+    position: absolute;
+    top: 0.4rem;
+    inset-inline-end: 0.5rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: clamp(0.65rem, 1.15vw, 0.85rem);
+    font-weight: 800;
+    background: rgb(255 255 255 / 0.14);
+    line-height: 1.2;
+  }
+
+  .display-full-schedule-tile-label,
+  .display-full-schedule-tile-time,
+  .display-full-schedule-tile-details {
+    margin: 0;
+    max-width: 100%;
+  }
+
+  .display-full-schedule-tile-label {
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.25;
+    word-break: break-word;
+    padding-inline: 0.35rem;
+  }
+
+  .display-full-schedule-tile--prayer .display-full-schedule-tile-label {
+    color: #ffe7a3;
+  }
+
+  .display-full-schedule-tile-time {
+    font-size: 2.85rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.03em;
+    line-height: 1.05;
+  }
+
+  .display-full-schedule-tile--next .display-full-schedule-tile-time {
+    color: #fef9c3;
+  }
+
+  .display-full-schedule-tile-details {
+    font-size: clamp(0.85rem, 1.4vw, 1.1rem);
+    opacity: 0.85;
+    line-height: 1.25;
+  }
+
+  .display--classic .display-full-schedule-tile {
+    background: linear-gradient(180deg, rgb(90 12 30 / 0.92) 0%, rgb(45 6 16 / 0.95) 100%);
+    border-color: rgb(251 191 36 / 0.45);
+  }
+  .display--classic .display-full-schedule-tile--prayer {
+    background: linear-gradient(90deg, rgb(100 14 32 / 0.95) 0%, rgb(55 8 20 / 0.96) 100%);
+  }
+  .display--classic .display-full-schedule-tile-label {
+    color: #fff7ed;
+  }
+  .display--classic .display-full-schedule-tile--prayer .display-full-schedule-tile-label {
+    color: #fef08a;
+  }
+  .display--classic .display-full-schedule-tile-time {
+    color: #fff7ed;
+  }
+  .display--classic .display-full-schedule-tile--past {
+    background: linear-gradient(180deg, rgb(55 20 28 / 0.75) 0%, rgb(30 10 16 / 0.8) 100%);
+    border-color: rgb(148 163 184 / 0.35);
+  }
+  .display--classic .display-full-schedule-tile--past .display-full-schedule-tile-label,
+  .display--classic .display-full-schedule-tile--past .display-full-schedule-tile-time {
+    color: #cbd5e1;
   }
 
   /* מסך "מידע מרכזי" — כל תוכן צד ימין של המסך הראשי, ממורכז ומוגדל */

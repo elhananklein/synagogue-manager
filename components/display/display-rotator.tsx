@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Flame, MoonStar } from "lucide-react";
+import { Flame, MoonStar, ChevronLeft } from "lucide-react";
 import { LiveClock } from "@/components/display/live-clock";
 import { DisplayBulletinScreen } from "@/components/display/display-bulletin-screen";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,6 +75,30 @@ function sortedSectionItemsWithMinutes(
     .sort((a, b) => a.totalMinutes - b.totalMinutes);
 }
 
+/** חלון קבוע ללוח זמנים: הזמן הקודם + 7 קדימה (8 סה״כ). */
+function fullScheduleWindow<T extends { totalMinutes: number; dayOffset: number }>(
+  rows: T[],
+  nowMinutes: number,
+  windowSize = 8
+): { visible: T[]; nextLocalIdx: number } {
+  if (!rows.length) return { visible: [], nextLocalIdx: -1 };
+
+  const nextIdx = rows.findIndex(
+    (row) => row.dayOffset > 0 || row.totalMinutes >= nowMinutes
+  );
+  const effectiveNext = nextIdx === -1 ? rows.length : nextIdx;
+
+  let start = Math.max(0, effectiveNext - 1);
+  if (start + windowSize > rows.length) {
+    start = Math.max(0, rows.length - windowSize);
+  }
+  const visible = rows.slice(start, start + windowSize);
+  const nextLocalIdx = visible.findIndex(
+    (row) => row.dayOffset > 0 || row.totalMinutes >= nowMinutes
+  );
+  return { visible, nextLocalIdx };
+}
+
 const PRAYER_TIMES_GROUP_ORDER = ["שחרית", "מנחה", "ערבית", "אחר"] as const;
 type PrayerTimesGroupId = (typeof PRAYER_TIMES_GROUP_ORDER)[number];
 
@@ -131,20 +155,22 @@ function toHebrewNumber(num: number) {
 }
 
 /**
- * מקטין אוטומטית את התוכן כדי שייכנס בגובה (ורוחב) הזמין — ללא חיתוך.
- * קריטי לתצוגת קיר/טלוויזיה שבה אי-אפשר לגלול: כשיש הרבה זמני תפילה או תוספות,
- * במקום לחתוך את השורות העליונות/התחתונות אנחנו מכווצים מעט את כל הבלוק כך שהכול נראה.
- * לעולם לא מגדילים (scale<=1) — כך שבמצב רגיל אין שינוי כלל.
+ * מקטין (ובאופציה גם מגדיל) את התוכן כדי שימלא את הגובה/רוחב הזמינים — ללא חיתוך.
+ * קריטי לתצוגת קיר/טלוויזיה. כברירת מחדל רק מכווץ (scale<=1); עם grow גם מתרחב עד maxScale.
  */
 function AutoFit({
   className,
   contentClassName,
   deps = [],
+  grow = false,
+  maxScale = 1.45,
   children
 }: {
   className?: string;
   contentClassName?: string;
   deps?: unknown[];
+  grow?: boolean;
+  maxScale?: number;
   children: ReactNode;
 }) {
   const outerRef = useRef<HTMLDivElement | null>(null);
@@ -156,16 +182,15 @@ function AutoFit({
     const inner = innerRef.current;
     if (!outer || !inner) return;
 
-    // offsetWidth/Height מודדים את הגודל הטבעי (transform לא משפיע על ה-layout),
-    // לכן אפשר למדוד גם כשה-scale כבר מוחל — בלי לולאות.
     const measure = () => {
       const availH = outer.clientHeight;
       const availW = outer.clientWidth;
       const needH = inner.offsetHeight;
       const needW = inner.offsetWidth;
       if (!availH || !availW || !needH || !needW) return;
-      const next = Math.min(1, availH / needH, availW / needW);
-      const safe = Number.isFinite(next) && next > 0 ? next : 1;
+      const fitted = Math.min(availH / needH, availW / needW);
+      const capped = grow ? Math.min(maxScale, fitted) : Math.min(1, fitted);
+      const safe = Number.isFinite(capped) && capped > 0 ? capped : 1;
       setScale((prev) => (Math.abs(prev - safe) > 0.004 ? safe : prev));
     };
 
@@ -196,7 +221,7 @@ function AutoFit({
       <div
         ref={innerRef}
         className={cn("display-autofit-inner", contentClassName)}
-        style={scale < 1 ? { transform: `scale(${scale})` } : undefined}
+        style={scale !== 1 ? { transform: `scale(${scale})` } : undefined}
       >
         {children}
       </div>
@@ -261,6 +286,16 @@ export function DisplayRotator({
   const [index, setIndex] = useState(0);
   const timesScrollRef = useRef<HTMLDivElement | null>(null);
   const [timesStartOffset, setTimesStartOffset] = useState<number | null>(null);
+  const screenCount = enabledScreens.length;
+
+  const goNextScreen = () => {
+    if (screenCount < 2) return;
+    setIndex((prev) => (prev + 1) % screenCount);
+  };
+  const goPrevScreen = () => {
+    if (screenCount < 2) return;
+    setIndex((prev) => (prev - 1 + screenCount) % screenCount);
+  };
 
   useEffect(() => {
     if (!enabledScreens.length) return;
@@ -275,19 +310,61 @@ export function DisplayRotator({
   }, [enabledScreens, index, bulletinItems.length]);
 
   useEffect(() => {
-    // Keep unattended displays up-to-date without full page reload.
-    const refreshIntervalMs = 30 * 60 * 1000;
-    const intervalId = setInterval(() => {
-      router.refresh();
-    }, refreshIntervalMs);
+    if (screenCount < 2) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      if (e.key === "ArrowLeft" || e.key === "PageDown" || e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        setIndex((prev) => (prev + 1) % screenCount);
+      } else if (e.key === "ArrowRight" || e.key === "PageUp" || e.key === "Backspace") {
+        e.preventDefault();
+        setIndex((prev) => (prev - 1 + screenCount) % screenCount);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [screenCount]);
 
-    // Force refresh exactly at local midnight (Israel), then continue normal interval refresh.
+  useEffect(() => {
+    const DISPLAY_FS_KEY = "display-want-fullscreen";
+    try {
+      sessionStorage.setItem(DISPLAY_FS_KEY, "1");
+    } catch {
+      /* private mode / blocked */
+    }
+
+    // Soft refresh — לעיתים קרובות יותר, בלי לטעון את כל הדף מחדש.
+    const softRefreshIntervalMs = 10 * 60 * 1000;
+    const softIntervalId = setInterval(() => {
+      router.refresh();
+    }, softRefreshIntervalMs);
+
+    // Hard reload (כמו F5) — אחת לחצי שעה, כדי לצאת מתקיעות של JS/מסך.
+    const hardReloadIntervalMs = 30 * 60 * 1000;
+    const hardIntervalId = setInterval(() => {
+      try {
+        sessionStorage.setItem(DISPLAY_FS_KEY, "1");
+      } catch {
+        /* ignore */
+      }
+      window.location.reload();
+    }, hardReloadIntervalMs);
+
+    // חצות — ריענון חזק ליום האזרחי הבא.
     const now = new Date();
     const nextMidnight = new Date(now);
     nextMidnight.setHours(24, 0, 0, 0);
     const midnightTimeoutMs = Math.max(1000, nextMidnight.getTime() - now.getTime());
     const midnightTimeoutId = setTimeout(() => {
-      router.refresh();
+      try {
+        sessionStorage.setItem(DISPLAY_FS_KEY, "1");
+      } catch {
+        /* ignore */
+      }
+      window.location.reload();
     }, midnightTimeoutMs);
 
     const onVisible = () => {
@@ -298,15 +375,16 @@ export function DisplayRotator({
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
-      clearInterval(intervalId);
+      clearInterval(softIntervalId);
+      clearInterval(hardIntervalId);
       clearTimeout(midnightTimeoutId);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [router]);
 
   useEffect(() => {
-    // כניסה אוטומטית למסך מלא. דפדפנים חוסמים מסך מלא ללא מחווה, לכן מנסים מיד
-    // (יעבוד אם הדף הופעל עם הרשאה/קיוסק) וגם בלחיצה/מגע/מקש הראשונים.
+    // כניסה אוטומטית למסך מלא. דפדפנים חוסמים מסך מלא ללא מחווה — מנסים בטעינה
+    // (קיוסק/הרשאה), אחרי hard reload, ובכל מחווה אם עדיין לא במסך מלא.
     type FsElement = HTMLElement & {
       webkitRequestFullscreen?: () => Promise<void> | void;
       msRequestFullscreen?: () => Promise<void> | void;
@@ -314,9 +392,8 @@ export function DisplayRotator({
     type FsDocument = Document & {
       webkitFullscreenElement?: Element | null;
       msFullscreenElement?: Element | null;
-      webkitExitFullscreen?: () => Promise<void> | void;
-      msExitFullscreen?: () => Promise<void> | void;
     };
+    const DISPLAY_FS_KEY = "display-want-fullscreen";
     const settle = (result: Promise<void> | void) => {
       if (result && typeof (result as Promise<void>).catch === "function") {
         (result as Promise<void>).catch(() => {});
@@ -325,7 +402,7 @@ export function DisplayRotator({
     const isFullscreen = () => {
       if (typeof document === "undefined") return false;
       const doc = document as FsDocument;
-      return Boolean(doc.fullscreenElement ?? doc.webkitFullscreenElement ?? doc.msFullscreenElement);
+      return Boolean(doc.fullscreenElement ?? doc.webkitFullscreenElement);
     };
     const requestFullscreen = () => {
       if (typeof document === "undefined") return;
@@ -339,31 +416,24 @@ export function DisplayRotator({
         /* הדפדפן דחה — נחכה למחווה הבאה */
       }
     };
-    const exitFullscreen = () => {
-      if (typeof document === "undefined") return;
-      if (!isFullscreen()) return;
-      const doc = document as FsDocument;
-      const fn = doc.exitFullscreen ?? doc.webkitExitFullscreen ?? doc.msExitFullscreen;
-      if (!fn) return;
-      try {
-        settle(fn.call(doc));
-      } catch {
-        /* התעלמות — נחכה למחווה הבאה */
-      }
-    };
+
+    try {
+      sessionStorage.setItem(DISPLAY_FS_KEY, "1");
+    } catch {
+      /* ignore */
+    }
 
     requestFullscreen();
+    const retryIds = [400, 1200, 3000].map((ms) => window.setTimeout(requestFullscreen, ms));
 
+    // לא מכבים מסך מלא בלחיצה — רק נכנסים אם יצאנו (למשל אחרי reload).
     const onGesture = () => {
-      if (isFullscreen()) {
-        exitFullscreen();
-      } else {
-        requestFullscreen();
-      }
+      if (!isFullscreen()) requestFullscreen();
     };
     const events: Array<keyof WindowEventMap> = ["pointerdown", "touchend", "keydown"];
     events.forEach((evt) => window.addEventListener(evt, onGesture));
     return () => {
+      retryIds.forEach((id) => clearTimeout(id));
       events.forEach((evt) => window.removeEventListener(evt, onGesture));
     };
   }, []);
@@ -373,9 +443,16 @@ export function DisplayRotator({
     if (!iso) return;
     const delay = new Date(iso).getTime() - Date.now();
     if (delay <= 0 || delay > 24 * 60 * 60 * 1000) return;
-    const id = setTimeout(() => router.refresh(), delay);
+    const id = setTimeout(() => {
+      try {
+        sessionStorage.setItem("display-want-fullscreen", "1");
+      } catch {
+        /* ignore */
+      }
+      window.location.reload();
+    }, delay);
     return () => clearTimeout(id);
-  }, [snapshot.halachicDayRollIso, router]);
+  }, [snapshot.halachicDayRollIso]);
 
   const currentScreen = enabledScreens.length ? enabledScreens[index % enabledScreens.length].screenKey : null;
   const isWoodSilverRevolution = style === "woodSilver" && ENABLE_WOOD_SILVER_REVOLUTION_LAYOUT;
@@ -547,6 +624,32 @@ export function DisplayRotator({
         <div className="display-empty">אין מסכים פעילים לתצוגה</div>
       ) : (
       <div className="display-frame">
+        {screenCount > 1 ? (
+          <>
+            <button
+              type="button"
+              className="display-nav-edge display-nav-edge--prev"
+              aria-label="מסך קודם"
+              title="מסך קודם (חץ ימינה)"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                goPrevScreen();
+              }}
+            />
+            <button
+              type="button"
+              className="display-nav-edge display-nav-edge--next"
+              aria-label="מסך הבא"
+              title="מסך הבא (חץ שמאלה / רווח)"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                goNextScreen();
+              }}
+            />
+          </>
+        ) : null}
         <header
           className={cn(
             "display-header",
@@ -816,52 +919,69 @@ export function DisplayRotator({
             </CardHeader>
             <CardContent className="display-full-schedule-body">
               {(() => {
-                const todayRows = sortedSectionItemsWithMinutes(timeSections[0]?.items ?? []);
-                if (!todayRows.length) {
+                const timeline = [
+                  ...sortedSectionItemsWithMinutes(timeSections[0]?.items ?? []).map((row) => ({
+                    ...row,
+                    dayOffset: 0 as const,
+                    dayTag: null as string | null
+                  })),
+                  ...sortedSectionItemsWithMinutes(timeSections[1]?.items ?? []).map((row) => ({
+                    ...row,
+                    dayOffset: 1 as const,
+                    dayTag: "מחר" as string | null
+                  }))
+                ];
+                if (!timeline.length) {
                   return <p className="display-daily-learning-empty">אין זמנים להצגה.</p>;
                 }
+                const { visible, nextLocalIdx } = fullScheduleWindow(timeline, nowMinutes, 8);
                 return (
                   <AutoFit
                     className="display-full-schedule-fit"
-                    deps={[currentScreen, timeSections[0], nextSlotIndexInSection, nextSectionIndex]}
+                    contentClassName="display-full-schedule-fit-inner"
+                    grow
+                    maxScale={1.55}
+                    deps={[currentScreen, visible, nextLocalIdx]}
                   >
-                    <div className="display-full-schedule-tiles" dir="rtl">
-                      {todayRows.map((item, idx) => {
-                        const isNext = nextSectionIndex === 0 && idx === nextSlotIndexInSection;
+                    <div className="display-full-schedule-flow" dir="rtl">
+                      {visible.map((item, idx) => {
+                        const isNext = idx === nextLocalIdx;
+                        const isPast = nextLocalIdx === -1 ? true : idx < nextLocalIdx;
                         const isPrayer = item.kind === "prayer";
+                        const label = isPrayer ? `תפילת ${item.label}` : item.label;
                         return (
-                          <div
-                            key={`today-${item.kind}-${item.label}-${item.time}-${idx}`}
+                          <article
+                            key={`${item.dayOffset}-${item.kind}-${item.label}-${item.time}-${idx}`}
                             className={cn(
-                              "display-time-row display-full-schedule-tile",
-                              isPrayer && "display-time-row--prayer",
-                              isNext && "display-time-row--next"
+                              "display-full-schedule-tile",
+                              isPrayer && "display-full-schedule-tile--prayer",
+                              isNext && "display-full-schedule-tile--next",
+                              isPast && !isNext && "display-full-schedule-tile--past"
                             )}
                           >
-                            <div className="display-time-main display-full-schedule-tile-main">
+                            {idx > 0 ? (
                               <span
                                 className={cn(
-                                  "display-time-label",
-                                  isPrayer && "display-time-label--prayer"
+                                  "display-full-schedule-arrow",
+                                  idx === nextLocalIdx && "display-full-schedule-arrow--to-next"
                                 )}
+                                aria-hidden
                               >
-                                {isPrayer ? `תפילת ${item.label}` : item.label}
+                                <ChevronLeft strokeWidth={2.75} />
                               </span>
-                              <span className="display-time-value-wrap">
-                                <span
-                                  className={cn(
-                                    "display-time-value",
-                                    isNext && "display-time-value--next"
-                                  )}
-                                >
-                                  {item.time}
-                                </span>
-                              </span>
-                            </div>
-                            {"details" in item && item.details ? (
-                              <div className="display-time-details">{item.details}</div>
                             ) : null}
-                          </div>
+                            {isNext ? (
+                              <span className="display-full-schedule-next-badge">הבא</span>
+                            ) : null}
+                            {item.dayTag ? (
+                              <span className="display-full-schedule-day-tag">{item.dayTag}</span>
+                            ) : null}
+                            <p className="display-full-schedule-tile-label">{label}</p>
+                            <p className="display-full-schedule-tile-time">{item.time}</p>
+                            {"details" in item && item.details ? (
+                              <p className="display-full-schedule-tile-details">{item.details}</p>
+                            ) : null}
+                          </article>
                         );
                       })}
                     </div>
