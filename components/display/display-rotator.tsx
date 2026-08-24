@@ -523,9 +523,7 @@ export function DisplayRotator({
           totalMinutes: hh * 60 + mm,
           group: prayerTimesGroupIdFromLabel(row.label)
         };
-      })
-      // אחרי שעבר הזמן — לא מציגים תפילות בוקר שכבר חלפו (למשל שחרית 6:30 בצהריים)
-      .filter((row) => row.totalMinutes >= nowMinutes);
+      });
     rows.sort((a, b) => a.totalMinutes - b.totalMinutes);
     const byGroup = new Map<PrayerTimesGroupId, Row[]>();
     for (const r of rows) {
@@ -541,7 +539,7 @@ export function DisplayRotator({
         rows: groupRows
       };
     });
-  }, [prayerSchedule, nowMinutes]);
+  }, [prayerSchedule]);
   const prayerTimesNextBanner =
     nextTodayPrayerHighlight &&
     (() => {
@@ -855,9 +853,13 @@ export function DisplayRotator({
             </CardHeader>
             <CardContent className="display-prayer-times-body">
               {prayerTimesScreenGroups.length === 0 ? (
-                <p className="display-daily-learning-empty">אין תפילות נוספות להיום.</p>
+                <p className="display-daily-learning-empty">אין תפילות להיום.</p>
               ) : (
-                <AutoFit className="display-prayer-times-fit" deps={[currentScreen, prayerTimesScreenGroups, prayerTimesNextBanner]}>
+                <AutoFit
+                  className="display-prayer-times-fit"
+                  contentClassName="display-prayer-times-fit-inner"
+                  deps={[currentScreen, prayerTimesScreenGroups, prayerTimesNextBanner]}
+                >
                 <div className="display-prayer-times-groups">
                   {prayerTimesScreenGroups.map(({ group, title, rows }) => (
                     <div key={group} className="display-prayer-times-group">
@@ -1102,8 +1104,7 @@ export function DisplayRotator({
         ) : null}
 
         {currentScreen === "mainInfo" ? (
-          <section className="display-info-screen">
-            <AutoFit className="display-info-fit" deps={[currentScreen, snapshot, amidahAddition, nextPrayer]}>
+          <Card className="display-card display-info-card">
             <div className="display-info-stack">
               {nextPrayer ? (
                 <p className="display-info-next-prayer">
@@ -1118,8 +1119,7 @@ export function DisplayRotator({
                 mevarchimText={shabbatMevarchimText}
               />
             </div>
-            </AutoFit>
-          </section>
+          </Card>
         ) : null}
 
         {currentScreen === "bulletin" ? (

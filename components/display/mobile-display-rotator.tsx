@@ -722,16 +722,15 @@ function PrayerTimesScreen({
   nowMinutes: number;
 }) {
   const rows = prayerSchedule
-    .map((row) => ({ ...row, totalMinutes: toMinutes(row.time) }))
-    .filter((row) => row.totalMinutes >= nowMinutes);
+    .map((row) => ({ ...row, totalMinutes: toMinutes(row.time) }));
 
   if (!rows.length) {
-    return <Card className="text-center text-slate-500">אין תפילות נוספות להיום.</Card>;
+    return <Card className="text-center text-slate-500">אין תפילות להיום.</Card>;
   }
 
   const nextTotalMinutes = rows
-    .map((row) => row.totalMinutes)
-    .sort((a, b) => a - b)[0];
+    .filter((row) => row.totalMinutes >= nowMinutes)
+    .sort((a, b) => a.totalMinutes - b.totalMinutes)[0]?.totalMinutes;
 
   const byGroup = new Map<PrayerGroupId, typeof rows>();
   for (const row of rows) {

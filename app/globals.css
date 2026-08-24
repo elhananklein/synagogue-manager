@@ -81,6 +81,27 @@ body {
     animation: display-screen-enter 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
+  .display-screen-stage > .display-card {
+    flex: 1;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+  }
+
+  .display-screen-stage > .display-card > :last-child {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .display-screen-stage > .display-card > div:first-child,
+  .display-main-times-card > div:first-child {
+    align-items: center;
+    text-align: center;
+  }
+
   @keyframes display-screen-enter {
     from {
       opacity: 0;
@@ -305,7 +326,7 @@ body {
     display: flex;
     width: 100%;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     gap: clamp(0.6rem, 1.6vh, 1.4rem);
     min-height: 0;
@@ -318,12 +339,12 @@ body {
   .display-main-date-card {
     margin-inline: auto;
     width: 100%;
-    max-width: 48rem;
+    max-width: none;
   }
 
   .display-daf-card {
     width: 100%;
-    max-width: 48rem;
+    max-width: none;
   }
 
   .display-daf-content {
@@ -372,7 +393,7 @@ body {
     margin-inline: auto;
     display: grid;
     width: 100%;
-    max-width: 48rem;
+    max-width: none;
     gap: 1rem;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -389,7 +410,7 @@ body {
   .display-addition-single {
     grid-column: span 2 / span 2;
     justify-self: center;
-    width: min(100%, calc((48rem - 1rem) / 2));
+    width: min(100%, calc((100% - 1rem) / 2));
   }
 
   .display-addition-content {
@@ -428,6 +449,7 @@ body {
   }
 
   .display-times-title {
+    text-align: center;
     font-size: 1.9rem;
     font-weight: 800;
   }
@@ -436,6 +458,7 @@ body {
     margin-top: 0.35rem;
     font-size: 1.05rem;
     font-weight: 700;
+    text-align: center;
   }
 
   .display-times-content {
@@ -470,7 +493,7 @@ body {
 
   .display-time-section-title {
     margin-bottom: 0.35rem;
-    font-size: 1.08rem;
+    font-size: 1.28rem;
     font-weight: 800;
     opacity: 0.95;
   }
@@ -499,7 +522,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 1.4rem;
+    font-size: 1.55rem;
   }
 
   .display-time-value-wrap {
@@ -606,21 +629,28 @@ body {
 
   .display-clock-screen {
     border-radius: 1rem;
-    min-height: min(78vh, 52rem);
-    max-width: min(94vw, 88rem);
-    margin-inline: auto;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     padding: 3.5rem 4rem;
     text-align: center;
   }
 
   .display-halacha-title {
+    text-align: center;
     font-size: 1.9rem;
   }
 
   .display-halacha-title-row {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
+    justify-content: center;
     gap: 1rem;
   }
 
@@ -661,10 +691,13 @@ body {
 
   .display-daily-learning-header {
     flex-shrink: 0;
+    align-items: center;
+    text-align: center;
     padding-bottom: 0.35rem;
   }
 
   .display-daily-learning-title {
+    text-align: center;
     font-size: clamp(1.65rem, 3.2vw, 2.35rem);
     font-weight: 900;
     letter-spacing: 0.02em;
@@ -677,6 +710,7 @@ body {
     font-weight: 600;
     line-height: 1.35;
     opacity: 0.88;
+    text-align: center;
   }
 
   .display-daily-learning-body {
@@ -733,13 +767,15 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    max-width: min(94vw, 88rem);
+    max-width: none;
     width: 100%;
-    margin-inline: auto;
+    margin-inline: 0;
   }
 
   .display-prayer-times-header {
     flex-shrink: 0;
+    align-items: center;
+    text-align: center;
     padding-bottom: 0.35rem;
   }
 
@@ -757,13 +793,19 @@ body {
     max-height: none;
   }
 
+  .display-prayer-times-fit-inner {
+    width: 100%;
+    max-width: none;
+    align-items: stretch;
+  }
+
   .display-prayer-times-groups {
     display: flex;
     flex-direction: column;
     gap: clamp(0.6rem, 2vh, 1.5rem);
     width: 100%;
-    max-width: min(92vw, 96rem);
-    margin-inline: auto;
+    max-width: none;
+    margin-inline: 0;
   }
 
   .display-prayer-times-group {
@@ -776,11 +818,12 @@ body {
   /* כותרת הקבוצה כתווית צד (בימין ב־RTL) ליד שורת הזמנים — שורה אחת לכל תפילה */
   .display-prayer-times-group .display-time-section-title {
     flex: 0 0 auto;
-    width: clamp(5.5rem, 14vw, 14rem);
-    max-width: min(34vw, 15rem);
+    width: clamp(7.5rem, 16vw, 16rem);
+    max-width: min(40vw, 18rem);
     text-align: center;
     margin-bottom: 0;
-    font-size: clamp(1.05rem, 2.1vw, 1.75rem);
+    font-size: clamp(1.55rem, 3vw, 2.55rem);
+    font-weight: 800;
     line-height: 1.2;
     white-space: normal;
   }
@@ -798,11 +841,11 @@ body {
 
   /* תא שעה במסך זמני תפילות — ריבוע גדול במכוון */
   .display-prayer-times-row-line .display-prayer-times-cell.display-time-row {
-    flex: 1 1 11rem;
-    min-width: min(13.5rem, 42vw);
-    max-width: min(24rem, 46vw);
+    flex: 1 1 13rem;
+    min-width: min(15rem, 44vw);
+    max-width: none;
     padding: clamp(0.9rem, 2.6vh, 2.25rem) clamp(1.1rem, 3.5vw, 2.4rem);
-    min-height: clamp(4.5rem, 13vh, 11rem);
+    min-height: clamp(5.25rem, 15vh, 12.5rem);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -859,6 +902,8 @@ body {
 
   .display-full-schedule-header {
     flex-shrink: 0;
+    align-items: center;
+    text-align: center;
     padding-bottom: 0.35rem;
   }
 
@@ -1048,72 +1093,97 @@ body {
     color: #cbd5e1;
   }
 
-  /* מסך "מידע מרכזי" — כל תוכן צד ימין של המסך הראשי, ממורכז ומוגדל */
-  .display-info-screen {
-    flex: 1;
+  /* מסך "מידע מרכזי" — כרטיס אדום מלא; השורות הפנימיות לפי גובה התוכן (בלי חיתוך) */
+  .display-info-card {
+    overflow: visible;
+  }
+  .display-info-card > .display-info-stack {
+    flex: 1 1 auto;
     min-height: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    padding: clamp(0.5rem, 2vh, 1.75rem);
+    overflow: visible;
   }
   .display-info-stack {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: clamp(0.5rem, 2.4vh, 2.25rem);
+    align-items: stretch;
+    justify-content: space-evenly;
+    gap: clamp(0.75rem, 1.8vh, 1.35rem);
     width: 100%;
-    max-width: min(92vw, 72rem);
-    min-height: 0;
-    max-height: none;
-    overflow: visible;
+    box-sizing: border-box;
+    padding: clamp(0.75rem, 1.8vh, 1.35rem) clamp(1rem, 2.5vw, 2rem);
+  }
+  .display-info-stack > * {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    align-self: stretch;
+    box-sizing: border-box;
+    min-width: 0;
   }
   .display-info-stack .display-main-date-card,
   .display-info-stack .display-daf-card,
   .display-info-stack .display-main-additions,
   .display-info-stack .display-ws-additions-shell,
   .display-info-stack .display-ws-daf-shell {
+    overflow: visible;
+    min-height: auto;
+  }
+  .display-info-stack .display-main-date-card,
+  .display-info-stack .display-daf-card {
+    display: flex;
+    flex-direction: column;
+  }
+  .display-info-stack .display-main-additions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
-    max-width: min(90vw, 64rem);
   }
-  .display-info-stack .display-main-date-content {
-    min-height: clamp(5rem, 16vh, 14rem);
-  }
-  .display-info-stack .display-addition-content {
-    min-height: clamp(3.25rem, 10vh, 9rem);
-  }
+  .display-info-stack .display-main-date-content,
+  .display-info-stack .display-addition-content,
   .display-info-stack .display-daf-content {
-    min-height: clamp(3rem, 9vh, 8rem);
-  }
-  /* טיפוגרפיה מוגדלת (specificity של 3 מחלקות כדי לגבור על כוונון ה-themes) */
-  .display-info-screen .display-info-stack .display-parasha {
-    font-size: clamp(2.6rem, 6vw, 4.75rem);
-    line-height: 1.12;
-  }
-  .display-info-screen .display-info-stack .display-hebrew-date {
-    font-size: clamp(2.1rem, 4.6vw, 3.5rem);
-    line-height: 1.12;
-  }
-  .display-info-screen .display-info-stack .display-gregorian-date {
-    font-size: clamp(1.45rem, 2.9vw, 2.3rem);
-  }
-  .display-info-screen .display-info-stack .display-addition-text {
-    font-size: clamp(1.9rem, 3.8vw, 3.1rem);
-    line-height: 1.15;
-  }
-  .display-info-screen .display-info-stack .display-daf-yomi {
-    font-size: clamp(1.9rem, 3.8vw, 3.1rem);
-  }
-  .display-info-screen .display-info-next-prayer {
+    flex: 0 0 auto;
+    min-height: auto;
+    height: auto;
+    overflow: visible;
     width: 100%;
-    max-width: min(90vw, 64rem);
+  }
+  .display-info-stack .display-main-additions .display-card {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+  }
+  .display-info-card .display-info-stack .display-parasha {
+    font-size: clamp(2.2rem, 4.6vmin, 3.8rem);
+    line-height: 1.2;
+    overflow: visible;
+  }
+  .display-info-card .display-info-stack .display-hebrew-date {
+    font-size: clamp(1.7rem, 3.4vmin, 2.75rem);
+    line-height: 1.25;
+    overflow: visible;
+  }
+  .display-info-card .display-info-stack .display-gregorian-date {
+    font-size: clamp(1.25rem, 2.4vmin, 1.95rem);
+    overflow: visible;
+  }
+  .display-info-card .display-info-stack .display-addition-text {
+    font-size: clamp(1.55rem, 3.2vmin, 2.5rem);
+    line-height: 1.25;
+  }
+  .display-info-card .display-info-stack .display-daf-yomi {
+    font-size: clamp(1.55rem, 3.2vmin, 2.5rem);
+  }
+  .display-info-card .display-info-next-prayer {
+    flex: 0 0 auto;
+    width: 100%;
     margin: 0;
     text-align: center;
-    font-size: clamp(1.75rem, 3.6vw, 2.85rem);
+    font-size: clamp(1.45rem, 2.9vmin, 2.2rem);
     font-weight: 800;
-    line-height: 1.2;
+    line-height: 1.3;
+    padding: clamp(0.55rem, 1.4vh, 0.95rem) 1.1rem;
+    border-radius: 0.55rem;
+    box-sizing: border-box;
   }
 
   /* מסך לוח מודעות — הודעה אחת במרכז + נקודות סימון פנימיות */
@@ -1132,7 +1202,7 @@ body {
     flex: 1;
     min-height: 0;
     width: 100%;
-    max-width: min(92vw, 68rem);
+    max-width: none;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1214,17 +1284,23 @@ body {
     height: 100%;
     max-width: 100%;
   }
+  .display-shabbat-fit .display-autofit-inner {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    align-items: stretch;
+  }
   .display-shabbat-inner {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     justify-content: center;
     gap: clamp(0.65rem, 2.2vmin, 1.85rem);
-    width: min(96vw, 88rem);
+    width: 100%;
     min-height: 0;
     max-height: none;
     overflow: visible;
-    margin-inline: auto;
+    margin-inline: 0;
   }
   .display-shabbat-hero {
     display: flex;
@@ -1268,7 +1344,7 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: clamp(0.75rem, 2.4vmin, 2rem);
     width: 100%;
-    max-width: min(100%, 48rem);
+    max-width: none;
   }
   .display-shabbat-zman-card {
     min-width: 0;
@@ -1983,6 +2059,10 @@ body {
       inset 0 0 0 1px rgb(255 255 255 / 0.12),
       0 0 40px rgb(220 38 38 / 0.12);
   }
+  .display--classic .display-screen-stage {
+    padding: 2.5vh 3%;
+    background: #ffffff;
+  }
   .display--classic .display-card {
     border: 1px solid rgb(251 191 36 / 0.65);
     background: linear-gradient(
@@ -2043,6 +2123,16 @@ body {
   .display--classic .display-next-prayer {
     color: #fde047;
     font-weight: 800;
+    text-shadow: 0 2px 4px rgb(0 0 0 / 0.55);
+  }
+  .display--classic .display-info-next-prayer {
+    color: #fde047;
+    background: linear-gradient(
+      180deg,
+      rgb(88 10 28 / 0.94) 0%,
+      rgb(52 6 18 / 0.97) 100%
+    );
+    border: 1px solid rgb(251 191 36 / 0.65);
     text-shadow: 0 2px 4px rgb(0 0 0 / 0.55);
   }
   .display--classic .display-header-clock {
@@ -2618,6 +2708,12 @@ body {
     min-height: 12.1rem;
     padding: 1.45rem 1.2rem;
   }
+  .display--classic .display-info-card .display-main-date-content,
+  .display--classic .display-info-card .display-addition-content,
+  .display--classic .display-info-card .display-daf-content {
+    min-height: auto;
+    overflow: visible;
+  }
   .display--classic .display-parasha {
     font-size: 2.75rem;
     line-height: 1.13;
@@ -2639,7 +2735,7 @@ body {
     font-weight: 800;
   }
   .display--classic .display-time-main {
-    font-size: 1.4rem;
+    font-size: 1.6rem;
     font-weight: 700;
   }
   .display--classic .display-times-title {
@@ -2664,10 +2760,10 @@ body {
       font-size: 2.3rem;
     }
     .display--classic .display-time-main {
-      font-size: 1.66rem;
+      font-size: 1.85rem;
     }
     .display-time-section-title {
-      font-size: 1.22rem;
+      font-size: 1.5rem;
     }
     .display-next-prayer {
       font-size: 1.18rem;
