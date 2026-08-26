@@ -180,7 +180,18 @@ function prayersForSave(prayers: PrayerSetting[]) {
   return [
     ...prayers.filter((p) => p.category === "weekday").sort(byLogicalOrder),
     ...prayers.filter((p) => p.category === "shabbat").sort(byLogicalOrder)
-  ].map(({ clientId: _clientId, unsaved: _unsaved, ...rest }) => rest);
+  ].map((p) => ({
+    category: p.category,
+    prayerType: p.prayerType,
+    daysOfWeek: p.daysOfWeek,
+    mode: p.mode,
+    fixedTime: p.fixedTime,
+    zmanAnchor: p.zmanAnchor,
+    offsetMinutes: p.offsetMinutes,
+    roundMode: p.roundMode,
+    parashaKey: p.parashaKey,
+    lockToSunday: p.lockToSunday
+  }));
 }
 
 function createDefaultMinyan(): MinyanModel {

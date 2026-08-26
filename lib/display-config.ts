@@ -212,7 +212,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
       location
     };
   }
-  let [screensRes, prayerRes] = await Promise.all([
+  const [screensRes, prayerResInitial] = await Promise.all([
     supabase
       .from("minyan_display_screens")
       .select("screen_key, sort_order, duration_seconds, enabled")
@@ -224,6 +224,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
       )
       .eq("minyan_id", chosenMinyan.id)
   ]);
+  let prayerRes = prayerResInitial;
   if (prayerRes.error && /lock_to_sunday/i.test(prayerRes.error.message ?? "")) {
     prayerRes = await supabase
       .from("minyan_prayers")

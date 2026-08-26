@@ -95,7 +95,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     .order("created_at", { ascending: true });
   const minyanIds = (minyanRes.data ?? []).map((m) => m.id);
 
-  let [prayerRes, screensRes] = await Promise.all([
+  const [prayerResInitial, screensRes] = await Promise.all([
     minyanIds.length
       ? supabase
           .from("minyan_prayers")
@@ -111,6 +111,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
           .in("minyan_id", minyanIds)
       : Promise.resolve({ data: [], error: null })
   ]);
+  let prayerRes = prayerResInitial;
   if (prayerRes.error && /lock_to_sunday/i.test(prayerRes.error.message ?? "") && minyanIds.length) {
     prayerRes = await supabase
       .from("minyan_prayers")
