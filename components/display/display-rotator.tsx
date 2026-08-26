@@ -52,7 +52,9 @@ type Snapshot = {
   rainText: string;
   blessingText: string;
   omerText: string | null;
+  omerShortText?: string | null;
   amidahAdditionText: string | null;
+  liturgicalTiles?: string[];
 };
 
 /** Auto-scroll for "זמני היום ותפילות" — set here so deploys always pick up pace changes (inline beats stale CSS). */
@@ -280,9 +282,10 @@ export function DisplayRotator({
     return screens.filter((s) => {
       if (!s.enabled) return false;
       if (s.screenKey === "shabbat" && !isFriOrSat) return false;
+      if (s.screenKey === "clock" && !snapshot.omerText) return false;
       return true;
     });
-  }, [screens]);
+  }, [screens, snapshot.omerText]);
   const [index, setIndex] = useState(0);
   const timesScrollRef = useRef<HTMLDivElement | null>(null);
   const [timesStartOffset, setTimesStartOffset] = useState<number | null>(null);
@@ -336,47 +339,64 @@ export function DisplayRotator({
       /* private mode / blocked */
     }
 
-    // Soft refresh — לעיתים קרובות יותר, בלי לטעון את כל הדף מחדש.
-    const softRefreshIntervalMs = 10 * 60 * 1000;
-    const softIntervalId = setInterval(() => {
+    const softRefresh = () => {
       router.refresh();
-    }, softRefreshIntervalMs);
+    };
 
-    // Hard reload (כמו F5) — אחת לחצי שעה, כדי לצאת מתקיעות של JS/מסך.
-    const hardReloadIntervalMs = 30 * 60 * 1000;
-    const hardIntervalId = setInterval(() => {
+    const probeDisplayReachable = async (timeoutMs = 12000) => {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
+      try {
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+        const res = await fetch(window.location.href, {
+          method: "GET",
+          cache: "no-store",
+          credentials: "same-origin",
+          signal: controller.signal,
+          headers: { Accept: "text/html" }
+        });
+        window.clearTimeout(timer);
+        return res.ok;
+      } catch {
+        return false;
+      }
+    };
+
+    /** ריענון קשיח רק אם הדף באמת נגיש — אחרת נשארים על התצוגה הנוכחית. */
+    const safeHardReload = async () => {
+      const reachable = await probeDisplayReachable();
+      if (!reachable) {
+        softRefresh();
+        return;
+      }
       try {
         sessionStorage.setItem(DISPLAY_FS_KEY, "1");
       } catch {
         /* ignore */
       }
       window.location.reload();
-    }, hardReloadIntervalMs);
+    };
 
-    // חצות — ריענון חזק ליום האזרחי הבא.
+    const softRefreshIntervalMs = 10 * 60 * 1000;
+    const softIntervalId = setInterval(softRefresh, softRefreshIntervalMs);
+
     const now = new Date();
     const nextMidnight = new Date(now);
     nextMidnight.setHours(24, 0, 0, 0);
     const midnightTimeoutMs = Math.max(1000, nextMidnight.getTime() - now.getTime());
     const midnightTimeoutId = setTimeout(() => {
-      try {
-        sessionStorage.setItem(DISPLAY_FS_KEY, "1");
-      } catch {
-        /* ignore */
-      }
-      window.location.reload();
+      void safeHardReload();
     }, midnightTimeoutMs);
 
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        router.refresh();
+        softRefresh();
       }
     };
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       clearInterval(softIntervalId);
-      clearInterval(hardIntervalId);
       clearTimeout(midnightTimeoutId);
       document.removeEventListener("visibilitychange", onVisible);
     };
@@ -384,7 +404,7 @@ export function DisplayRotator({
 
   useEffect(() => {
     // כניסה אוטומטית למסך מלא. דפדפנים חוסמים מסך מלא ללא מחווה — מנסים בטעינה
-    // (קיוסק/הרשאה), אחרי hard reload, ובכל מחווה אם עדיין לא במסך מלא.
+    // (קיוסק/הרשאה), אחרי reload, ובכל לחיצה אם עדיין לא במסך מלא. לחיצה שנייה מוציאה.
     type FsElement = HTMLElement & {
       webkitRequestFullscreen?: () => Promise<void> | void;
       msRequestFullscreen?: () => Promise<void> | void;
@@ -392,6 +412,8 @@ export function DisplayRotator({
     type FsDocument = Document & {
       webkitFullscreenElement?: Element | null;
       msFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void> | void;
+      msExitFullscreen?: () => Promise<void> | void;
     };
     const DISPLAY_FS_KEY = "display-want-fullscreen";
     const settle = (result: Promise<void> | void) => {
@@ -404,8 +426,9 @@ export function DisplayRotator({
       const doc = document as FsDocument;
       return Boolean(doc.fullscreenElement ?? doc.webkitFullscreenElement);
     };
+    let userExited = false;
     const requestFullscreen = () => {
-      if (typeof document === "undefined") return;
+      if (typeof document === "undefined" || userExited) return;
       if (isFullscreen()) return;
       const el = document.documentElement as FsElement;
       const fn = el.requestFullscreen ?? el.webkitRequestFullscreen ?? el.msRequestFullscreen;
@@ -415,6 +438,21 @@ export function DisplayRotator({
       } catch {
         /* הדפדפן דחה — נחכה למחווה הבאה */
       }
+    };
+    const exitFullscreen = () => {
+      if (typeof document === "undefined" || !isFullscreen()) return;
+      const doc = document as FsDocument;
+      const fn = doc.exitFullscreen ?? doc.webkitExitFullscreen ?? doc.msExitFullscreen;
+      if (!fn) return;
+      try {
+        settle(fn.call(doc));
+      } catch {
+        /* ignore */
+      }
+    };
+    const shouldIgnoreToggle = (target: EventTarget | null) => {
+      if (!(target instanceof Element)) return false;
+      return Boolean(target.closest("a, button, input, textarea, select, [role='button']"));
     };
 
     try {
@@ -426,15 +464,25 @@ export function DisplayRotator({
     requestFullscreen();
     const retryIds = [400, 1200, 3000].map((ms) => window.setTimeout(requestFullscreen, ms));
 
-    // לא מכבים מסך מלא בלחיצה — רק נכנסים אם יצאנו (למשל אחרי reload).
-    const onGesture = () => {
+    const onClick = (event: MouseEvent) => {
+      if (shouldIgnoreToggle(event.target)) return;
+      if (isFullscreen()) {
+        userExited = true;
+        exitFullscreen();
+      } else {
+        userExited = false;
+        requestFullscreen();
+      }
+    };
+    const onKeyDown = () => {
       if (!isFullscreen()) requestFullscreen();
     };
-    const events: Array<keyof WindowEventMap> = ["pointerdown", "touchend", "keydown"];
-    events.forEach((evt) => window.addEventListener(evt, onGesture));
+    window.addEventListener("click", onClick);
+    window.addEventListener("keydown", onKeyDown);
     return () => {
       retryIds.forEach((id) => clearTimeout(id));
-      events.forEach((evt) => window.removeEventListener(evt, onGesture));
+      window.removeEventListener("click", onClick);
+      window.removeEventListener("keydown", onKeyDown);
     };
   }, []);
 
@@ -443,16 +491,9 @@ export function DisplayRotator({
     if (!iso) return;
     const delay = new Date(iso).getTime() - Date.now();
     if (delay <= 0 || delay > 24 * 60 * 60 * 1000) return;
-    const id = setTimeout(() => {
-      try {
-        sessionStorage.setItem("display-want-fullscreen", "1");
-      } catch {
-        /* ignore */
-      }
-      window.location.reload();
-    }, delay);
+    const id = setTimeout(() => router.refresh(), delay);
     return () => clearTimeout(id);
-  }, [snapshot.halachicDayRollIso]);
+  }, [snapshot.halachicDayRollIso, router]);
 
   const currentScreen = enabledScreens.length ? enabledScreens[index % enabledScreens.length].screenKey : null;
   const isWoodSilverRevolution = style === "woodSilver" && ENABLE_WOOD_SILVER_REVOLUTION_LAYOUT;
@@ -546,10 +587,7 @@ export function DisplayRotator({
       const h = nextTodayPrayerHighlight;
       return `התפילה הבאה: ${h.label} - ${h.time}`;
     })();
-  const hasOmer = Boolean(snapshot.omerText);
   const amidahAddition = snapshot.amidahAdditionText;
-  const hasAmidahAddition = Boolean(amidahAddition);
-  const hasBothExtraAdditions = hasOmer && hasAmidahAddition;
   const shouldAutoScroll =
     currentScreen === "main" &&
     timeSections.length > 0 &&
@@ -735,23 +773,19 @@ export function DisplayRotator({
               <h1 className="display-title">
                 {minyanName ? `${synagogueName} - ${minyanName}` : synagogueName}
               </h1>
-              {currentScreen !== "clock" ? (
-                adminHref ? (
-                  <Link
-                    href={adminHref}
-                    className="display-header-clock display-clock-admin-hit"
-                    aria-label="מעבר לממשק ניהול בית הכנסת"
-                    prefetch={false}
-                  >
-                    <LiveClock showSeconds />
-                  </Link>
-                ) : (
-                  <div className="display-header-clock">
-                    <LiveClock showSeconds />
-                  </div>
-                )
+              {adminHref ? (
+                <Link
+                  href={adminHref}
+                  className="display-header-clock display-clock-admin-hit"
+                  aria-label="מעבר לממשק ניהול בית הכנסת"
+                  prefetch={false}
+                >
+                  <LiveClock showSeconds />
+                </Link>
               ) : (
-                <div aria-hidden className="display-header-clock-placeholder" />
+                <div className="display-header-clock">
+                  <LiveClock showSeconds />
+                </div>
               )}
             </>
           )}
@@ -769,23 +803,7 @@ export function DisplayRotator({
               style === "classic" && useCenterClockBand && "display-clock-screen--classic-band"
             )}
           >
-            {!useCenterClockBand ? (
-              adminHref ? (
-                <Link
-                  href={adminHref}
-                  className="display-clock-admin-hit display-clock-screen-clock-link"
-                  aria-label="מעבר לממשק ניהול בית הכנסת"
-                  prefetch={false}
-                >
-                  <LiveClock showSeconds />
-                </Link>
-              ) : (
-                <LiveClock showSeconds />
-              )
-            ) : null}
-            {!useCenterClockBand ? <p className="display-date-hebrew">{snapshot.hebrewDate}</p> : null}
-            <p className="display-date-gregorian">{snapshot.gregorianDate}</p>
-            {snapshot.omerText ? <p className="display-omer-line">{snapshot.omerText}</p> : null}
+            <p className="display-omer-line">{snapshot.omerText}</p>
           </section>
         ) : null}
 
@@ -1002,7 +1020,6 @@ export function DisplayRotator({
                   snapshot={snapshot}
                   isWoodSilverRevolution={isWoodSilverRevolution}
                   amidahAddition={amidahAddition}
-                  hasBothExtraAdditions={hasBothExtraAdditions}
                   mevarchimText={shabbatMevarchimText}
                 />
               </div>
@@ -1115,7 +1132,6 @@ export function DisplayRotator({
                 snapshot={snapshot}
                 isWoodSilverRevolution={isWoodSilverRevolution}
                 amidahAddition={amidahAddition}
-                hasBothExtraAdditions={hasBothExtraAdditions}
                 mevarchimText={shabbatMevarchimText}
               />
             </div>
@@ -1202,24 +1218,35 @@ export function DisplayRotator({
   );
 }
 
-/** התוכן של צד ימין במסך הראשי (פרשה/תאריך, תוספות, דף יומי) — משותף למסך הראשי ולמסך "מידע מרכזי". */
 function PrimaryInfoStack({
   snapshot,
   isWoodSilverRevolution,
   amidahAddition,
-  hasBothExtraAdditions,
   mevarchimText
 }: {
   snapshot: Snapshot;
   isWoodSilverRevolution: boolean;
   amidahAddition: string | null;
-  hasBothExtraAdditions: boolean;
   mevarchimText?: string | null;
 }) {
+  const omerTileText = snapshot.omerShortText ?? snapshot.omerText;
+  const extraTiles = [omerTileText, amidahAddition, ...(snapshot.liturgicalTiles ?? [])]
+    .filter((value): value is string => Boolean(value))
+    .flatMap((value) => value.split("\n").map((line) => line.trim()).filter(Boolean));
+  const lastExtraSpans = extraTiles.length % 2 === 1;
+  const additionsClass =
+    extraTiles.length >= 3
+      ? "display-main-additions display-main-additions--many"
+      : extraTiles.length === 1
+        ? "display-main-additions display-main-additions--three"
+        : extraTiles.length >= 2
+          ? "display-main-additions display-main-additions--four"
+          : "display-main-additions";
+
   return (
     <>
       <Card className="display-card display-main-date-card">
-        <CardContent className="display-main-date-content">
+        <CardContent className="display-main-date-content !p-0">
           <p className="display-parasha">{snapshot.parasha}</p>
           {mevarchimText ? <p className="display-mevarchim">{mevarchimText}</p> : null}
           {isWoodSilverRevolution ? (
@@ -1238,43 +1265,42 @@ function PrimaryInfoStack({
           <div className="display-ws-additions-inner">
             <p className="display-addition-text">{snapshot.rainText}</p>
             <p className="display-addition-text">{snapshot.blessingText}</p>
-            {snapshot.omerText ? <p className="display-addition-text">{snapshot.omerText}</p> : null}
-            {amidahAddition ? <p className="display-addition-text">{amidahAddition}</p> : null}
+            {extraTiles.map((text) => (
+              <p key={text} className="display-addition-text">
+                {text}
+              </p>
+            ))}
           </div>
         </div>
       ) : (
-        <div className="display-main-additions">
+        <div className={additionsClass}>
           <Card className="display-card">
-            <CardContent className="display-addition-content">
+            <CardContent className="display-addition-content !p-0">
               <p className="display-addition-text">{snapshot.rainText}</p>
             </CardContent>
           </Card>
           <Card className="display-card">
-            <CardContent className="display-addition-content">
+            <CardContent className="display-addition-content !p-0">
               <p className="display-addition-text">{snapshot.blessingText}</p>
             </CardContent>
           </Card>
-          {snapshot.omerText ? (
-            <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
-              <CardContent className="display-addition-content">
-                <p className="display-addition-text">{snapshot.omerText}</p>
+          {extraTiles.map((text, index) => (
+            <Card
+              key={text}
+              className={`display-card${lastExtraSpans && index === extraTiles.length - 1 ? " display-addition-single" : ""}`}
+            >
+              <CardContent className="display-addition-content !p-0">
+                <p className="display-addition-text">{text}</p>
               </CardContent>
             </Card>
-          ) : null}
-          {amidahAddition ? (
-            <Card className={`display-card ${hasBothExtraAdditions ? "" : "display-addition-single"}`}>
-              <CardContent className="display-addition-content">
-                <p className="display-addition-text">{amidahAddition}</p>
-              </CardContent>
-            </Card>
-          ) : null}
+          ))}
         </div>
       )}
 
       {isWoodSilverRevolution ? (
         <div className="display-ws-daf-shell">
           <Card className="display-card display-daf-card display-ws-daf-card-inner">
-            <CardContent className="display-daf-content">
+            <CardContent className="display-daf-content !p-0">
               <div className="display-daf-yomi">
                 דף יומי: <span className="display-accent">{snapshot.dafYomi}</span>
               </div>
@@ -1283,7 +1309,7 @@ function PrimaryInfoStack({
         </div>
       ) : (
         <Card className="display-card display-daf-card">
-          <CardContent className="display-daf-content">
+          <CardContent className="display-daf-content !p-0">
             <div className="display-daf-yomi">
               דף יומי: <span className="display-accent">{snapshot.dafYomi}</span>
             </div>

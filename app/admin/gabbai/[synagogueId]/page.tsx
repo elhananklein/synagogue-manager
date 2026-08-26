@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogoutButton } from "@/components/admin/logout-button";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, ZMANIM_CATALOG } from "@/lib/zmanim-catalog";
+import { prayerTypeSortRank } from "@/lib/prayer-order";
+import { cn } from "@/lib/utils";
 
 type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
 type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
@@ -51,6 +53,11 @@ type PrayerSetting = {
   offsetMinutes: number | null;
   roundMode: "none" | "up" | "down";
   parashaKey: string | null;
+  lockToSunday: boolean;
+  /** מזהה יציב בעורך בלבד */
+  clientId: string;
+  /** תפילה שנוספה בטופס ועדיין לא נשמרה */
+  unsaved?: boolean;
 };
 
 type ScreenSetting = {
@@ -89,7 +96,7 @@ const ZMAN_ANCHORS = [
 const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "main", label: "מסך ראשי" },
   { key: "mainInfo", label: "מידע מרכזי (מוגדל)" },
-  { key: "clock", label: "תאריך ושעה" },
+  { key: "clock", label: "ספירת העומר" },
   { key: "halacha", label: "הלכה יומית" },
   { key: "dailyLearning", label: "לימוד יומי" },
   { key: "prayerTimes", label: "זמני תפילות" },
@@ -134,6 +141,13 @@ const WEEKDAY_OPTIONS = [
   { value: 6, label: "שבת" }
 ];
 
+function newPrayerClientId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `prayer-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 function createPrayer(category: PrayerCategory): PrayerSetting {
   return {
     category,
@@ -144,8 +158,29 @@ function createPrayer(category: PrayerCategory): PrayerSetting {
     zmanAnchor: "sunset",
     offsetMinutes: 0,
     roundMode: "none",
-    parashaKey: null
+    parashaKey: null,
+    lockToSunday: false,
+    clientId: newPrayerClientId(),
+    unsaved: true
   };
+}
+
+function insertPrayerAtCategoryStart(prayers: PrayerSetting[], next: PrayerSetting): PrayerSetting[] {
+  const index = prayers.findIndex((p) => p.category === next.category);
+  if (index === -1) return [...prayers, next];
+  return [...prayers.slice(0, index), next, ...prayers.slice(index)];
+}
+
+function prayersForSave(prayers: PrayerSetting[]) {
+  const byLogicalOrder = (a: PrayerSetting, b: PrayerSetting) => {
+    const rank = prayerTypeSortRank(a.category, a.prayerType) - prayerTypeSortRank(b.category, b.prayerType);
+    if (rank !== 0) return rank;
+    return Number(Boolean(a.unsaved)) - Number(Boolean(b.unsaved));
+  };
+  return [
+    ...prayers.filter((p) => p.category === "weekday").sort(byLogicalOrder),
+    ...prayers.filter((p) => p.category === "shabbat").sort(byLogicalOrder)
+  ].map(({ clientId: _clientId, unsaved: _unsaved, ...rest }) => rest);
 }
 
 function createDefaultMinyan(): MinyanModel {
@@ -259,7 +294,10 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
         ...p,
         mode: (p.mode === "parasha" ? "parasha" : p.mode === "relative" ? "relative" : "fixed") as PrayerMode,
         parashaKey: p.parashaKey ?? null,
-        roundMode: p.roundMode ?? "none"
+        lockToSunday: Boolean(p.lockToSunday),
+        roundMode: p.roundMode ?? "none",
+        clientId: newPrayerClientId(),
+        unsaved: false
       })),
       screens: renumberScreens(
         [...(m.screens ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -350,6 +388,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
           synagogueName,
           minyanim: minyanim.map((m) => ({
             ...m,
+            prayerSettings: prayersForSave(m.prayerSettings),
             shabbatAgendaItems: mapShabbatAgendaForSave(m.shabbatAgendaItems ?? [])
           })),
           halachaSettings,
@@ -573,7 +612,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                         onClick={() =>
                           updateMinyan(selectedMinyanIndex, (m) => ({
                             ...m,
-                            prayerSettings: [...m.prayerSettings, createPrayer("weekday")]
+                            prayerSettings: insertPrayerAtCategoryStart(m.prayerSettings, createPrayer("weekday"))
                           }))
                         }
                       >
@@ -583,7 +622,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                     {selectedMinyan.prayerSettings.map((setting, prayerIndex) =>
                       setting.category === "weekday" ? (
                         <PrayerEditor
-                          key={`w-${prayerIndex}`}
+                          key={setting.clientId}
                           setting={setting}
                           prayerOptions={WEEKDAY_PRAYERS}
                           parashaCatalogKeys={parashaCatalogKeys}
@@ -615,7 +654,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                         onClick={() =>
                           updateMinyan(selectedMinyanIndex, (m) => ({
                             ...m,
-                            prayerSettings: [...m.prayerSettings, createPrayer("shabbat")]
+                            prayerSettings: insertPrayerAtCategoryStart(m.prayerSettings, createPrayer("shabbat"))
                           }))
                         }
                       >
@@ -625,7 +664,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                     {selectedMinyan.prayerSettings.map((setting, prayerIndex) =>
                       setting.category === "shabbat" ? (
                         <PrayerEditor
-                          key={`s-${prayerIndex}`}
+                          key={setting.clientId}
                           setting={setting}
                           prayerOptions={SHABBAT_PRAYERS}
                           onChange={(next) =>
@@ -884,6 +923,11 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                             />
                           </div>
                         </div>
+                        {screen.screenKey === "clock" ? (
+                          <p className="text-[11px] text-muted-foreground">
+                            מוצג בסיבוב רק בימי ספירת העומר, גם אם מסומן כפעיל.
+                          </p>
+                        ) : null}
                       </div>
                     ))}
                     {!selectedMinyan.screens.length ? (
@@ -967,9 +1011,30 @@ function PrayerEditor({
   const absoluteMinutes = Math.abs(currentOffset);
 
   return (
-    <div className="mb-3 rounded-md border border-border p-3">
+    <div
+      className={cn(
+        "mb-3 rounded-md p-3",
+        setting.unsaved
+          ? "border-2 border-dashed border-primary bg-primary/5 shadow-sm"
+          : "border border-border"
+      )}
+    >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-muted-foreground">הגדרת תפילה</span>
+        <span
+          className={cn(
+            "inline-flex flex-wrap items-center gap-2 text-sm font-medium",
+            setting.unsaved ? "text-primary" : "text-muted-foreground"
+          )}
+        >
+          {setting.unsaved ? (
+            <>
+              <span className="font-semibold">תפילה חדשה</span>
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium">טרם נשמרה</span>
+            </>
+          ) : (
+            "הגדרת תפילה"
+          )}
+        </span>
         <Button type="button" variant="outline" size="sm" onClick={onDelete}>
           מחק
         </Button>
@@ -978,7 +1043,18 @@ function PrayerEditor({
         <select
           className="h-10 min-w-[7rem] flex-1 rounded-md border border-border bg-background px-3 sm:flex-none"
           value={setting.prayerType}
-          onChange={(e) => onChange({ ...setting, prayerType: e.target.value as PrayerType })}
+          onChange={(e) => {
+            const prayerType = e.target.value as PrayerType;
+            const canAnchorToMincha = prayerType === "ערבית" || prayerType === "ערבית מוצ'ש";
+            onChange({
+              ...setting,
+              prayerType,
+              lockToSunday:
+                prayerType === "מנחה" || prayerType === "ערבית" ? setting.lockToSunday : false,
+              zmanAnchor:
+                setting.zmanAnchor === "mincha" && !canAnchorToMincha ? "sunset" : setting.zmanAnchor
+            });
+          }}
         >
           {prayerOptions.map((option) => (
             <option key={option} value={option}>
@@ -999,11 +1075,13 @@ function PrayerEditor({
               next.roundMode = "none";
               next.parashaKey = (setting.parashaKey?.trim() || parashaCatalogKeys[0] || "").trim() || null;
               next.fixedTime = setting.fixedTime ?? "12:00";
+              next.lockToSunday = false;
             } else if (mode === "fixed") {
               next.parashaKey = null;
               next.zmanAnchor = null;
               next.offsetMinutes = null;
               next.roundMode = "none";
+              next.lockToSunday = false;
             } else {
               next.parashaKey = null;
               next.zmanAnchor = setting.zmanAnchor ?? "sunset";
@@ -1054,7 +1132,10 @@ function PrayerEditor({
               value={setting.zmanAnchor ?? "sunset"}
               onChange={(e) => onChange({ ...setting, zmanAnchor: e.target.value })}
             >
-              {ZMAN_ANCHORS.map((anchor) => (
+              {(setting.prayerType === "ערבית" || setting.prayerType === "ערבית מוצ'ש"
+                ? [...ZMAN_ANCHORS, { value: "mincha", label: "תפילת מנחה" }]
+                : ZMAN_ANCHORS
+              ).map((anchor) => (
                 <option key={anchor.value} value={anchor.value}>
                   {anchor.label}
                 </option>
@@ -1103,6 +1184,31 @@ function PrayerEditor({
           </>
         ) : null}
       </div>
+      {setting.mode === "relative" && setting.zmanAnchor === "mincha" ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          מחושב לפי זמן תפילת המנחה שמוצג באותו יום. אם אין מנחה — ערבית לא תוצג.
+        </p>
+      ) : null}
+      {showDaysOfWeek &&
+      setting.mode === "relative" &&
+      (setting.prayerType === "מנחה" || setting.prayerType === "ערבית") ? (
+        <label className="mt-2 flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={Boolean(setting.lockToSunday)}
+            onChange={(e) => onChange({ ...setting, lockToSunday: e.target.checked })}
+          />
+          <span>
+            זמן קבוע לפי יום ראשון לכל השבוע
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              {setting.zmanAnchor === "mincha"
+                ? "גם אם זמן המנחה זז בימים הבאים, יוצג זמן הערבית לפי מנחה של יום ראשון (כולל היסט ועיגול)."
+                : "גם אם השקיעה או צאת הכוכבים זזים בימים הבאים, יוצג זמן התפילה שחושב לפי יום ראשון (כולל היסט ועיגול)."}
+            </span>
+          </span>
+        </label>
+      ) : null}
       {showDaysOfWeek && setting.mode === "parasha" ? (
         <p className="mt-2 text-xs text-muted-foreground">
           בשבוע של הפרשה הנבחרת, בימים א׳–ה׳ בלבד: זמן זה מחליף כל הגדרות אחרות לאותה תפילה. שישי ושבת ללא שינוי.

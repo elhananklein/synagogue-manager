@@ -45,6 +45,7 @@ type Snapshot = {
   blessingText: string;
   omerText: string | null;
   amidahAdditionText: string | null;
+  liturgicalTiles?: string[];
 };
 
 type MobileDisplayRotatorProps = {
@@ -71,7 +72,7 @@ type MobileDisplayRotatorProps = {
 const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> = {
   main: { title: "מבט כללי", Icon: Sparkles },
   mainInfo: { title: "מידע מרכזי", Icon: Sparkles },
-  clock: { title: "תאריך ושעה", Icon: Clock },
+  clock: { title: "ספירת העומר", Icon: Clock },
   halacha: { title: "הלכה יומית", Icon: ScrollText },
   dailyLearning: { title: "לימוד יומי", Icon: BookOpen },
   prayerTimes: { title: "זמני תפילות", Icon: CalendarDays },
@@ -140,9 +141,10 @@ export function MobileDisplayRotator({
     return screens.filter((s) => {
       if (!s.enabled) return false;
       if (s.screenKey === "shabbat" && !isFriOrSat) return false;
+      if (s.screenKey === "clock" && !snapshot.omerText) return false;
       return true;
     });
-  }, [screens]);
+  }, [screens, snapshot.omerText]);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -484,7 +486,8 @@ function Badges({ snapshot }: { snapshot: Snapshot }) {
     snapshot.rainText,
     snapshot.blessingText,
     snapshot.omerText,
-    snapshot.amidahAdditionText
+    snapshot.amidahAdditionText,
+    ...(snapshot.liturgicalTiles ?? []).map((text) => text.replace(/\n/g, " · "))
   ].filter(Boolean) as string[];
   if (!badges.length) return null;
   return (
@@ -585,10 +588,8 @@ function MainInfoScreen({
 
 function ClockScreen({ snapshot }: { snapshot: Snapshot }) {
   return (
-    <Card className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-      <LiveClock className="text-6xl font-black tabular-nums tracking-tight" showSeconds />
-      <p className="text-xl font-bold">{snapshot.hebrewDate}</p>
-      <p className="text-sm text-slate-500">{snapshot.gregorianDate}</p>
+    <Card className="flex min-h-[12rem] flex-col items-center justify-center py-10 text-center">
+      <p className="text-2xl font-bold leading-snug">{snapshot.omerText}</p>
     </Card>
   );
 }

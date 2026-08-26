@@ -73,6 +73,8 @@ export type PrayerSetting = {
   roundMode: "none" | "up" | "down";
   /** מפתח פרשה כמו ב־Hebcal (עברית); רק כש־mode === "parasha" */
   parashaKey: string | null;
+  /** יחסית לזמן יום: לקבע לפי יום ראשון לכל השבוע (מנחה/ערבית) */
+  lockToSunday: boolean;
 };
 
 export type ScreenSetting = {
@@ -210,7 +212,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
       location
     };
   }
-  const [screensRes, prayerRes] = await Promise.all([
+  let [screensRes, prayerRes] = await Promise.all([
     supabase
       .from("minyan_display_screens")
       .select("screen_key, sort_order, duration_seconds, enabled")
@@ -218,10 +220,18 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
     supabase
       .from("minyan_prayers")
       .select(
-        "category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order, parasha_key"
+        "category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order, parasha_key, lock_to_sunday"
       )
       .eq("minyan_id", chosenMinyan.id)
   ]);
+  if (prayerRes.error && /lock_to_sunday/i.test(prayerRes.error.message ?? "")) {
+    prayerRes = await supabase
+      .from("minyan_prayers")
+      .select(
+        "category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order, parasha_key"
+      )
+      .eq("minyan_id", chosenMinyan.id);
+  }
 
   const screens: ScreenSetting[] =
     screensRes.error || !screensRes.data?.length
@@ -249,7 +259,8 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
             zmanAnchor: row.zman_anchor,
             offsetMinutes: row.offset_minutes,
             roundMode: (row.round_mode as "none" | "up" | "down") ?? "none",
-            parashaKey: typeof row.parasha_key === "string" && row.parasha_key.trim() ? row.parasha_key.trim() : null
+            parashaKey: typeof row.parasha_key === "string" && row.parasha_key.trim() ? row.parasha_key.trim() : null,
+            lockToSunday: Boolean(row.lock_to_sunday)
           }));
 
   const footerText =

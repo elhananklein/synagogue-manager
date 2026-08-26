@@ -1,4 +1,5 @@
 import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
+import { resolveLiturgicalTiles } from "@/lib/liturgical-additions";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, resolveScheduleZmanimKeys, zmanLabelForKey } from "@/lib/zmanim-catalog";
 import type { SynagogueZmanimLocation } from "@/lib/display-config";
 
@@ -50,6 +51,9 @@ export type DisplaySnapshot = {
   rainText: string;
   blessingText: string;
   omerText: string | null;
+  /** מלל מקוצר לאריחי התצוגה, למשל «שלושה עשר יום לעומר». */
+  omerShortText: string | null;
+  liturgicalTiles: string[];
   /** תוספת תפילה: "יעלה ויבוא" (ר"ח / חוה"מ) או שם הרגל (פסח / שבועות / סוכות). */
   amidahAdditionText: string | null;
   /** שבת מברכין + שם החודש (כשהיום הוא שבת מברכין לפי Hebcal). */
@@ -340,10 +344,39 @@ function extractOmerDayFromEvents(events: string[]): number | null {
   return null;
 }
 
-function extractOmerText(events: string[]) {
-  const day = extractOmerDayFromEvents(events);
-  if (day == null) return null;
-  return `היום ${day} ימים לעומר`;
+const OMER_ONES = [
+  "",
+  "אחד",
+  "שני",
+  "שלושה",
+  "ארבעה",
+  "חמישה",
+  "שישה",
+  "שבעה",
+  "שמונה",
+  "תשעה",
+  "עשרה"
+] as const;
+
+function omerCardinal(day: number): string {
+  if (day >= 1 && day <= 10) return OMER_ONES[day];
+  if (day === 11) return "אחד עשר";
+  if (day === 12) return "שנים עשר";
+  if (day >= 13 && day <= 19) return `${OMER_ONES[day - 10]} עשר`;
+  const tens = Math.floor(day / 10) * 10;
+  const one = day % 10;
+  const tensWord = tens === 20 ? "עשרים" : tens === 30 ? "שלושים" : tens === 40 ? "ארבעים" : "";
+  if (one === 0) return tensWord;
+  const oneWord = one === 2 ? "שניים" : OMER_ONES[one];
+  return `${oneWord} ו${tensWord}`;
+}
+
+/** מלל מקוצר לאריחים: «שלושה עשר יום לעומר». */
+export function formatOmerShortLabel(day: number): string {
+  if (day < 1 || day > 49) return `${day} יום לעומר`;
+  if (day === 1) return "יום אחד לעומר";
+  if (day <= 10) return `${omerCardinal(day)} ימים לעומר`;
+  return `${omerCardinal(day)} יום לעומר`;
 }
 
 export function toIsoDateJerusalem(now = new Date()) {
@@ -571,7 +604,9 @@ export async function getDisplaySnapshot(
   const zmanimRows = buildZmanimRows(zmanim.times ?? {}, DEFAULT_SCHEDULE_ZMANIM_KEYS);
 
   const winter = isWinterSeason(converter.hm, converter.hd);
-  const omerText = extractOmerText(events);
+  const omerDay = extractOmerDayFromEvents(events);
+  const omerText = omerDay == null ? null : `היום ${omerDay} ימים לעומר`;
+  const omerShortText = omerDay == null ? null : formatOmerShortLabel(omerDay);
 
   let dafYomi = "לא זמין";
   let dailyLearning: DailyLearningLine[] = [];
@@ -608,7 +643,14 @@ export async function getDisplaySnapshot(
     rainText: winter ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
     blessingText: winter ? "ותן טל ומטר לברכה" : "ותן ברכה",
     omerText,
+    omerShortText,
     amidahAdditionText: resolveAmidahAdditionText(events),
+    liturgicalTiles: resolveLiturgicalTiles({
+      events,
+      hebrewMonth: converter.hm,
+      hebrewDay: converter.hd,
+      weekday: new Date(Date.UTC(converter.gy, converter.gm - 1, converter.gd, 12, 0, 0)).getUTCDay()
+    }),
     shabbatMevarchimText: resolveShabbatMevarchimText(events),
     sourceEvents: events
   };

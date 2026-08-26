@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { getPublishedBulletinItems, type BulletinItem } from "@/lib/bulletin-board";
-import { addDaysIsoDate, buildZmanimRows, getDisplaySnapshot, getTomorrowIsoDateFrom, resolveShabbatMevarchimText, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
+import { addDaysIsoDate, buildZmanimRows, formatOmerShortLabel, getDisplaySnapshot, getTomorrowIsoDateFrom, resolveShabbatMevarchimText, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
+import { PREVIEW_LITURGICAL_TILES, previewTilesFromKeys } from "@/lib/liturgical-additions";
 import { getDisplayConfig, type DisplayStyle, type ScheduleTimesListMode, type ScreenSetting } from "@/lib/display-config";
 import { getPublicHomeData } from "@/lib/data/public-content";
-import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule } from "@/lib/build-prayer-schedule";
+import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule, settingsNeedSundayZmanim } from "@/lib/build-prayer-schedule";
 import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
 
 export type DisplayViewParams = {
@@ -12,6 +13,10 @@ export type DisplayViewParams = {
   minyan?: string | string[];
   minyanId?: string | string[];
   forceYaaleh?: string | string[];
+  forceOmer?: string | string[];
+  forceAdditions?: string | string[];
+  /** תצוגה מקדימה של אריח בודד, למשל forceTile=aneinu */
+  forceTile?: string | string[];
   /** דריסת סגנון זמנית לתצוגה מקדימה, למשל style=royalBlue (לא משנה את ה-DB) */
   style?: string | string[];
 };
@@ -115,12 +120,31 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const displayConfig = await getDisplayConfig(synagogueId, minyanSelector);
   const location = displayConfig.location;
 
-  const [snapshot, tomorrowSnapshot, publicData, bulletinItems, shabbatAgendaItems] = await Promise.all([
-    getDisplaySnapshot(todayIsoDate, { location }),
-    getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, location }),
-    getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
-    getPublishedBulletinItems(synagogueId),
-    getPublishedShabbatAgendaItems(displayConfig.minyanId)
+  const todaySundayIso = addDaysIsoDate(todayIsoDate, -jsWeekdayFromIsoDate(todayIsoDate));
+  const tomorrowSundayIso = addDaysIsoDate(tomorrowIsoDate, -jsWeekdayFromIsoDate(tomorrowIsoDate));
+  const extraSundayIsos: string[] = [];
+  if (settingsNeedSundayZmanim(displayConfig.prayerSettings)) {
+    for (const iso of [todaySundayIso, tomorrowSundayIso]) {
+      if (iso !== todayIsoDate && iso !== tomorrowIsoDate && !extraSundayIsos.includes(iso)) {
+        extraSundayIsos.push(iso);
+      }
+    }
+  }
+
+  const extraSundayPromise =
+    extraSundayIsos.length === 0
+      ? Promise.resolve([] as DisplaySnapshot[])
+      : Promise.all(extraSundayIsos.map((iso) => getDisplaySnapshot(iso, { omitDailyLearning: true, location })));
+
+  const [[snapshot, tomorrowSnapshot, publicData, bulletinItems, shabbatAgendaItems], sundaySnaps] = await Promise.all([
+    Promise.all([
+      getDisplaySnapshot(todayIsoDate, { location }),
+      getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, location }),
+      getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
+      getPublishedBulletinItems(synagogueId),
+      getPublishedShabbatAgendaItems(displayConfig.minyanId)
+    ]),
+    extraSundayPromise
   ]);
 
   const styleOverrideRaw = singleQueryParam(params.style);
@@ -130,26 +154,63 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const todayJsDay = jsWeekdayFromIsoDate(todayIsoDate);
   const tomorrowJsDay = jsWeekdayFromIsoDate(tomorrowIsoDate);
   const isShabbatToday = todayJsDay === 6;
+
+  const zmanimByIso = (iso: string): Record<string, string> => {
+    if (iso === todayIsoDate) return snapshot.zmanimSourceTimes;
+    if (iso === tomorrowIsoDate) return tomorrowSnapshot.zmanimSourceTimes;
+    const extraIndex = extraSundayIsos.indexOf(iso);
+    if (extraIndex >= 0) return sundaySnaps[extraIndex]?.zmanimSourceTimes ?? snapshot.zmanimSourceTimes;
+    return snapshot.zmanimSourceTimes;
+  };
+
   const prayerSchedule = buildPrayerScheduleForDay(
     displayConfig.prayerSettings,
     snapshot.zmanimSourceTimes,
     todayJsDay,
     isShabbatToday,
-    snapshot.parasha
+    snapshot.parasha,
+    zmanimByIso(todaySundayIso)
   );
   const tomorrowPrayerSchedule = buildPrayerScheduleForDay(
     displayConfig.prayerSettings,
     tomorrowSnapshot.zmanimSourceTimes,
     tomorrowJsDay,
     tomorrowJsDay === 6,
-    tomorrowSnapshot.parasha
+    tomorrowSnapshot.parasha,
+    zmanimByIso(tomorrowSundayIso)
   );
 
   const forceYaalehRaw = singleQueryParam(params.forceYaaleh);
   const forceYaaleh = forceYaalehRaw === "1" || forceYaalehRaw === "true";
-  const displaySnapshot = forceYaaleh
-    ? { ...snapshot, amidahAdditionText: "יעלה ויבוא" as const }
-    : snapshot;
+  const forceOmerRaw = singleQueryParam(params.forceOmer);
+  const forceOmer = forceOmerRaw === "1" || forceOmerRaw === "true";
+  const forceAdditionsRaw = singleQueryParam(params.forceAdditions);
+  const forceAdditions = forceAdditionsRaw === "1" || forceAdditionsRaw === "true";
+  const forceTileRaw = Array.isArray(params.forceTile)
+    ? params.forceTile
+    : params.forceTile
+      ? [params.forceTile]
+      : [];
+  const forceTileKeys = forceTileRaw.flatMap((value) => String(value).split(/[,+|]/));
+  const forcedTiles = previewTilesFromKeys(forceTileKeys);
+  const displaySnapshot =
+    forceYaaleh || forceOmer || forceAdditions || forcedTiles.length
+      ? {
+          ...snapshot,
+          ...(forceYaaleh ? { amidahAdditionText: "יעלה ויבוא" as const } : {}),
+          ...(forceOmer
+            ? {
+                omerText: "היום שלושה עשר יום שהם שבוע אחד ושישה ימים בעומר",
+                omerShortText: formatOmerShortLabel(13)
+              }
+            : {}),
+          ...(forceAdditions
+            ? { liturgicalTiles: PREVIEW_LITURGICAL_TILES }
+            : forcedTiles.length
+              ? { liturgicalTiles: forcedTiles }
+              : {})
+        }
+      : snapshot;
 
   const shabbatScreenEnabled = displayConfig.screens.some(
     (screen) => screen.screenKey === "shabbat" && screen.enabled

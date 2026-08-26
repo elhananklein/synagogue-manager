@@ -10,6 +10,7 @@ import { getDisplaySnapshot, toIsoDateJerusalem } from "@/lib/hebcal";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
 import { canManageSynagogue, getAdminContext } from "@/lib/auth";
+import { sortPrayersForSave } from "@/lib/prayer-order";
 
 /** בודק שלמשתמש המחובר יש הרשאה לנהל את בית הכנסת. מחזיר NextResponse בדחייה. */
 async function requireSynagogueAccess(synagogueId: string): Promise<NextResponse | null> {
@@ -30,6 +31,7 @@ type PrayerSettingInput = {
   offsetMinutes: number | null;
   roundMode: "none" | "up" | "down";
   parashaKey?: string | null;
+  lockToSunday?: boolean;
 };
 
 type ScreenInput = {
@@ -93,12 +95,12 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     .order("created_at", { ascending: true });
   const minyanIds = (minyanRes.data ?? []).map((m) => m.id);
 
-  const [prayerRes, screensRes] = await Promise.all([
+  let [prayerRes, screensRes] = await Promise.all([
     minyanIds.length
       ? supabase
           .from("minyan_prayers")
           .select(
-            "id, minyan_id, category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order, parasha_key"
+            "id, minyan_id, category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order, parasha_key, lock_to_sunday"
           )
           .in("minyan_id", minyanIds)
       : Promise.resolve({ data: [], error: null }),
@@ -109,6 +111,14 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
           .in("minyan_id", minyanIds)
       : Promise.resolve({ data: [], error: null })
   ]);
+  if (prayerRes.error && /lock_to_sunday/i.test(prayerRes.error.message ?? "") && minyanIds.length) {
+    prayerRes = await supabase
+      .from("minyan_prayers")
+      .select(
+        "id, minyan_id, category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order, parasha_key"
+      )
+      .in("minyan_id", minyanIds);
+  }
   const halachaSettingsRes = await supabase
     .from("synagogue_halacha_settings")
     .select("start_date, source_key, display_mode")
@@ -142,7 +152,8 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
         zmanAnchor: p.zman_anchor,
         offsetMinutes: p.offset_minutes,
         roundMode: p.round_mode ?? "none",
-        parashaKey: typeof p.parasha_key === "string" && p.parasha_key.trim() ? p.parasha_key.trim() : null
+        parashaKey: typeof p.parasha_key === "string" && p.parasha_key.trim() ? p.parasha_key.trim() : null,
+        lockToSunday: Boolean(p.lock_to_sunday)
       })),
     screens: (screensRes.data ?? [])
       .filter((s) => s.minyan_id === minyan.id)
@@ -280,8 +291,9 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     const { error: deletePrayerError } = await supabase.from("minyan_prayers").delete().eq("minyan_id", minyanId);
     if (deletePrayerError) return NextResponse.json({ ok: false, error: deletePrayerError.message }, { status: 500 });
     if (minyan.prayerSettings.length) {
+      const orderedPrayers = sortPrayersForSave(minyan.prayerSettings);
       const { error: insertPrayerError } = await supabase.from("minyan_prayers").insert(
-        minyan.prayerSettings.map((p, index) => ({
+        orderedPrayers.map((p, index) => ({
           minyan_id: minyanId,
           category: p.category,
           prayer_type: p.prayerType,
@@ -292,6 +304,11 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           offset_minutes: p.mode === "relative" ? p.offsetMinutes : null,
           round_mode: p.mode === "relative" ? (p.roundMode ?? "none") : "none",
           parasha_key: p.mode === "parasha" ? p.parashaKey?.trim() ?? null : null,
+          lock_to_sunday:
+            p.mode === "relative" &&
+            p.category === "weekday" &&
+            (p.prayerType === "מנחה" || p.prayerType === "ערבית") &&
+            Boolean(p.lockToSunday),
           sort_order: index + 1
         }))
       );
