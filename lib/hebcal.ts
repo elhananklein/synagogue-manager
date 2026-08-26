@@ -59,6 +59,8 @@ export type DisplaySnapshot = {
   /** שבת מברכין + שם החודש (כשהיום הוא שבת מברכין לפי Hebcal). */
   shabbatMevarchimText: string | null;
   sourceEvents: string[];
+  /** מפתח לקטלוג תפילות: פרשה או חול המועד פסח/סוכות */
+  parashaCatalogKey: string;
 };
 
 export type DisplaySnapshotOptions = {
@@ -171,6 +173,22 @@ function isErevYomTovEvent(event: string) {
   return /^Erev\s/i.test(event) || /^ערב\s/.test(plain);
 }
 
+function isCholHamoedPesachEvent(event: string) {
+  if (/^Pesach\s+(II|III|IV|V|VI)\b/i.test(event)) return true;
+  const plain = stripHebrewNiqqud(event);
+  if (plain.includes("חול המועד") && plain.includes("פסח")) return true;
+  if (/\(CH['’]*M\)/i.test(event) && /^Pesach\b/i.test(event)) return true;
+  return false;
+}
+
+function isCholHamoedSukkotEvent(event: string) {
+  if (/^Sukkot\s+(II|III|IV|V|VI|VII)\b/i.test(event)) return true;
+  const plain = stripHebrewNiqqud(event);
+  if (plain.includes("חול המועד") && (plain.includes("סוכות") || plain.includes("סכות"))) return true;
+  if (/\(CH['’]*M\)/i.test(event) && /^Sukkot\b/i.test(event)) return true;
+  return false;
+}
+
 function isCholHamoedEvent(event: string) {
   if (/\(CH['’]*M\)/i.test(event)) return true;
   const plain = stripHebrewNiqqud(event);
@@ -179,6 +197,13 @@ function isCholHamoedEvent(event: string) {
   if (/^Pesach\s+(II|III|IV|V|VI)\b/i.test(event)) return true;
   if (/^Sukkot\s+(II|III|IV|V|VI|VII)\b/i.test(event)) return true;
   return false;
+}
+
+/** מפתח לקטלוג מנחה/ערבית: חול המועד אם רלוונטי, אחרת פרשת השבוע. */
+export function parashaCatalogLookupKey(events: string[], weeklyParasha: string): string {
+  if (events.some(isCholHamoedPesachEvent)) return "חול המועד פסח";
+  if (events.some(isCholHamoedSukkotEvent)) return "חול המועד סוכות";
+  return weeklyParasha;
 }
 
 function isRoshChodeshEvent(event: string) {
@@ -652,7 +677,8 @@ export async function getDisplaySnapshot(
       weekday: new Date(Date.UTC(converter.gy, converter.gm - 1, converter.gd, 12, 0, 0)).getUTCDay()
     }),
     shabbatMevarchimText: resolveShabbatMevarchimText(events),
-    sourceEvents: events
+    sourceEvents: events,
+    parashaCatalogKey: parashaCatalogLookupKey(events, parasha)
   };
 }
 

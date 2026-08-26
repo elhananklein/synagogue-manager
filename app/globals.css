@@ -2953,6 +2953,27 @@ body {
 }
 
 /* Outside @layer so duration from inline styles pairs reliably with these keyframes. */
+@keyframes gabbai-loading-bar {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(380%);
+  }
+}
+
+.gabbai-loading-bar {
+  animation: gabbai-loading-bar 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gabbai-loading-bar {
+    animation: none;
+    width: 100%;
+    opacity: 0.7;
+  }
+}
+
 @keyframes display-times-scroll {
   0% {
     transform: translateY(calc(-1 * var(--times-start-offset, 0px)));

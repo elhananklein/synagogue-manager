@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getAllBulletinItemsForAdmin, saveBulletinItems, type BulletinItemInput } from "@/lib/bulletin-board";
-import {
-  getShabbatAgendaItemsByMinyanIds,
-  saveShabbatAgendaItems,
-  type ShabbatAgendaItemInput
-} from "@/lib/shabbat-agenda";
+import { getShabbatAgendaItemsByMinyanIds, saveShabbatAgendaItems, type ShabbatAgendaItemInput } from "@/lib/shabbat-agenda";
 import { getDisplaySnapshot, toIsoDateJerusalem } from "@/lib/hebcal";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
 import { canManageSynagogue, getAdminContext } from "@/lib/auth";
 import { sortPrayersForSave } from "@/lib/prayer-order";
+import { getParashaPrayerCatalogByMinyanIds } from "@/lib/parasha-prayer-catalog-db";
 
 /** בודק שלמשתמש המחובר יש הרשאה לנהל את בית הכנסת. מחזיר NextResponse בדחייה. */
 async function requireSynagogueAccess(synagogueId: string): Promise<NextResponse | null> {
@@ -164,9 +161,11 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
   };
   const bulletinItems = await getAllBulletinItemsForAdmin(synagogueId);
   const agendaByMinyan = await getShabbatAgendaItemsByMinyanIds(minyanIds);
+  const catalogByMinyan = await getParashaPrayerCatalogByMinyanIds(minyanIds);
   const minyanimWithAgenda = mappedMinyanim.map((minyan) => ({
     ...minyan,
-    shabbatAgendaItems: minyan.id ? (agendaByMinyan[minyan.id] ?? []) : []
+    shabbatAgendaItems: minyan.id ? (agendaByMinyan[minyan.id] ?? []) : [],
+    parashaCatalog: minyan.id ? (catalogByMinyan[minyan.id] ?? []) : []
   }));
   let currentParasha: string | null = null;
   try {
@@ -242,7 +241,9 @@ export async function POST(request: Request, context: { params: Promise<{ synago
         if (p.category !== "weekday") {
           return NextResponse.json({ ok: false, error: "parasha_mode_weekday_only" }, { status: 400 });
         }
-        if (!p.parashaKey?.trim() || !p.fixedTime?.trim()) {
+        const usesCatalog =
+          !p.parashaKey?.trim() && (p.prayerType === "מנחה" || p.prayerType === "ערבית");
+        if (!usesCatalog && (!p.parashaKey?.trim() || !p.fixedTime?.trim())) {
           return NextResponse.json({ ok: false, error: "parasha_requires_key_and_time" }, { status: 400 });
         }
       }

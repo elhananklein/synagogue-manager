@@ -1,5 +1,7 @@
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
+import { getParashaPrayerCatalog } from "@/lib/parasha-prayer-catalog-db";
+import type { ParashaPrayerCatalogRow } from "@/lib/parasha-prayer-catalog";
 
 type MinyanRow = {
   id: string;
@@ -101,6 +103,7 @@ export type DisplayConfig = {
   footerText: string | null;
   screens: ScreenSetting[];
   prayerSettings: PrayerSetting[];
+  parashaCatalog: ParashaPrayerCatalogRow[];
 };
 
 const DEFAULT_CONFIG: DisplayConfig = {
@@ -113,7 +116,8 @@ const DEFAULT_CONFIG: DisplayConfig = {
   scheduleZmanimKeys: DEFAULT_SCHEDULE_ZMANIM_KEYS,
   footerText: null,
   screens: [{ screenKey: "main", sortOrder: 1, durationSeconds: 25, enabled: true }],
-  prayerSettings: []
+  prayerSettings: [],
+  parashaCatalog: []
 };
 
 function normalizeScheduleTimesListMode(raw: string | null | undefined): ScheduleTimesListMode {
@@ -260,6 +264,8 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
       ? chosenMinyan.display_footer_text.trim()
       : null;
 
+  const parashaCatalog = await getParashaPrayerCatalog(chosenMinyan.id);
+
   return {
     synagogueName: syn.name,
     minyanId: chosenMinyan.id,
@@ -270,7 +276,8 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
     scheduleZmanimKeys: sanitizeScheduleZmanimKeys(chosenMinyan.schedule_zmanim_keys) ?? DEFAULT_SCHEDULE_ZMANIM_KEYS,
     footerText,
     screens,
-    prayerSettings
+    prayerSettings,
+    parashaCatalog
   };
 }
 

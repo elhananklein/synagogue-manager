@@ -168,16 +168,18 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     snapshot.zmanimSourceTimes,
     todayJsDay,
     isShabbatToday,
-    snapshot.parasha,
-    zmanimByIso(todaySundayIso)
+    snapshot.parashaCatalogKey,
+    zmanimByIso(todaySundayIso),
+    displayConfig.parashaCatalog
   );
   const tomorrowPrayerSchedule = buildPrayerScheduleForDay(
     displayConfig.prayerSettings,
     tomorrowSnapshot.zmanimSourceTimes,
     tomorrowJsDay,
     tomorrowJsDay === 6,
-    tomorrowSnapshot.parasha,
-    zmanimByIso(tomorrowSundayIso)
+    tomorrowSnapshot.parashaCatalogKey,
+    zmanimByIso(tomorrowSundayIso),
+    displayConfig.parashaCatalog
   );
 
   const forceYaalehRaw = singleQueryParam(params.forceYaaleh);

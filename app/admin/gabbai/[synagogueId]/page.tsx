@@ -13,8 +13,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogoutButton } from "@/components/admin/logout-button";
+import { GabbaiLoadingPanel } from "@/components/admin/gabbai-loading";
+import { ParashaPrayerCatalogEditor } from "@/components/admin/parasha-prayer-catalog-editor";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, ZMANIM_CATALOG } from "@/lib/zmanim-catalog";
 import { prayerTypeSortRank } from "@/lib/prayer-order";
+import { withParashaCatalogSelectKeys, type ParashaPrayerCatalogRow } from "@/lib/parasha-prayer-catalog";
 import { cn } from "@/lib/utils";
 
 type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
@@ -77,6 +80,7 @@ type MinyanModel = {
   prayerSettings: PrayerSetting[];
   screens: ScreenSetting[];
   shabbatAgendaItems: ShabbatAgendaItemModel[];
+  parashaCatalog: ParashaPrayerCatalogRow[];
 };
 
 type HalachaSettingsModel = {
@@ -208,7 +212,8 @@ function createDefaultMinyan(): MinyanModel {
       { screenKey: "halacha", sortOrder: 3, durationSeconds: 18, enabled: true },
       { screenKey: "dailyLearning", sortOrder: 4, durationSeconds: 22, enabled: false }
     ],
-    shabbatAgendaItems: []
+    shabbatAgendaItems: [],
+    parashaCatalog: []
   };
 }
 
@@ -242,6 +247,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
   const [shabbatParashaHint, setShabbatParashaHint] = useState<string | null>(null);
   const [topTab, setTopTab] = useState<TopTab>("shared");
   const [innerTab, setInnerTab] = useState<MinyanInnerTab>("general");
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
     void fetch("/api/hebcal/parasha-catalog", { cache: "no-store" })
@@ -257,8 +263,9 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
   }, [params]);
 
   async function loadData(id: string) {
-    const response = await fetch(`/api/admin/gabbai/${id}`, { cache: "no-store" });
-    const payload = (await response.json()) as {
+    try {
+      const response = await fetch(`/api/admin/gabbai/${id}`, { cache: "no-store" });
+      const payload = (await response.json()) as {
       ok: boolean;
       data?: {
         synagogue: { id: string; name: string };
@@ -271,6 +278,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
               content: string;
               published: boolean;
             }>;
+            parashaCatalog?: ParashaPrayerCatalogRow[];
           }
         >;
         halachaSettings: HalachaSettingsModel;
@@ -313,13 +321,19 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
       screens: renumberScreens(
         [...(m.screens ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
       ),
-      shabbatAgendaItems: mapShabbatAgendaFromApi(m.shabbatAgendaItems ?? [])
+      shabbatAgendaItems: mapShabbatAgendaFromApi(m.shabbatAgendaItems ?? []),
+      parashaCatalog: Array.isArray(m.parashaCatalog) ? m.parashaCatalog : []
     }));
     setMinyanim(normalized);
     setHalachaSettings(payload.data.halachaSettings);
     setBulletinItems(mapBulletinFromApi(payload.data.bulletinItems ?? []));
     const parasha = payload.data.currentParasha?.trim();
     setShabbatParashaHint(parasha && parasha !== "לא נמצא" ? parasha : null);
+    } catch {
+      setError("טעינת הנתונים נכשלה");
+    } finally {
+      setIsInitialLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -421,17 +435,23 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
   }
 
   return (
-    <main className="container pb-28 pt-6 sm:pb-24 sm:pt-10">
+    <main className="container pb-28 pt-6 sm:pb-24 sm:pt-10" aria-busy={isInitialLoading}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-bold sm:text-2xl">{title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-            בחרו טאב: הגדרות לכל בית הכנסת, או מניין ספציפי לעריכה.
-          </p>
+          {isInitialLoading ? null : (
+            <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+              בחרו טאב: הגדרות לכל בית הכנסת, או מניין ספציפי לעריכה.
+            </p>
+          )}
         </div>
         <LogoutButton />
       </div>
 
+      {isInitialLoading ? (
+        <GabbaiLoadingPanel title="טוען את הגדרות בית הכנסת…" />
+      ) : (
+      <>
       <div className="mt-6">
         <AdminTabs
           items={topTabItems}
@@ -654,6 +674,14 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                       ) : null
                     )}
                   </div>
+
+                  <ParashaPrayerCatalogEditor
+                    key={selectedMinyan.id ?? "new-minyan"}
+                    synagogueId={synagogueId}
+                    minyanId={selectedMinyan.id}
+                    parashaKeys={parashaCatalogKeys}
+                    savedRows={selectedMinyan.parashaCatalog}
+                  />
 
                   <div className="border-t border-border pt-4">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -951,8 +979,10 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
           </Card>
         ) : null}
       </div>
+      </>
+      )}
 
-      {/* סרגל שמירה דביק — מרווח תחתון ב-main מונע הסתרת תוכן */}
+      {isInitialLoading ? null : (
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="container flex flex-wrap items-center gap-2 py-3 sm:gap-3">
           <Button type="button" onClick={() => void saveSettings()} disabled={isSaving} className="min-w-[8rem]">
@@ -969,6 +999,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
           {error ? <span className="text-sm text-red-600">{error}</span> : null}
         </div>
       </div>
+      )}
 
       {pendingDeleteMinyanIndex != null ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
@@ -1084,9 +1115,14 @@ function PrayerEditor({
               next.zmanAnchor = null;
               next.offsetMinutes = 0;
               next.roundMode = "none";
-              next.parashaKey = (setting.parashaKey?.trim() || parashaCatalogKeys[0] || "").trim() || null;
-              next.fixedTime = setting.fixedTime ?? "12:00";
               next.lockToSunday = false;
+              if (setting.prayerType === "מנחה" || setting.prayerType === "ערבית") {
+                next.parashaKey = setting.parashaKey?.trim() ? setting.parashaKey : null;
+                next.fixedTime = setting.parashaKey?.trim() ? (setting.fixedTime ?? "12:00") : null;
+              } else {
+                next.parashaKey = (setting.parashaKey?.trim() || parashaCatalogKeys[0] || "").trim() || null;
+                next.fixedTime = setting.fixedTime ?? "12:00";
+              }
             } else if (mode === "fixed") {
               next.parashaKey = null;
               next.zmanAnchor = null;
@@ -1119,21 +1155,34 @@ function PrayerEditor({
             <select
               className="h-10 min-w-[12rem] max-w-full flex-1 rounded-md border border-border bg-background px-2 text-sm"
               value={setting.parashaKey ?? ""}
-              onChange={(e) => onChange({ ...setting, parashaKey: e.target.value || null })}
+              onChange={(e) => {
+                const parashaKey = e.target.value || null;
+                onChange({
+                  ...setting,
+                  parashaKey,
+                  fixedTime: parashaKey ? (setting.fixedTime ?? "12:00") : null
+                });
+              }}
             >
-              <option value="">בחר פרשה…</option>
-              {parashaCatalogKeys.map((k) => (
+              {setting.prayerType === "מנחה" || setting.prayerType === "ערבית" ? (
+                <option value="">קטלוג שנתי (טבלת הפרשות)</option>
+              ) : (
+                <option value="">בחר פרשה…</option>
+              )}
+              {withParashaCatalogSelectKeys(parashaCatalogKeys).map((k) => (
                 <option key={k} value={k}>
                   {k}
                 </option>
               ))}
             </select>
-            <input
-              type="time"
-              className="h-10 rounded-md border border-border bg-background px-3"
-              value={setting.fixedTime ?? ""}
-              onChange={(e) => onChange({ ...setting, fixedTime: e.target.value })}
-            />
+            {setting.parashaKey ? (
+              <input
+                type="time"
+                className="h-10 rounded-md border border-border bg-background px-3"
+                value={setting.fixedTime ?? ""}
+                onChange={(e) => onChange({ ...setting, fixedTime: e.target.value })}
+              />
+            ) : null}
           </>
         ) : null}
         {setting.mode === "relative" ? (
@@ -1222,7 +1271,9 @@ function PrayerEditor({
       ) : null}
       {showDaysOfWeek && setting.mode === "parasha" ? (
         <p className="mt-2 text-xs text-muted-foreground">
-          בשבוע של הפרשה הנבחרת, בימים א׳–ה׳ בלבד: זמן זה מחליף כל הגדרות אחרות לאותה תפילה. שישי ושבת ללא שינוי.
+          {setting.parashaKey
+            ? "בשבוע של הפרשה הנבחרת, בימים א׳–ה׳ בלבד: זמן זה מחליף כל הגדרות אחרות לאותה תפילה, כולל הקטלוג. שישי ושבת ללא שינוי."
+            : "בימים א׳–ה׳: השעה תילקח מטבלת הפרשות של המניין. אם אין שעה לפרשה (או לחול המועד) השבוע — יישאר הכלל הרגיל. שישי ושבת ללא שינוי."}
         </p>
       ) : null}
       {showDaysOfWeek ? (

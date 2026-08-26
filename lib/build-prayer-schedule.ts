@@ -1,4 +1,9 @@
 import type { PrayerSetting, PrayerType } from "@/lib/display-config";
+import {
+  catalogTimeForLookup,
+  parashaKeyMatchRank,
+  type ParashaPrayerCatalogRow
+} from "@/lib/parasha-prayer-catalog";
 
 /** תווית תצוגה למנחה ערב שבת (כולל קבלת שבת) — במסד נשאר המפתח «מנחה ערב שבת». */
 export const EREV_SHABBAT_DISPLAY_LABEL = "מנחה ערב שבת וקבלת שבת";
@@ -91,19 +96,45 @@ function weekdaySettingsForDay(prayerSettings: PrayerSetting[], jsDay: number): 
   return forDay.length ? forDay : weekdaySettings;
 }
 
+function isCatalogParashaMode(setting: PrayerSetting): boolean {
+  return (
+    setting.mode === "parasha" &&
+    setting.category === "weekday" &&
+    !setting.parashaKey?.trim() &&
+    (setting.prayerType === "מנחה" || setting.prayerType === "ערבית")
+  );
+}
+
+function catalogTimeForType(
+  settings: PrayerSetting[],
+  prayerType: "מנחה" | "ערבית",
+  lookupKey: string | null,
+  catalog: ParashaPrayerCatalogRow[] | null | undefined
+): string | null {
+  if (!settings.some((setting) => isCatalogParashaMode(setting) && setting.prayerType === prayerType)) {
+    return null;
+  }
+  return catalogTimeForLookup(catalog, lookupKey, prayerType);
+}
+
 function parashaWinnerByType(
   settings: PrayerSetting[],
   parashaKeyForDay: string | null,
   jsDay: number
 ): Map<string, PrayerSetting> {
   const winners = new Map<string, PrayerSetting>();
+  const ranks = new Map<string, number>();
   if (!parashaKeyForDay || parashaKeyForDay === "לא נמצא" || !isParashaScheduleWeekday(jsDay)) {
     return winners;
   }
   for (const setting of settings) {
     if (setting.mode !== "parasha" || !setting.parashaKey || !setting.fixedTime) continue;
-    if (setting.parashaKey !== parashaKeyForDay) continue;
-    if (!winners.has(setting.prayerType)) winners.set(setting.prayerType, setting);
+    const rank = parashaKeyMatchRank(setting.parashaKey, parashaKeyForDay);
+    if (rank == null) continue;
+    const currentRank = ranks.get(setting.prayerType);
+    if (currentRank != null && currentRank <= rank) continue;
+    winners.set(setting.prayerType, setting);
+    ranks.set(setting.prayerType, rank);
   }
   return winners;
 }
@@ -131,16 +162,17 @@ function firstMinchaClockTime(
   zmanimSourceTimes: Record<string, string>,
   sundayZmanimSourceTimes: Record<string, string> | null | undefined,
   parashaKeyForDay: string | null,
-  jsDay: number
+  jsDay: number,
+  catalog?: ParashaPrayerCatalogRow[] | null
 ): string | null {
   const winners = parashaWinnerByType(settings, parashaKeyForDay, jsDay);
+  const winner = winners.get("מנחה");
+  if (winner?.fixedTime) return winner.fixedTime.slice(0, 5);
+  const catalogTime = catalogTimeForType(settings, "מנחה", parashaKeyForDay, catalog);
+  if (catalogTime) return catalogTime;
   for (const setting of settings) {
     if (setting.prayerType !== "מנחה") continue;
-    const winner = winners.get("מנחה");
-    if (winner) {
-      if (setting === winner && setting.fixedTime) return setting.fixedTime.slice(0, 5);
-      continue;
-    }
+    if (winners.get("מנחה")) continue;
     if (setting.mode === "parasha") continue;
     const row = resolveFixedOrRelativeRow(setting, zmanimSourceTimes, sundayZmanimSourceTimes);
     if (row) return row.time;
@@ -203,7 +235,8 @@ export function buildPrayerScheduleForDay(
   jsDay: number,
   isShabbat: boolean,
   parashaKeyForDay: string | null,
-  sundayZmanimSourceTimes?: Record<string, string> | null
+  sundayZmanimSourceTimes?: Record<string, string> | null,
+  parashaCatalog?: ParashaPrayerCatalogRow[] | null
 ): Array<{ label: string; time: string; details: string }> {
   const weekdaySettings = prayerSettings.filter((setting) => setting.category === "weekday");
   const shabbatSettings = prayerSettings.filter((setting) => setting.category === "shabbat");
@@ -251,7 +284,8 @@ export function buildPrayerScheduleForDay(
     zmanimSourceTimes,
     sundayZmanimSourceTimes,
     parashaKeyForDay,
-    jsDay
+    jsDay,
+    parashaCatalog
   );
   const sundayTimes = sundayZmanimSourceTimes ?? zmanimSourceTimes;
   const sundayMinchaTime =
@@ -262,8 +296,15 @@ export function buildPrayerScheduleForDay(
           sundayTimes,
           sundayTimes,
           parashaKeyForDay,
-          0
+          0,
+          parashaCatalog
         );
+  const catalogTimeByType = new Map<"מנחה" | "ערבית", string>();
+  const minchaCatalog = catalogTimeForType(sorted, "מנחה", parashaKeyForDay, parashaCatalog);
+  const maarivCatalog = catalogTimeForType(sorted, "ערבית", parashaKeyForDay, parashaCatalog);
+  if (minchaCatalog) catalogTimeByType.set("מנחה", minchaCatalog);
+  if (maarivCatalog) catalogTimeByType.set("ערבית", maarivCatalog);
+  const emittedCatalog = new Set<string>();
 
   const out: Array<{ label: string; time: string; details: string }> = [];
   for (const setting of sorted) {
@@ -285,6 +326,23 @@ export function buildPrayerScheduleForDay(
       }
       continue;
     }
+
+    const catalogTime =
+      setting.prayerType === "מנחה" || setting.prayerType === "ערבית"
+        ? catalogTimeByType.get(setting.prayerType) ?? null
+        : null;
+    if (catalogTime) {
+      if (isCatalogParashaMode(setting) && !emittedCatalog.has(setting.prayerType)) {
+        emittedCatalog.add(setting.prayerType);
+        out.push({
+          label: displayLabelForPrayerType(setting.prayerType),
+          time: catalogTime,
+          details: ""
+        });
+      }
+      continue;
+    }
+
     if (setting.mode === "parasha") continue;
 
     if (isMinchaAnchoredMaariv(setting)) {
