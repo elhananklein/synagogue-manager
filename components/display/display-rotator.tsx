@@ -942,7 +942,7 @@ export function DisplayRotator({
                     className="display-full-schedule-fit"
                     contentClassName="display-full-schedule-fit-inner"
                     grow
-                    maxScale={1.55}
+                    maxScale={2.4}
                     deps={[currentScreen, visible, nextLocalIdx]}
                   >
                     <div className="display-full-schedule-flow" dir="rtl">
