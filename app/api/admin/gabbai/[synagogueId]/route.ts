@@ -95,7 +95,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     .order("created_at", { ascending: true });
   const minyanIds = (minyanRes.data ?? []).map((m) => m.id);
 
-  const [prayerResInitial, screensRes] = await Promise.all([
+  const [prayerRes, screensRes] = await Promise.all([
     minyanIds.length
       ? supabase
           .from("minyan_prayers")
@@ -111,15 +111,6 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
           .in("minyan_id", minyanIds)
       : Promise.resolve({ data: [], error: null })
   ]);
-  let prayerRes = prayerResInitial;
-  if (prayerRes.error && /lock_to_sunday/i.test(prayerRes.error.message ?? "") && minyanIds.length) {
-    prayerRes = await supabase
-      .from("minyan_prayers")
-      .select(
-        "id, minyan_id, category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order, parasha_key"
-      )
-      .in("minyan_id", minyanIds);
-  }
   const halachaSettingsRes = await supabase
     .from("synagogue_halacha_settings")
     .select("start_date, source_key, display_mode")
