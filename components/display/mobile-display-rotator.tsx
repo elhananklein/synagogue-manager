@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText, Megaphone, Flame, MoonStar, ChevronLeft } from "lucide-react";
 import { DisplayBulletinScreen } from "@/components/display/display-bulletin-screen";
 import { LiveClock } from "@/components/display/live-clock";
@@ -14,6 +13,7 @@ import type {
   DisplayShabbat,
   DisplayTimeSection
 } from "@/lib/build-display-view";
+import { pickDisplayLiveFields, useDisplayLiveRefresh, useHalachicDayLiveRefresh } from "@/lib/display-live-refresh";
 
 type ScreenKey =
   | "main"
@@ -120,20 +120,67 @@ function toMinutes(time: string) {
 }
 
 export function MobileDisplayRotator({
-  synagogueName,
-  minyanName,
-  footerText,
-  screens,
-  dailyLearning,
-  snapshot,
-  shabbatMevarchimText = null,
-  halacha,
-  prayerSchedule,
-  timeSections,
-  shabbat = null,
-  bulletinItems = []
+  synagogueName: synagogueNameProp,
+  minyanName: minyanNameProp,
+  footerText: footerTextProp,
+  screens: screensProp,
+  dailyLearning: dailyLearningProp,
+  snapshot: snapshotProp,
+  shabbatMevarchimText: shabbatMevarchimTextProp = null,
+  halacha: halachaProp,
+  prayerSchedule: prayerScheduleProp,
+  timeSections: timeSectionsProp,
+  shabbat: shabbatProp = null,
+  bulletinItems: bulletinItemsProp = []
 }: MobileDisplayRotatorProps) {
-  const router = useRouter();
+  const [live, setLive] = useState(() => ({
+    synagogueName: synagogueNameProp,
+    minyanName: minyanNameProp,
+    footerText: footerTextProp ?? null,
+    screens: screensProp,
+    dailyLearning: dailyLearningProp,
+    snapshot: snapshotProp,
+    shabbatMevarchimText: shabbatMevarchimTextProp,
+    halacha: halachaProp,
+    prayerSchedule: prayerScheduleProp,
+    timeSections: timeSectionsProp,
+    shabbat: shabbatProp,
+    bulletinItems: bulletinItemsProp
+  }));
+  const {
+    synagogueName,
+    minyanName,
+    footerText,
+    screens,
+    dailyLearning,
+    snapshot,
+    shabbatMevarchimText,
+    halacha,
+    prayerSchedule,
+    timeSections,
+    shabbat,
+    bulletinItems
+  } = live;
+
+  const refreshLive = useDisplayLiveRefresh((view) => {
+    const next = pickDisplayLiveFields(view);
+    setLive({
+      synagogueName: next.synagogueName,
+      minyanName: next.minyanName,
+      footerText: next.footerText,
+      screens: next.screens,
+      dailyLearning: next.dailyLearning,
+      snapshot: next.snapshot,
+      shabbatMevarchimText: next.shabbatMevarchimText,
+      halacha: next.halacha,
+      prayerSchedule: next.prayerSchedule,
+      timeSections: next.timeSections,
+      shabbat: next.shabbat,
+      bulletinItems: next.bulletinItems
+    });
+  });
+  useHalachicDayLiveRefresh(snapshot.halachicDayRollIso, refreshLive);
+
   const enabledScreens = useMemo(() => {
     const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
     const jsDay = now.getDay();
@@ -207,33 +254,6 @@ export function MobileDisplayRotator({
     const timer = setTimeout(() => setIndex((prev) => (prev + 1) % screenCount), durationMs);
     return () => clearTimeout(timer);
   }, [screenCount, current, safeIndex, paused, isDragging, bulletinItems.length]);
-
-  useEffect(() => {
-    const refreshIntervalMs = 5 * 60 * 1000;
-    const intervalId = setInterval(() => router.refresh(), refreshIntervalMs);
-    const now = new Date();
-    const nextMidnight = new Date(now);
-    nextMidnight.setHours(24, 0, 0, 0);
-    const midnightTimeoutId = setTimeout(() => router.refresh(), Math.max(1000, nextMidnight.getTime() - now.getTime()));
-    const onVisible = () => {
-      if (document.visibilityState === "visible") router.refresh();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(intervalId);
-      clearTimeout(midnightTimeoutId);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [router]);
-
-  useEffect(() => {
-    const iso = snapshot.halachicDayRollIso;
-    if (!iso) return;
-    const delay = new Date(iso).getTime() - Date.now();
-    if (delay <= 0 || delay > 24 * 60 * 60 * 1000) return;
-    const id = setTimeout(() => router.refresh(), delay);
-    return () => clearTimeout(id);
-  }, [snapshot.halachicDayRollIso, router]);
 
   const nowMinutes = nowJerusalemMinutes();
   const jerusalemJsDay = (() => {
@@ -597,16 +617,44 @@ function ClockScreen({ snapshot }: { snapshot: Snapshot }) {
 function HalachaScreen({
   halacha
 }: {
-  halacha: { title: string; text: string; source?: string; chapterNumber?: number; sectionNumber?: number } | null;
+  halacha: {
+    title: string;
+    text: string;
+    source?: string;
+    chapterNumber?: number;
+    sectionNumber?: number;
+    segments?: string[];
+  } | null;
 }) {
-  if (!halacha) {
+  const segments = (halacha?.segments?.filter((item) => item.trim()) ?? []).length
+    ? (halacha?.segments ?? []).map((item) => item.trim()).filter(Boolean)
+    : halacha?.text?.trim()
+      ? [halacha.text.trim()]
+      : [];
+  const [seifIndex, setSeifIndex] = useState(0);
+
+  useEffect(() => {
+    if (segments.length < 2) return;
+    const id = window.setInterval(() => {
+      setSeifIndex((prev) => (prev + 1) % segments.length);
+    }, 14000);
+    return () => window.clearInterval(id);
+  }, [segments.length]);
+
+  if (!halacha || !segments.length) {
     return <Card className="text-center text-slate-500">אין הלכה יומית להצגה כעת.</Card>;
   }
+  const current = segments[seifIndex % segments.length] ?? halacha.text;
   return (
     <Card>
       <h3 className="mb-1 text-lg font-bold text-emerald-700">{halacha.title}</h3>
       {halacha.source ? <p className="mb-3 text-sm text-slate-500">{halacha.source}</p> : null}
-      <p className="whitespace-pre-line text-[17px] leading-relaxed">{halacha.text}</p>
+      {segments.length > 1 ? (
+        <p className="mb-2 text-sm text-slate-500">
+          סעיף {seifIndex + 1} מתוך {segments.length}
+        </p>
+      ) : null}
+      <p className="whitespace-pre-line text-[17px] leading-relaxed">{current}</p>
     </Card>
   );
 }

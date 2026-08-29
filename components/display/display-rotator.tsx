@@ -2,7 +2,6 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Flame, MoonStar, ChevronLeft } from "lucide-react";
 import { LiveClock } from "@/components/display/live-clock";
 import { DisplayBulletinScreen } from "@/components/display/display-bulletin-screen";
@@ -10,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { DailyLearningLine } from "@/lib/hebcal";
 import type { BulletinItem } from "@/lib/bulletin-board";
+import type { DisplayPalette, DisplayStyle } from "@/lib/display-theme";
+import { pickDisplayLiveFields, useDisplayLiveRefresh, useHalachicDayLiveRefresh } from "@/lib/display-live-refresh";
 
 type ScreenKey =
   | "main"
@@ -21,7 +22,6 @@ type ScreenKey =
   | "shabbat"
   | "bulletin"
   | "fullSchedule";
-type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
 
 type RotatorScreen = {
   screenKey: ScreenKey;
@@ -55,6 +55,7 @@ type Snapshot = {
   omerShortText?: string | null;
   amidahAdditionText: string | null;
   liturgicalTiles?: string[];
+  haftarah?: { name: string | null; source: string } | null;
 };
 
 /** Auto-scroll for "זמני היום ותפילות" — set here so deploys always pick up pace changes (inline beats stale CSS). */
@@ -231,31 +232,91 @@ function AutoFit({
   );
 }
 
+/** במסך שבת של «בולט מאוד»: הפונט נגזר מגובה הרשימה חלקי מספר השורות. */
+function ShabbatPrayerList({
+  rowCount,
+  scaleToViewport,
+  children
+}: {
+  rowCount: number;
+  scaleToViewport: boolean;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!scaleToViewport) return;
+    const el = ref.current;
+    if (!el) return;
+
+    const apply = () => {
+      const n = Math.max(1, rowCount);
+      const h = el.clientHeight;
+      if (!h) return;
+      const fontPx = Math.round(Math.min(110, Math.max(18, (h / n) * 0.46)));
+      el.style.setProperty("--vb-shabbat-font", `${fontPx}px`);
+    };
+
+    apply();
+    const frame = requestAnimationFrame(apply);
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+    };
+  }, [scaleToViewport, rowCount]);
+
+  return (
+    <CardContent
+      ref={ref}
+      className="display-shabbat-prayers"
+      style={
+        scaleToViewport
+          ? ({ "--vb-shabbat-rows": String(Math.max(1, rowCount)) } as CSSProperties)
+          : undefined
+      }
+    >
+      {children}
+    </CardContent>
+  );
+}
+
 export function DisplayRotator({
   style,
-  synagogueId,
-  synagogueName,
-  minyanName,
-  screens,
-  dailyLearning,
-  snapshot,
-  halacha,
-  prayerSchedule,
-  timeSections,
-  footerText,
-  scheduleTimesListMode = "all",
-  shabbat = null,
-  shabbatMevarchimText = null,
-  bulletinItems = []
+  palette = "inkIvory",
+  synagogueId: synagogueIdProp,
+  synagogueName: synagogueNameProp,
+  minyanName: minyanNameProp,
+  screens: screensProp,
+  dailyLearning: dailyLearningProp,
+  snapshot: snapshotProp,
+  halacha: halachaProp,
+  prayerSchedule: prayerScheduleProp,
+  timeSections: timeSectionsProp,
+  footerText: footerTextProp,
+  scheduleTimesListMode: scheduleTimesListModeProp = "all",
+  shabbat: shabbatProp = null,
+  shabbatMevarchimText: shabbatMevarchimTextProp = null,
+  bulletinItems: bulletinItemsProp = []
 }: {
   style: DisplayStyle;
+  palette?: DisplayPalette;
   synagogueId: string | null;
   synagogueName: string;
   minyanName: string | null;
   screens: RotatorScreen[];
   dailyLearning: DailyLearningLine[];
   snapshot: Snapshot;
-  halacha: { title: string; text: string; source?: string; chapterNumber?: number; sectionNumber?: number } | null;
+  halacha: {
+    title: string;
+    text: string;
+    source?: string;
+    chapterNumber?: number;
+    sectionNumber?: number;
+    segments?: string[];
+  } | null;
   prayerSchedule: PrayerSlot[];
   timeSections: TimeSection[];
   footerText?: string | null;
@@ -271,25 +332,70 @@ export function DisplayRotator({
     prayers: Array<{ label: string; time: string }>;
     mevarchimText?: string | null;
     agenda?: Array<{ itemTime: string | null; content: string }>;
+    haftarah?: { name: string | null; source: string } | null;
   } | null;
   bulletinItems?: BulletinItem[];
 }) {
-  const router = useRouter();
+  const [live, setLive] = useState(() => ({
+    synagogueId: synagogueIdProp,
+    synagogueName: synagogueNameProp,
+    minyanName: minyanNameProp,
+    screens: screensProp,
+    dailyLearning: dailyLearningProp,
+    snapshot: snapshotProp,
+    halacha: halachaProp,
+    prayerSchedule: prayerScheduleProp,
+    timeSections: timeSectionsProp,
+    footerText: footerTextProp ?? null,
+    scheduleTimesListMode: scheduleTimesListModeProp,
+    shabbat: shabbatProp,
+    shabbatMevarchimText: shabbatMevarchimTextProp,
+    bulletinItems: bulletinItemsProp
+  }));
+  const {
+    synagogueId,
+    synagogueName,
+    minyanName,
+    screens,
+    dailyLearning,
+    snapshot,
+    halacha,
+    prayerSchedule,
+    timeSections,
+    footerText,
+    scheduleTimesListMode,
+    shabbat,
+    shabbatMevarchimText,
+    bulletinItems
+  } = live;
+
+  const refreshLive = useDisplayLiveRefresh((view) => {
+    setLive(pickDisplayLiveFields(view));
+  });
+  useHalachicDayLiveRefresh(snapshot.halachicDayRollIso, refreshLive);
+
   const enabledScreens = useMemo(() => {
     const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
     const jsDay = now.getDay();
     const isFriOrSat = jsDay === 5 || jsDay === 6;
     return screens.filter((s) => {
       if (!s.enabled) return false;
-      if (s.screenKey === "shabbat" && !isFriOrSat) return false;
+      if (s.screenKey === "shabbat" && !isFriOrSat && style !== "veryBold") return false;
       if (s.screenKey === "clock" && !snapshot.omerText) return false;
       return true;
     });
-  }, [screens, snapshot.omerText]);
+  }, [screens, snapshot.omerText, style]);
   const [index, setIndex] = useState(0);
+  const [halachaSeifIndex, setHalachaSeifIndex] = useState(0);
   const timesScrollRef = useRef<HTMLDivElement | null>(null);
   const [timesStartOffset, setTimesStartOffset] = useState<number | null>(null);
   const screenCount = enabledScreens.length;
+  const halachaSegments = useMemo(() => {
+    const fromSegments = halacha?.segments?.map((item) => item.trim()).filter(Boolean) ?? [];
+    if (fromSegments.length) return fromSegments;
+    const single = halacha?.text?.trim();
+    return single ? [single] : [];
+  }, [halacha]);
 
   const goNextScreen = () => {
     if (screenCount < 2) return;
@@ -306,11 +412,30 @@ export function DisplayRotator({
     const baseSeconds = Math.max(5, current.durationSeconds);
     const isBulletin = current.screenKey === "bulletin";
     const bulletinCount = bulletinItems.length;
+    const isHalacha = current.screenKey === "halacha";
     const durationMs =
-      isBulletin && bulletinCount > 0 ? baseSeconds * 1000 * bulletinCount : baseSeconds * 1000;
+      isBulletin && bulletinCount > 0
+        ? baseSeconds * 1000 * bulletinCount
+        : isHalacha && halachaSegments.length > 1
+          ? baseSeconds * 1000 * halachaSegments.length
+          : baseSeconds * 1000;
     const timer = setTimeout(() => setIndex((prev) => (prev + 1) % enabledScreens.length), durationMs);
     return () => clearTimeout(timer);
-  }, [enabledScreens, index, bulletinItems.length]);
+  }, [enabledScreens, index, bulletinItems.length, halachaSegments.length]);
+
+  useEffect(() => {
+    setHalachaSeifIndex(0);
+  }, [halachaSegments]);
+
+  useEffect(() => {
+    const current = enabledScreens[index % Math.max(enabledScreens.length, 1)];
+    if (current?.screenKey !== "halacha" || halachaSegments.length < 2) return;
+    const eachMs = Math.max(12, current.durationSeconds) * 1000;
+    const id = window.setInterval(() => {
+      setHalachaSeifIndex((prev) => (prev + 1) % halachaSegments.length);
+    }, eachMs);
+    return () => window.clearInterval(id);
+  }, [enabledScreens, index, halachaSegments.length]);
 
   useEffect(() => {
     if (screenCount < 2) return;
@@ -330,77 +455,6 @@ export function DisplayRotator({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [screenCount]);
-
-  useEffect(() => {
-    const DISPLAY_FS_KEY = "display-want-fullscreen";
-    try {
-      sessionStorage.setItem(DISPLAY_FS_KEY, "1");
-    } catch {
-      /* private mode / blocked */
-    }
-
-    const softRefresh = () => {
-      router.refresh();
-    };
-
-    const probeDisplayReachable = async (timeoutMs = 12000) => {
-      if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
-      try {
-        const controller = new AbortController();
-        const timer = window.setTimeout(() => controller.abort(), timeoutMs);
-        const res = await fetch(window.location.href, {
-          method: "GET",
-          cache: "no-store",
-          credentials: "same-origin",
-          signal: controller.signal,
-          headers: { Accept: "text/html" }
-        });
-        window.clearTimeout(timer);
-        return res.ok;
-      } catch {
-        return false;
-      }
-    };
-
-    /** ריענון קשיח רק אם הדף באמת נגיש — אחרת נשארים על התצוגה הנוכחית. */
-    const safeHardReload = async () => {
-      const reachable = await probeDisplayReachable();
-      if (!reachable) {
-        softRefresh();
-        return;
-      }
-      try {
-        sessionStorage.setItem(DISPLAY_FS_KEY, "1");
-      } catch {
-        /* ignore */
-      }
-      window.location.reload();
-    };
-
-    const softRefreshIntervalMs = 10 * 60 * 1000;
-    const softIntervalId = setInterval(softRefresh, softRefreshIntervalMs);
-
-    const now = new Date();
-    const nextMidnight = new Date(now);
-    nextMidnight.setHours(24, 0, 0, 0);
-    const midnightTimeoutMs = Math.max(1000, nextMidnight.getTime() - now.getTime());
-    const midnightTimeoutId = setTimeout(() => {
-      void safeHardReload();
-    }, midnightTimeoutMs);
-
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        softRefresh();
-      }
-    };
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      clearInterval(softIntervalId);
-      clearTimeout(midnightTimeoutId);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [router]);
 
   useEffect(() => {
     // כניסה אוטומטית למסך מלא. דפדפנים חוסמים מסך מלא ללא מחווה — מנסים בטעינה
@@ -486,26 +540,21 @@ export function DisplayRotator({
     };
   }, []);
 
-  useEffect(() => {
-    const iso = snapshot.halachicDayRollIso;
-    if (!iso) return;
-    const delay = new Date(iso).getTime() - Date.now();
-    if (delay <= 0 || delay > 24 * 60 * 60 * 1000) return;
-    const id = setTimeout(() => router.refresh(), delay);
-    return () => clearTimeout(id);
-  }, [snapshot.halachicDayRollIso, router]);
-
   const currentScreen = enabledScreens.length ? enabledScreens[index % enabledScreens.length].screenKey : null;
   const isWoodSilverRevolution = style === "woodSilver" && ENABLE_WOOD_SILVER_REVOLUTION_LAYOUT;
+  const isVeryBold = style === "veryBold";
   /** כמו woodSilver revolution: יום | שעון | תאריך עברי בכותרת — גם ב־Classic */
-  const useCenterClockBand = isWoodSilverRevolution || style === "classic" || style === "royalBlue";
-  const jerusalemWeekdayLong = new Intl.DateTimeFormat("he-IL", {
-    weekday: "long",
-    timeZone: "Asia/Jerusalem"
-  }).format(new Date());
+  const useCenterClockBand = !isVeryBold && (isWoodSilverRevolution || style === "classic" || style === "royalBlue");
   const nowJerusalem = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
   const nowMinutes = nowJerusalem.getHours() * 60 + nowJerusalem.getMinutes();
   const jerusalemJsDay = nowJerusalem.getDay();
+  const jerusalemWeekdayLong =
+    jerusalemJsDay === 6
+      ? "שבת"
+      : new Intl.DateTimeFormat("he-IL", {
+          weekday: "long",
+          timeZone: "Asia/Jerusalem"
+        }).format(nowJerusalem);
   const headerCandleLighting = shabbat?.candleLighting ?? snapshot.candleLighting;
   const headerHavdalah = shabbat?.havdalah ?? snapshot.havdalah;
   const showHeaderShabbatZmanim =
@@ -592,11 +641,13 @@ export function DisplayRotator({
     currentScreen === "main" &&
     timeSections.length > 0 &&
     !isWoodSilverRevolution &&
+    !isVeryBold &&
     scheduleTimesListMode !== "prayers_only";
   const halachaClosingLinePattern = /["״']?\s*כל השונה הלכות בכל יום\s+מובטח לו שהוא בן העולם הבא["״']?\s*$/;
+  const currentHalachaBody = halachaSegments[halachaSeifIndex] ?? halacha?.text ?? "";
   const halachaText = halacha
     ? (() => {
-        const raw = halacha.text.trim();
+        const raw = currentHalachaBody.trim();
         const closingLineMatch = raw.match(halachaClosingLinePattern)?.[0]?.trim() ?? null;
         const withoutClosing = closingLineMatch ? raw.replace(halachaClosingLinePattern, "").trim() : raw;
         const withSentenceBreaks = withoutClosing.replace(/\.\s+/g, ".\n");
@@ -616,6 +667,10 @@ export function DisplayRotator({
     (chapterHebrew && sectionHebrew
       ? `פרק ${chapterHebrew} הלכה ${sectionHebrew}`
       : halacha.title);
+  const halachaSeifCounter =
+    halachaSegments.length > 1
+      ? `סעיף ${toHebrewNumber(halachaSeifIndex + 1)} מתוך ${toHebrewNumber(halachaSegments.length)}`
+      : null;
   const adminHref = synagogueId ? `/admin/gabbai/${synagogueId}` : null;
   const isAutoScrollReady = shouldAutoScroll && timesStartOffset !== null;
   const timesTrackStyle = (() => {
@@ -655,7 +710,10 @@ export function DisplayRotator({
   }, [shouldAutoScroll, nextSectionIndex, nextSlotIndexInSection, timeSections, index]);
 
   return (
-    <main className={`display display--${style}`}>
+    <main
+      className={`display display--${style}${isVeryBold ? ` display-palette--${palette}` : ""}`}
+      data-display-palette={isVeryBold ? palette : undefined}
+    >
       {!enabledScreens.length ? (
         <div className="display-empty">אין מסכים פעילים לתצוגה</div>
       ) : (
@@ -689,10 +747,56 @@ export function DisplayRotator({
         <header
           className={cn(
             "display-header",
-            useCenterClockBand && "display-header--center-clock-band"
+            useCenterClockBand && "display-header--center-clock-band",
+            isVeryBold && "display-header--very-bold"
           )}
         >
-          {useCenterClockBand ? (
+          {isVeryBold ? (
+            <>
+              <div
+                className="display-vb-bar"
+                role="status"
+                aria-label={`מסך ${index + 1} מתוך ${enabledScreens.length}: ${jerusalemWeekdayLong}, ${snapshot.hebrewDate}`}
+              >
+                <div
+                  className="display-vb-date"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    void refreshLive();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      void refreshLive();
+                    }
+                  }}
+                  aria-label="רענון נתוני התצוגה"
+                  title="רענון"
+                >
+                  {snapshot.hebrewDate}
+                </div>
+                <h1 className="display-vb-name">
+                  {minyanName ? `${synagogueName} · ${minyanName}` : synagogueName}
+                </h1>
+                <div className="display-vb-day">{jerusalemWeekdayLong}</div>
+              </div>
+              {adminHref ? (
+                <Link
+                  href={adminHref}
+                  className="display-vb-clock display-clock-admin-hit"
+                  aria-label="מעבר לממשק ניהול בית הכנסת"
+                  prefetch={false}
+                >
+                  <LiveClock showSeconds={false} />
+                </Link>
+              ) : (
+                <div className="display-vb-clock">
+                  <LiveClock showSeconds={false} />
+                </div>
+              )}
+            </>
+          ) : useCenterClockBand ? (
             <div
               className={cn(
                 "display-ws-header-band",
@@ -734,11 +838,13 @@ export function DisplayRotator({
                   className="display-ws-lozenge display-ws-lozenge--hebrew-date display-ws-lozenge--refresh"
                   role="button"
                   tabIndex={0}
-                  onClick={() => router.refresh()}
+                  onClick={() => {
+                    void refreshLive();
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      router.refresh();
+                      void refreshLive();
                     }
                   }}
                   aria-label="רענון נתוני התצוגה"
@@ -814,6 +920,9 @@ export function DisplayRotator({
                 <CardHeader>
                   <CardTitle className="display-halacha-title display-halacha-title-row">
                     <span>{halachaHeaderLabel}</span>
+                    {halachaSeifCounter ? (
+                      <span className="display-halacha-source">{halachaSeifCounter}</span>
+                    ) : null}
                     {halacha.source ? <span className="display-halacha-source">({halacha.source})</span> : null}
                   </CardTitle>
                 </CardHeader>
@@ -1019,6 +1128,7 @@ export function DisplayRotator({
                 <PrimaryInfoStack
                   snapshot={snapshot}
                   isWoodSilverRevolution={isWoodSilverRevolution}
+                  hideChromeDates={isWoodSilverRevolution || isVeryBold}
                   amidahAddition={amidahAddition}
                   mevarchimText={shabbatMevarchimText}
                 />
@@ -1131,6 +1241,7 @@ export function DisplayRotator({
               <PrimaryInfoStack
                 snapshot={snapshot}
                 isWoodSilverRevolution={isWoodSilverRevolution}
+                hideChromeDates={isWoodSilverRevolution || isVeryBold}
                 amidahAddition={amidahAddition}
                 mevarchimText={shabbatMevarchimText}
               />
@@ -1147,62 +1258,88 @@ export function DisplayRotator({
 
         {currentScreen === "shabbat" ? (
           <section className="display-shabbat-screen">
-            <AutoFit className="display-shabbat-fit" deps={[currentScreen, shabbat, snapshot]}>
-            <div className="display-shabbat-inner">
-              <div className="display-shabbat-hero">
-                <div className="display-shabbat-heading">
-                  <p className="display-shabbat-title">שבת קודש</p>
-                  <p className="display-shabbat-parasha">{shabbat?.parasha ?? snapshot.parasha}</p>
-                  {shabbat?.mevarchimText ? (
-                    <p className="display-shabbat-mevarchim">{shabbat.mevarchimText}</p>
+            {(() => {
+              const shabbatInner = (
+                <div className="display-shabbat-inner">
+                  <div className="display-shabbat-hero">
+                    <div className="display-shabbat-heading">
+                      <p className="display-shabbat-title">{isVeryBold ? "שבת" : "שבת קודש"}</p>
+                      <p className="display-shabbat-parasha">{shabbat?.parasha ?? snapshot.parasha}</p>
+                      {(() => {
+                        const haftarah = shabbat?.haftarah ?? snapshot.haftarah;
+                        if (!haftarah?.name && !haftarah?.source) return null;
+                        return (
+                          <p className="display-shabbat-haftarah">
+                            <span className="display-shabbat-haftarah-name">
+                              {haftarah.name ? `הפטרת ${haftarah.name}` : "הפטרה"}
+                            </span>
+                            {haftarah.source ? (
+                              <span className="display-shabbat-haftarah-source">{haftarah.source}</span>
+                            ) : null}
+                          </p>
+                        );
+                      })()}
+                      {shabbat?.mevarchimText ? (
+                        <p className="display-shabbat-mevarchim">{shabbat.mevarchimText}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="display-shabbat-zmanim">
+                      <Card className="display-card display-shabbat-zman-card">
+                        <CardContent className="display-shabbat-zman-content">
+                          <span className="display-shabbat-zman-label">כניסת שבת</span>
+                          <span className="display-shabbat-zman-time display-accent">
+                            {shabbat?.candleLighting ?? snapshot.candleLighting ?? "—"}
+                          </span>
+                        </CardContent>
+                      </Card>
+                      <Card className="display-card display-shabbat-zman-card">
+                        <CardContent className="display-shabbat-zman-content">
+                          <span className="display-shabbat-zman-label">צאת שבת</span>
+                          <span className="display-shabbat-zman-time display-accent">
+                            {shabbat?.havdalah ?? snapshot.havdalah ?? "—"}
+                          </span>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+
+                  {shabbat?.agenda?.length ? (
+                    <Card className="display-card display-shabbat-prayers-card">
+                      <ShabbatPrayerList rowCount={shabbat.agenda.length} scaleToViewport={isVeryBold}>
+                        {shabbat.agenda.map((row, agendaIndex) => (
+                          <div className="display-shabbat-prayer-row" key={`${row.content}-${agendaIndex}`}>
+                            <span className="display-shabbat-prayer-label">{row.content}</span>
+                            <span className="display-shabbat-prayer-time">{row.itemTime ?? ""}</span>
+                          </div>
+                        ))}
+                      </ShabbatPrayerList>
+                    </Card>
+                  ) : shabbat?.prayers?.length ? (
+                    <Card className="display-card display-shabbat-prayers-card">
+                      <ShabbatPrayerList rowCount={shabbat.prayers.length} scaleToViewport={isVeryBold}>
+                        {shabbat.prayers.map((prayer, prayerIndex) => (
+                          <div className="display-shabbat-prayer-row" key={`${prayer.label}-${prayerIndex}`}>
+                            <span className="display-shabbat-prayer-label">{prayer.label}</span>
+                            <span className="display-shabbat-prayer-time">{prayer.time}</span>
+                          </div>
+                        ))}
+                      </ShabbatPrayerList>
+                    </Card>
                   ) : null}
                 </div>
+              );
 
-                <div className="display-shabbat-zmanim">
-                  <Card className="display-card display-shabbat-zman-card">
-                    <CardContent className="display-shabbat-zman-content">
-                      <span className="display-shabbat-zman-label">כניסת שבת</span>
-                      <span className="display-shabbat-zman-time display-accent">
-                        {shabbat?.candleLighting ?? snapshot.candleLighting ?? "—"}
-                      </span>
-                    </CardContent>
-                  </Card>
-                  <Card className="display-card display-shabbat-zman-card">
-                    <CardContent className="display-shabbat-zman-content">
-                      <span className="display-shabbat-zman-label">צאת שבת</span>
-                      <span className="display-shabbat-zman-time display-accent">
-                        {shabbat?.havdalah ?? snapshot.havdalah ?? "—"}
-                      </span>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
+              if (isVeryBold) {
+                return <div className="display-shabbat-fit display-shabbat-fit--fill">{shabbatInner}</div>;
+              }
 
-              {shabbat?.agenda?.length ? (
-                <Card className="display-card display-shabbat-prayers-card">
-                  <CardContent className="display-shabbat-prayers">
-                    {shabbat.agenda.map((row, agendaIndex) => (
-                      <div className="display-shabbat-prayer-row" key={`${row.content}-${agendaIndex}`}>
-                        <span className="display-shabbat-prayer-label">{row.content}</span>
-                        <span className="display-shabbat-prayer-time">{row.itemTime ?? ""}</span>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              ) : shabbat?.prayers?.length ? (
-                <Card className="display-card display-shabbat-prayers-card">
-                  <CardContent className="display-shabbat-prayers">
-                    {shabbat.prayers.map((prayer, prayerIndex) => (
-                      <div className="display-shabbat-prayer-row" key={`${prayer.label}-${prayerIndex}`}>
-                        <span className="display-shabbat-prayer-label">{prayer.label}</span>
-                        <span className="display-shabbat-prayer-time">{prayer.time}</span>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              ) : null}
-            </div>
-            </AutoFit>
+              return (
+                <AutoFit className="display-shabbat-fit" deps={[currentScreen, shabbat, snapshot]}>
+                  {shabbatInner}
+                </AutoFit>
+              );
+            })()}
           </section>
         ) : null}
         </div>
@@ -1221,11 +1358,13 @@ export function DisplayRotator({
 function PrimaryInfoStack({
   snapshot,
   isWoodSilverRevolution,
+  hideChromeDates = false,
   amidahAddition,
   mevarchimText
 }: {
   snapshot: Snapshot;
   isWoodSilverRevolution: boolean;
+  hideChromeDates?: boolean;
   amidahAddition: string | null;
   mevarchimText?: string | null;
 }) {
@@ -1249,7 +1388,7 @@ function PrimaryInfoStack({
         <CardContent className="display-main-date-content !p-0">
           <p className="display-parasha">{snapshot.parasha}</p>
           {mevarchimText ? <p className="display-mevarchim">{mevarchimText}</p> : null}
-          {isWoodSilverRevolution ? (
+          {hideChromeDates ? (
             <p className="display-gregorian-date">{snapshot.gregorianDate}</p>
           ) : (
             <>

@@ -1507,6 +1507,25 @@ body {
     text-align: center;
     letter-spacing: 0.03em;
   }
+  .display-shabbat-haftarah {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.35em 0.75em;
+    margin: 0;
+    text-align: center;
+  }
+  .display-shabbat-haftarah-name {
+    font-size: clamp(1.55rem, 3.8vmin, 2.85rem);
+    font-weight: 800;
+    line-height: 1.15;
+  }
+  .display-shabbat-haftarah-source {
+    font-size: clamp(1.05rem, 2.4vmin, 1.7rem);
+    font-weight: 700;
+    opacity: 0.78;
+  }
   .display-shabbat-zmanim {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

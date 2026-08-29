@@ -1,4 +1,5 @@
 import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
+import type { HebcalLeyningItem } from "@/lib/haftarah";
 import { resolveLiturgicalTiles } from "@/lib/liturgical-additions";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, resolveScheduleZmanimKeys, zmanLabelForKey } from "@/lib/zmanim-catalog";
 import type { SynagogueZmanimLocation } from "@/lib/display-config";
@@ -61,6 +62,8 @@ export type DisplaySnapshot = {
   sourceEvents: string[];
   /** מפתח לקטלוג תפילות: פרשה או חול המועד פסח/סוכות */
   parashaCatalogKey: string;
+  /** הפטרת שבת הקרובה — ממולא ב־build-display-view לפי מנהג המניין */
+  haftarah?: { name: string | null; source: string } | null;
 };
 
 export type DisplaySnapshotOptions = {
@@ -656,7 +659,9 @@ export async function getDisplaySnapshot(
       month: "long",
       day: "numeric",
       timeZone: "Asia/Jerusalem"
-    }).format(now),
+    })
+      .format(now)
+      .replace(/יום שבת/g, "שבת"),
     parasha,
     candleLighting,
     havdalah,
@@ -684,5 +689,27 @@ export async function getDisplaySnapshot(
 
 export function getTomorrowIsoDateFrom(baseIsoDate: string) {
   return addDaysIsoDate(baseIsoDate, 1);
+}
+
+type HebcalLeyningResponse = {
+  items?: HebcalLeyningItem[];
+};
+
+/** קריאת שבת/חג ליום נתון — כולל הפטרה אשכנזית / ספרדית / חב״ד כשיש. */
+export async function fetchHebcalLeyningForDate(isoDate: string): Promise<HebcalLeyningItem | null> {
+  const url = `https://www.hebcal.com/leyning?cfg=json&date=${encodeURIComponent(isoDate)}&i=on&triennial=off`;
+  try {
+    const res = await fetch(url, hebcalDisplayFetch);
+    if (!res.ok) return null;
+    const payload = (await res.json()) as HebcalLeyningResponse;
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    return (
+      items.find((item) => item.type === "shabbat" && (item.haftara || item.haft)) ??
+      items.find((item) => item.haftara || item.haft) ??
+      null
+    );
+  } catch {
+    return null;
+  }
 }
 

@@ -8,6 +8,14 @@ import { sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
 import { canManageSynagogue, getAdminContext } from "@/lib/auth";
 import { sortPrayersForSave } from "@/lib/prayer-order";
 import { getParashaPrayerCatalogByMinyanIds } from "@/lib/parasha-prayer-catalog-db";
+import {
+  isDisplayStyle,
+  resolveDisplayPalette,
+  type DisplayPalette,
+  type DisplayStyle
+} from "@/lib/display-theme";
+import { resolveHaftarahMinhag } from "@/lib/haftarah-minhag";
+import { resolveHalachaSourceKey, type HalachaSourceKey } from "@/lib/halacha-source";
 
 /** בודק שלמשתמש המחובר יש הרשאה לנהל את בית הכנסת. מחזיר NextResponse בדחייה. */
 async function requireSynagogueAccess(synagogueId: string): Promise<NextResponse | null> {
@@ -50,7 +58,9 @@ type ScreenInput = {
 type MinyanInput = {
   id?: string;
   name: string;
-  displayStyle: "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
+  displayStyle: DisplayStyle;
+  displayPalette?: DisplayPalette | string | null;
+  haftarahMinhag?: string | null;
   /** לוח במסך הראשי: כל הזמנים או רק תפילות */
   scheduleTimesListMode: "all" | "prayers_only";
   /** אילו זמנים הלכתיים להציג בלוח המסך הראשי (מפתחות Hebcal) */
@@ -64,7 +74,7 @@ type MinyanInput = {
 
 type HalachaSettingsInput = {
   startDate: string;
-  sourceKey: "manual" | "kitzur_shulchan_arukh";
+  sourceKey: HalachaSourceKey;
   displayMode: "summary" | "full";
 };
 
@@ -87,7 +97,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
 
   const minyanRes = await supabase
     .from("minyanim")
-    .select("id, name, display_style, is_active, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+    .select("id, name, display_style, display_palette, haftarah_minhag, is_active, schedule_times_list, schedule_zmanim_keys, display_footer_text")
     .eq("synagogue_id", synagogueId)
     .order("created_at", { ascending: true });
   const minyanIds = (minyanRes.data ?? []).map((m) => m.id);
@@ -122,6 +132,12 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     id: minyan.id,
     name: minyan.name,
     displayStyle: minyan.display_style,
+    displayPalette: resolveDisplayPalette(
+      isDisplayStyle(minyan.display_style) ? minyan.display_style : "classic",
+      typeof (minyan as { display_palette?: string | null }).display_palette === "string"
+        ? (minyan as { display_palette?: string | null }).display_palette
+        : null
+    ),
     isActive: minyan.is_active,
     scheduleTimesListMode:
       (minyan as { schedule_times_list?: string }).schedule_times_list === "prayers_only" ? "prayers_only" : "all",
@@ -129,6 +145,11 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
       (minyan as { schedule_zmanim_keys?: string[] | null }).schedule_zmanim_keys
     ),
     footerText: (minyan as { display_footer_text?: string | null }).display_footer_text ?? null,
+    haftarahMinhag: resolveHaftarahMinhag(
+      typeof (minyan as { haftarah_minhag?: string | null }).haftarah_minhag === "string"
+        ? (minyan as { haftarah_minhag?: string | null }).haftarah_minhag
+        : null
+    ),
     prayerSettings: (prayerRes.data ?? [])
       .filter((p) => p.minyan_id === minyan.id)
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -156,7 +177,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
   }));
   const halachaSettings = {
     startDate: halachaSettingsRes.data?.start_date ?? new Date().toISOString().slice(0, 10),
-    sourceKey: (halachaSettingsRes.data?.source_key as "manual" | "kitzur_shulchan_arukh") ?? "manual",
+    sourceKey: resolveHalachaSourceKey(halachaSettingsRes.data?.source_key),
     displayMode: (halachaSettingsRes.data?.display_mode as "summary" | "full") ?? "summary"
   };
   const bulletinItems = await getAllBulletinItemsForAdmin(synagogueId);
@@ -254,10 +275,15 @@ export async function POST(request: Request, context: { params: Promise<{ synago
         .from("minyanim")
         .update({
           name: minyan.name.trim(),
-          display_style: minyan.displayStyle,
+          display_style: isDisplayStyle(minyan.displayStyle) ? minyan.displayStyle : "classic",
+          display_palette: resolveDisplayPalette(
+            isDisplayStyle(minyan.displayStyle) ? minyan.displayStyle : "classic",
+            minyan.displayPalette
+          ),
           schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
           schedule_zmanim_keys: sanitizeScheduleZmanimKeys(minyan.scheduleZmanimKeys),
           display_footer_text: minyan.footerText?.trim() ? minyan.footerText.trim() : null,
+          haftarah_minhag: resolveHaftarahMinhag(minyan.haftarahMinhag),
           is_active: true
         })
         .eq("id", minyanId)
@@ -269,10 +295,15 @@ export async function POST(request: Request, context: { params: Promise<{ synago
         .insert({
           synagogue_id: synagogueId,
           name: minyan.name.trim(),
-          display_style: minyan.displayStyle,
+          display_style: isDisplayStyle(minyan.displayStyle) ? minyan.displayStyle : "classic",
+          display_palette: resolveDisplayPalette(
+            isDisplayStyle(minyan.displayStyle) ? minyan.displayStyle : "classic",
+            minyan.displayPalette
+          ),
           schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
           schedule_zmanim_keys: sanitizeScheduleZmanimKeys(minyan.scheduleZmanimKeys),
           display_footer_text: minyan.footerText?.trim() ? minyan.footerText.trim() : null,
+          haftarah_minhag: resolveHaftarahMinhag(minyan.haftarahMinhag),
           is_active: true
         })
         .select("id")
@@ -339,7 +370,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     {
       synagogue_id: synagogueId,
       start_date: halachaSettings.startDate,
-      source_key: halachaSettings.sourceKey,
+      source_key: resolveHalachaSourceKey(halachaSettings.sourceKey),
       display_mode: halachaSettings.displayMode
     },
     { onConflict: "synagogue_id" }

@@ -18,10 +18,26 @@ import { ParashaPrayerCatalogEditor } from "@/components/admin/parasha-prayer-ca
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, ZMANIM_CATALOG } from "@/lib/zmanim-catalog";
 import { prayerTypeSortRank } from "@/lib/prayer-order";
 import { withParashaCatalogSelectKeys, type ParashaPrayerCatalogRow } from "@/lib/parasha-prayer-catalog";
+import {
+  DISPLAY_PALETTES,
+  DISPLAY_STYLE_LABELS,
+  DISPLAY_STYLES,
+  DEFAULT_DISPLAY_PALETTE,
+  resolveDisplayPalette,
+  styleUsesPalettes,
+  type DisplayPalette,
+  type DisplayStyle
+} from "@/lib/display-theme";
+import {
+  DEFAULT_HAFTARAH_MINHAG,
+  HAFTARAH_MINHAGIM,
+  HAFTARAH_MINHAG_LABELS,
+  resolveHaftarahMinhag,
+  type HaftarahMinhag
+} from "@/lib/haftarah-minhag";
 import { cn } from "@/lib/utils";
 
 type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
-type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
 type ScheduleTimesListMode = "all" | "prayers_only";
 type ScreenKey =
   | "main"
@@ -74,6 +90,8 @@ type MinyanModel = {
   id?: string;
   name: string;
   displayStyle: DisplayStyle;
+  displayPalette: DisplayPalette;
+  haftarahMinhag: HaftarahMinhag;
   scheduleTimesListMode: ScheduleTimesListMode;
   scheduleZmanimKeys: string[];
   footerText: string;
@@ -85,7 +103,7 @@ type MinyanModel = {
 
 type HalachaSettingsModel = {
   startDate: string;
-  sourceKey: "manual" | "kitzur_shulchan_arukh";
+  sourceKey: "manual" | "kitzur_shulchan_arukh" | "yalkut_yosef" | "sefaria_halacha_yomit";
   displayMode: "summary" | "full";
 };
 
@@ -202,6 +220,8 @@ function createDefaultMinyan(): MinyanModel {
   return {
     name: "",
     displayStyle: "classic",
+    displayPalette: DEFAULT_DISPLAY_PALETTE,
+    haftarahMinhag: DEFAULT_HAFTARAH_MINHAG,
     scheduleTimesListMode: "all",
     scheduleZmanimKeys: [...DEFAULT_SCHEDULE_ZMANIM_KEYS],
     footerText: "",
@@ -302,8 +322,15 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
       return;
     }
     setSynagogueName(payload.data.synagogue.name);
-    const normalized = (payload.data.minyanim.length ? payload.data.minyanim : [createDefaultMinyan()]).map((m) => ({
+    const normalized = (payload.data.minyanim.length ? payload.data.minyanim : [createDefaultMinyan()]).map((m) => {
+      const displayStyle = (DISPLAY_STYLES as readonly string[]).includes(m.displayStyle)
+        ? (m.displayStyle as DisplayStyle)
+        : "classic";
+      return {
       ...m,
+      displayStyle,
+      displayPalette: resolveDisplayPalette(displayStyle, typeof m.displayPalette === "string" ? m.displayPalette : null),
+      haftarahMinhag: resolveHaftarahMinhag(typeof m.haftarahMinhag === "string" ? m.haftarahMinhag : null),
       footerText: typeof m.footerText === "string" ? m.footerText : "",
       scheduleTimesListMode: (m.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all") as ScheduleTimesListMode,
       scheduleZmanimKeys: Array.isArray(m.scheduleZmanimKeys)
@@ -323,7 +350,8 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
       ),
       shabbatAgendaItems: mapShabbatAgendaFromApi(m.shabbatAgendaItems ?? []),
       parashaCatalog: Array.isArray(m.parashaCatalog) ? m.parashaCatalog : []
-    }));
+    };
+    });
     setMinyanim(normalized);
     setHalachaSettings(payload.data.halachaSettings);
     setBulletinItems(mapBulletinFromApi(payload.data.bulletinItems ?? []));
@@ -503,6 +531,10 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                   <input
                     type="date"
                     className="h-10 w-full rounded-md border border-border bg-background px-3"
+                    disabled={
+                      halachaSettings.sourceKey === "yalkut_yosef" ||
+                      halachaSettings.sourceKey === "sefaria_halacha_yomit"
+                    }
                     value={halachaSettings.startDate}
                     onChange={(e) => setHalachaSettings((prev) => ({ ...prev, startDate: e.target.value }))}
                   />
@@ -511,22 +543,31 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                   <label className="mb-1 block text-sm font-medium">מקור הלכה</label>
                   <select
                     className="h-10 w-full rounded-md border border-border bg-background px-3"
-                    value={halachaSettings.sourceKey}
+                    value={
+                      halachaSettings.sourceKey === "yalkut_yosef"
+                        ? "sefaria_halacha_yomit"
+                        : halachaSettings.sourceKey
+                    }
                     onChange={(e) =>
                       setHalachaSettings((prev) => ({
                         ...prev,
-                        sourceKey: e.target.value as "manual" | "kitzur_shulchan_arukh"
+                        sourceKey: e.target.value as HalachaSettingsModel["sourceKey"]
                       }))
                     }
                   >
                     <option value="manual">הלכות שהוזנו ידנית (מפתח manual)</option>
                     <option value="kitzur_shulchan_arukh">קיצור שולחן ערוך (שורות בטבלה בלבד, ללא משיכה מהרשת)</option>
+                    <option value="sefaria_halacha_yomit">הלכה יומית — שולחן ערוך (חי מספריא; אם נכשל — אתמול)</option>
                   </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium">אופן תצוגה</label>
                   <select
                     className="h-10 w-full rounded-md border border-border bg-background px-3"
+                    disabled={
+                      halachaSettings.sourceKey === "yalkut_yosef" ||
+                      halachaSettings.sourceKey === "sefaria_halacha_yomit"
+                    }
                     value={halachaSettings.displayMode}
                     onChange={(e) =>
                       setHalachaSettings((prev) => ({
@@ -539,6 +580,12 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                     <option value="full">מלא</option>
                   </select>
                 </div>
+                {halachaSettings.sourceKey === "yalkut_yosef" ||
+                halachaSettings.sourceKey === "sefaria_halacha_yomit" ? (
+                  <p className="text-sm text-muted-foreground sm:col-span-2 md:col-span-3">
+                    מוצגת הלכת היום משולחן ערוך (אורח חיים) דרך ספריא. אם הרשת נכשלת — הלכת אתמול שנשמרה, לא מסך ריק.
+                  </p>
+                ) : null}
               </CardContent>
             </Card>
 
@@ -586,20 +633,67 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                     <select
                       className="h-10 w-full rounded-md border border-border bg-background px-3"
                       value={selectedMinyan.displayStyle}
+                      onChange={(e) => {
+                        const displayStyle = e.target.value as DisplayStyle;
+                        updateMinyan(selectedMinyanIndex, (m) => ({
+                          ...m,
+                          displayStyle,
+                          displayPalette: styleUsesPalettes(displayStyle)
+                            ? resolveDisplayPalette(displayStyle, m.displayPalette)
+                            : m.displayPalette
+                        }));
+                      }}
+                    >
+                      {DISPLAY_STYLES.map((style) => (
+                        <option key={style} value={style}>
+                          {DISPLAY_STYLE_LABELS[style]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">מנהג הפטרה</label>
+                    <select
+                      className="h-10 w-full rounded-md border border-border bg-background px-3"
+                      value={selectedMinyan.haftarahMinhag}
                       onChange={(e) =>
                         updateMinyan(selectedMinyanIndex, (m) => ({
                           ...m,
-                          displayStyle: e.target.value as DisplayStyle
+                          haftarahMinhag: e.target.value as HaftarahMinhag
                         }))
                       }
                     >
-                      <option value="classic">קלאסי</option>
-                      <option value="modern">מודרני</option>
-                      <option value="minimal">מינימלי</option>
-                      <option value="woodSilver">עץ וכסף</option>
-                      <option value="royalBlue">כחול מלכותי</option>
+                      {HAFTARAH_MINHAGIM.map((minhag) => (
+                        <option key={minhag} value={minhag}>
+                          {HAFTARAH_MINHAG_LABELS[minhag]}
+                        </option>
+                      ))}
                     </select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      ספרדי או חב״ד יוצגו רק כשיש הבדל באותה שבת; אחרת תוצג ההפטרה האשכנזית.
+                    </p>
                   </div>
+                  {styleUsesPalettes(selectedMinyan.displayStyle) ? (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">פלטת צבעים</label>
+                      <select
+                        className="h-10 w-full rounded-md border border-border bg-background px-3"
+                        value={selectedMinyan.displayPalette}
+                        onChange={(e) =>
+                          updateMinyan(selectedMinyanIndex, (m) => ({
+                            ...m,
+                            displayPalette: e.target.value as DisplayPalette
+                          }))
+                        }
+                      >
+                        {DISPLAY_PALETTES.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
                   <div className="sm:col-span-2">
                     <label className="mb-1 block text-sm font-medium">הודעה בתחתית המסך</label>
                     <input

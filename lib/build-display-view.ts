@@ -1,8 +1,10 @@
 import { cookies } from "next/headers";
 import { getPublishedBulletinItems, type BulletinItem } from "@/lib/bulletin-board";
-import { addDaysIsoDate, buildZmanimRows, formatOmerShortLabel, getDisplaySnapshot, getTomorrowIsoDateFrom, resolveShabbatMevarchimText, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
+import { addDaysIsoDate, buildZmanimRows, fetchHebcalLeyningForDate, formatOmerShortLabel, getDisplaySnapshot, getTomorrowIsoDateFrom, resolveShabbatMevarchimText, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
+import { resolveHaftarahDisplay, type HaftarahDisplay } from "@/lib/haftarah";
 import { PREVIEW_LITURGICAL_TILES, previewTilesFromKeys } from "@/lib/liturgical-additions";
-import { getDisplayConfig, type DisplayStyle, type ScheduleTimesListMode, type ScreenSetting } from "@/lib/display-config";
+import { DISPLAY_STYLES, isDisplayPalette, resolveDisplayPalette } from "@/lib/display-theme";
+import { getDisplayConfig, type DisplayPalette, type DisplayStyle, type ScheduleTimesListMode, type ScreenSetting } from "@/lib/display-config";
 import { getPublicHomeData } from "@/lib/data/public-content";
 import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule, settingsNeedSundayZmanim } from "@/lib/build-prayer-schedule";
 import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
@@ -19,6 +21,8 @@ export type DisplayViewParams = {
   forceTile?: string | string[];
   /** דריסת סגנון זמנית לתצוגה מקדימה, למשל style=royalBlue (לא משנה את ה-DB) */
   style?: string | string[];
+  /** דריסת פלטה זמנית, למשל palette=inkIvory */
+  palette?: string | string[];
 };
 
 export type DisplayTimeSection = {
@@ -37,10 +41,12 @@ export type DisplayShabbat = {
   mevarchimText: string | null;
   /** לוח זמנים ידני של הגבאי (שעה אופציונלית + תוכן) */
   agenda: Array<{ itemTime: string | null; content: string }>;
+  haftarah: HaftarahDisplay | null;
 };
 
 export type DisplayView = {
   style: DisplayStyle;
+  palette: DisplayPalette;
   synagogueId: string | null;
   synagogueName: string;
   minyanName: string | null;
@@ -57,6 +63,7 @@ export type DisplayView = {
     source?: string;
     chapterNumber?: number;
     sectionNumber?: number;
+    segments?: string[];
   } | null;
   prayerSchedule: DisplayPrayerSlot[];
   timeSections: DisplayTimeSection[];
@@ -89,6 +96,7 @@ async function resolveSynagogueId(params: DisplayViewParams): Promise<string | n
 function getHebrewWeekdayLabel(isoDate: string) {
   const [year, month, day] = isoDate.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  if (date.getUTCDay() === 6) return "שבת";
   return new Intl.DateTimeFormat("he-IL", { weekday: "long", timeZone: "UTC" }).format(date);
 }
 
@@ -98,7 +106,7 @@ function jsWeekdayFromIsoDate(isoDate: string): number {
   return new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getUTCDay();
 }
 
-const ALLOWED_STYLES: DisplayStyle[] = ["classic", "modern", "minimal", "woodSilver", "royalBlue"];
+const ALLOWED_STYLES: DisplayStyle[] = [...DISPLAY_STYLES];
 
 /**
  * בונה את כל הנתונים הדרושים לתצוגה (`/display` ו־`/m/display`) ממקור אחד —
@@ -150,6 +158,11 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const styleOverrideRaw = singleQueryParam(params.style);
   const styleOverride = ALLOWED_STYLES.find((s) => s === styleOverrideRaw) ?? null;
   const effectiveStyle = styleOverride ?? displayConfig.displayStyle;
+  const paletteOverrideRaw = singleQueryParam(params.palette);
+  const effectivePalette = resolveDisplayPalette(
+    effectiveStyle,
+    isDisplayPalette(paletteOverrideRaw) ? paletteOverrideRaw : displayConfig.displayPalette
+  );
 
   const todayJsDay = jsWeekdayFromIsoDate(todayIsoDate);
   const tomorrowJsDay = jsWeekdayFromIsoDate(tomorrowIsoDate);
@@ -221,6 +234,9 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const daysUntilSaturday = (6 - todayJsDay + 7) % 7;
   const saturdayIso = addDaysIsoDate(todayIsoDate, daysUntilSaturday);
   const fridayIso = addDaysIsoDate(saturdayIso, -1);
+  const leyningItem = await fetchHebcalLeyningForDate(saturdayIso);
+  const haftarah = resolveHaftarahDisplay(leyningItem, displayConfig.haftarahMinhag);
+  displaySnapshot.haftarah = haftarah;
 
   // שבת מברכין נקבעת לפי אירועי יום השבת (לא שישי).
   let saturdayEvents: string[] = [];
@@ -263,7 +279,8 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       agenda: shabbatAgendaItems.map((item) => ({
         itemTime: item.itemTime,
         content: item.content
-      }))
+      })),
+      haftarah
     };
   }
 
@@ -301,6 +318,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
 
   return {
     style: effectiveStyle,
+    palette: effectivePalette,
     synagogueId,
     synagogueName: displayConfig.synagogueName,
     minyanName: displayConfig.minyanName,
@@ -316,7 +334,8 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
           text: publicData.halacha.text,
           source: publicData.halacha.source,
           chapterNumber: publicData.halacha.chapterNumber,
-          sectionNumber: publicData.halacha.sectionNumber
+          sectionNumber: publicData.halacha.sectionNumber,
+          segments: publicData.halacha.segments
         }
       : null,
     prayerSchedule,

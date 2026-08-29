@@ -2,11 +2,23 @@ import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
 import { getParashaPrayerCatalog } from "@/lib/parasha-prayer-catalog-db";
 import type { ParashaPrayerCatalogRow } from "@/lib/parasha-prayer-catalog";
+import {
+  normalizeDisplayStyle,
+  resolveDisplayPalette,
+  type DisplayPalette,
+  type DisplayStyle
+} from "@/lib/display-theme";
+import { resolveHaftarahMinhag, type HaftarahMinhag } from "@/lib/haftarah-minhag";
+
+export type { DisplayPalette, DisplayStyle } from "@/lib/display-theme";
+export type { HaftarahMinhag } from "@/lib/haftarah-minhag";
 
 type MinyanRow = {
   id: string;
   name: string;
   display_style: string;
+  display_palette?: string | null;
+  haftarah_minhag?: string | null;
   schedule_times_list?: string | null;
   schedule_zmanim_keys?: string[] | null;
   display_footer_text?: string | null;
@@ -23,7 +35,6 @@ function isOrdinalToken(s: string) {
   return /^\d+$/.test(s.trim());
 }
 
-export type DisplayStyle = "classic" | "modern" | "minimal" | "woodSilver" | "royalBlue";
 export type ScreenKey =
   | "main"
   | "mainInfo"
@@ -95,6 +106,8 @@ export type DisplayConfig = {
   /** מיקום ומנהג לחישוב זמני היום וכניסת/יציאת שבת */
   location: SynagogueZmanimLocation;
   displayStyle: DisplayStyle;
+  displayPalette: DisplayPalette;
+  haftarahMinhag: HaftarahMinhag;
   /** לוח זמנים במסך הראשי: כל הזמנים או רק תפילות */
   scheduleTimesListMode: ScheduleTimesListMode;
   /** אילו זמנים הלכתיים להציג בלוח המסך הראשי (מפתחות Hebcal, בסדר הקטלוג) */
@@ -112,6 +125,8 @@ const DEFAULT_CONFIG: DisplayConfig = {
   minyanName: null,
   location: DEFAULT_ZMANIM_LOCATION,
   displayStyle: "classic",
+  displayPalette: "inkIvory",
+  haftarahMinhag: "ashkenazi",
   scheduleTimesListMode: "all",
   scheduleZmanimKeys: DEFAULT_SCHEDULE_ZMANIM_KEYS,
   footerText: null,
@@ -173,7 +188,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   if (!token) {
     const r = await supabase
       .from("minyanim")
-      .select("id, name, display_style, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+      .select("id, name, display_style, display_palette, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
       .order("created_at", { ascending: true })
@@ -183,7 +198,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   } else if (isUuid(token)) {
     const r = await supabase
       .from("minyanim")
-      .select("id, name, display_style, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+      .select("id, name, display_style, display_palette, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
       .eq("id", token)
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
@@ -192,7 +207,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   } else {
     const listRes = await supabase
       .from("minyanim")
-      .select("id, name, display_style, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+      .select("id, name, display_style, display_palette, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
       .order("created_at", { ascending: true });
@@ -271,7 +286,12 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
     minyanId: chosenMinyan.id,
     minyanName: chosenMinyan.name,
     location,
-    displayStyle: (chosenMinyan.display_style as DisplayStyle) ?? "classic",
+    displayStyle: normalizeDisplayStyle(chosenMinyan.display_style),
+    displayPalette: resolveDisplayPalette(
+      normalizeDisplayStyle(chosenMinyan.display_style),
+      chosenMinyan.display_palette
+    ),
+    haftarahMinhag: resolveHaftarahMinhag(chosenMinyan.haftarah_minhag),
     scheduleTimesListMode: normalizeScheduleTimesListMode(chosenMinyan.schedule_times_list),
     scheduleZmanimKeys: sanitizeScheduleZmanimKeys(chosenMinyan.schedule_zmanim_keys) ?? DEFAULT_SCHEDULE_ZMANIM_KEYS,
     footerText,

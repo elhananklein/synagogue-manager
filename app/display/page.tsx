@@ -1,4 +1,5 @@
 import { DisplayRotator } from "@/components/display/display-rotator";
+import { DisplayStyleSheet } from "@/components/display/display-style-sheet";
 import { PersistDisplaySynagogueCookie } from "@/components/display/persist-display-synagogue-cookie";
 import { buildDisplayView, type DisplayViewParams } from "@/lib/build-display-view";
 
@@ -15,8 +16,10 @@ export default async function DisplayPage({
   return (
     <>
       <PersistDisplaySynagogueCookie synagogueId={view.synagogueId} />
+      <DisplayStyleSheet style={view.style} />
       <DisplayRotator
         style={view.style}
+        palette={view.palette}
         synagogueId={view.synagogueId}
         synagogueName={view.synagogueName}
         minyanName={view.minyanName}

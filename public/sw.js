@@ -1,5 +1,5 @@
 /* Service worker — נדרש ב-Android Chrome ליצירת WebAPK (אפליקציה) ולא רק קיצור דרך. */
-const CACHE = "synagogue-shell-v3";
+const CACHE = "synagogue-shell-v4";
 const OFFLINE_URLS = ["/admin/login", "/icons/admin-icon-192.png", "/icons/admin-icon-512.png"];
 const DISPLAY_LAST = "/__display-last";
 const DISPLAY_NAV_TIMEOUT_MS = 12000;
@@ -47,9 +47,17 @@ function isDisplayHtmlGet(request) {
   return accept.includes("text/html");
 }
 
+function shouldBypass(request) {
+  const url = new URL(request.url);
+  if (url.pathname.startsWith("/api/")) return true;
+  const accept = request.headers.get("Accept") || "";
+  return accept.includes("text/x-component");
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
+  if (shouldBypass(request)) return;
 
   // ניווטים: רשת תחילה, עם גיבוי מינימלי כדי שה-fetch handler ייחשב "אמיתי".
   if (request.mode === "navigate") {
