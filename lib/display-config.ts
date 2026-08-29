@@ -39,6 +39,7 @@ export type ScreenKey =
   | "main"
   | "mainInfo"
   | "clock"
+  | "omer"
   | "halacha"
   | "dailyLearning"
   | "prayerTimes"

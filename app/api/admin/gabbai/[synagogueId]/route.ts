@@ -44,6 +44,7 @@ type ScreenInput = {
     | "main"
     | "mainInfo"
     | "clock"
+    | "omer"
     | "halacha"
     | "dailyLearning"
     | "prayerTimes"

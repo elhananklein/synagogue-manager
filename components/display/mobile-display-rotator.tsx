@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Link from "next/link";
 import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText, Megaphone, Flame, MoonStar, ChevronLeft } from "lucide-react";
 import { DisplayBulletinScreen } from "@/components/display/display-bulletin-screen";
+import { AnalogClock } from "@/components/display/analog-clock";
 import { LiveClock } from "@/components/display/live-clock";
 import { cn } from "@/lib/utils";
 import type { DailyLearningLine } from "@/lib/hebcal";
@@ -19,6 +20,7 @@ type ScreenKey =
   | "main"
   | "mainInfo"
   | "clock"
+  | "omer"
   | "halacha"
   | "dailyLearning"
   | "prayerTimes"
@@ -72,7 +74,8 @@ type MobileDisplayRotatorProps = {
 const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> = {
   main: { title: "מבט כללי", Icon: Sparkles },
   mainInfo: { title: "מידע מרכזי", Icon: Sparkles },
-  clock: { title: "ספירת העומר", Icon: Clock },
+  clock: { title: "שעון", Icon: Clock },
+  omer: { title: "ספירת העומר", Icon: Flame },
   halacha: { title: "הלכה יומית", Icon: ScrollText },
   dailyLearning: { title: "לימוד יומי", Icon: BookOpen },
   prayerTimes: { title: "זמני תפילות", Icon: CalendarDays },
@@ -188,7 +191,7 @@ export function MobileDisplayRotator({
     return screens.filter((s) => {
       if (!s.enabled) return false;
       if (s.screenKey === "shabbat" && !isFriOrSat) return false;
-      if (s.screenKey === "clock" && !snapshot.omerText) return false;
+      if (s.screenKey === "omer" && !snapshot.omerText) return false;
       return true;
     });
   }, [screens, snapshot.omerText]);
@@ -347,7 +350,8 @@ export function MobileDisplayRotator({
         {screenKey === "mainInfo" && (
           <MainInfoScreen snapshot={snapshot} nextPrayer={nextPrayer} mevarchimText={shabbatMevarchimText} />
         )}
-        {screenKey === "clock" && <ClockScreen snapshot={snapshot} />}
+        {screenKey === "clock" && <ClockScreen nextPrayer={nextPrayer} />}
+        {screenKey === "omer" && <OmerScreen snapshot={snapshot} />}
         {screenKey === "halacha" && <HalachaScreen halacha={halacha} />}
         {screenKey === "dailyLearning" && <DailyLearningScreen lines={dailyLearning} />}
         {screenKey === "prayerTimes" && (
@@ -606,7 +610,28 @@ function MainInfoScreen({
   );
 }
 
-function ClockScreen({ snapshot }: { snapshot: Snapshot }) {
+function ClockScreen({ nextPrayer }: { nextPrayer: { label: string; time: string } | null }) {
+  return (
+    <Card className="flex min-h-[12rem] flex-col items-center justify-center py-8 text-center">
+      <div className="display-datetime-pair">
+        <AnalogClock className="display-analog-clock--mobile" />
+        <div className="display-datetime-digital-col">
+          <LiveClock className="display-datetime-digital display-datetime-digital--mobile" splitSeconds />
+          {nextPrayer ? (
+            <p className="display-datetime-next-prayer">
+              <span className="display-datetime-next-prayer-label">התפילה הבאה:</span>
+              <span className="display-datetime-next-prayer-detail">
+                {nextPrayer.label} ב {nextPrayer.time}
+              </span>
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function OmerScreen({ snapshot }: { snapshot: Snapshot }) {
   return (
     <Card className="flex min-h-[12rem] flex-col items-center justify-center py-10 text-center">
       <p className="text-2xl font-bold leading-snug">{snapshot.omerText}</p>

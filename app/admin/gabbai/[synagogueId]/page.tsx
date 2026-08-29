@@ -43,6 +43,7 @@ type ScreenKey =
   | "main"
   | "mainInfo"
   | "clock"
+  | "omer"
   | "halacha"
   | "dailyLearning"
   | "prayerTimes"
@@ -118,7 +119,8 @@ const ZMAN_ANCHORS = [
 const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "main", label: "מסך ראשי" },
   { key: "mainInfo", label: "מידע מרכזי (מוגדל)" },
-  { key: "clock", label: "ספירת העומר" },
+  { key: "clock", label: "שעון" },
+  { key: "omer", label: "ספירת העומר" },
   { key: "halacha", label: "הלכה יומית" },
   { key: "dailyLearning", label: "לימוד יומי" },
   { key: "prayerTimes", label: "זמני תפילות" },
@@ -228,9 +230,10 @@ function createDefaultMinyan(): MinyanModel {
     prayerSettings: [createPrayer("weekday"), createPrayer("shabbat")],
     screens: [
       { screenKey: "main", sortOrder: 1, durationSeconds: 20, enabled: true },
-      { screenKey: "clock", sortOrder: 2, durationSeconds: 12, enabled: true },
-      { screenKey: "halacha", sortOrder: 3, durationSeconds: 18, enabled: true },
-      { screenKey: "dailyLearning", sortOrder: 4, durationSeconds: 22, enabled: false }
+      { screenKey: "clock", sortOrder: 2, durationSeconds: 15, enabled: true },
+      { screenKey: "omer", sortOrder: 3, durationSeconds: 12, enabled: true },
+      { screenKey: "halacha", sortOrder: 4, durationSeconds: 18, enabled: true },
+      { screenKey: "dailyLearning", sortOrder: 5, durationSeconds: 22, enabled: false }
     ],
     shabbatAgendaItems: [],
     parashaCatalog: []
@@ -1056,7 +1059,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                             />
                           </div>
                         </div>
-                        {screen.screenKey === "clock" ? (
+                        {screen.screenKey === "omer" ? (
                           <p className="text-[11px] text-muted-foreground">
                             מוצג בסיבוב רק בימי ספירת העומר, גם אם מסומן כפעיל.
                           </p>

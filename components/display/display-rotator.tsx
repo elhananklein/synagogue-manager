@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { Flame, MoonStar, ChevronLeft } from "lucide-react";
+import { AnalogClock } from "@/components/display/analog-clock";
 import { LiveClock } from "@/components/display/live-clock";
 import { DisplayBulletinScreen } from "@/components/display/display-bulletin-screen";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ type ScreenKey =
   | "main"
   | "mainInfo"
   | "clock"
+  | "omer"
   | "halacha"
   | "dailyLearning"
   | "prayerTimes"
@@ -121,6 +123,60 @@ function prayerTimesGroupIdFromLabel(label: string): PrayerTimesGroupId {
 }
 
 /** כותרת קבוצה — בערב שבת מציגים את השם המלא במקום «מנחה» גנרי. */
+type PrayerTimesGroupedRow = PrayerSlot & { totalMinutes: number; group: PrayerTimesGroupId };
+
+function PrayerTimesGroupedRows({
+  groups,
+  nextHighlight
+}: {
+  groups: Array<{ group: PrayerTimesGroupId; title: string; rows: PrayerTimesGroupedRow[] }>;
+  nextHighlight: { label: string; time: string } | null;
+}) {
+  return (
+    <div className="display-prayer-times-groups">
+      {groups.map(({ group, title, rows }) => (
+        <div key={group} className="display-prayer-times-group">
+          <div className="display-time-section-title">{title}</div>
+          <div className="display-prayer-times-row-line" dir="rtl">
+            {rows.map((item, idx) => {
+              const isNext =
+                nextHighlight !== null &&
+                nextHighlight.label === item.label &&
+                nextHighlight.time === item.time;
+              return (
+                <div
+                  key={`${group}-${item.label}-${item.time}-${idx}`}
+                  data-next-anchor={isNext ? "true" : undefined}
+                  className={cn(
+                    "display-time-row display-time-row--prayer display-prayer-times-cell",
+                    isNext && "display-time-row--next"
+                  )}
+                >
+                  <div className="display-time-main display-prayer-times-time-main">
+                    <span className="display-time-value-wrap">
+                      <span
+                        className={cn(
+                          "display-time-value display-prayer-times-time-value",
+                          isNext && "display-time-value--next"
+                        )}
+                      >
+                        {item.time}
+                      </span>
+                    </span>
+                  </div>
+                  {item.details ? (
+                    <div className="display-time-details display-prayer-times-cell-detail">{item.details}</div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function prayerTimesGroupTitle(group: PrayerTimesGroupId, rows: Array<{ label: string }>): string {
   if (group === "מנחה" && rows.length > 0 && rows.every((r) => r.label.includes("ערב שבת"))) {
     return rows[0]!.label;
@@ -380,8 +436,8 @@ export function DisplayRotator({
     const isFriOrSat = jsDay === 5 || jsDay === 6;
     return screens.filter((s) => {
       if (!s.enabled) return false;
-      if (s.screenKey === "shabbat" && !isFriOrSat && style !== "veryBold") return false;
-      if (s.screenKey === "clock" && !snapshot.omerText) return false;
+      if (s.screenKey === "shabbat" && !isFriOrSat) return false;
+      if (s.screenKey === "omer" && !snapshot.omerText) return false;
       return true;
     });
   }, [screens, snapshot.omerText, style]);
@@ -902,6 +958,27 @@ export function DisplayRotator({
           className="display-screen-stage"
         >
         {currentScreen === "clock" ? (
+          <section className="display-datetime-screen">
+            <div className="display-datetime-pair">
+              <AnalogClock />
+              <div className="display-datetime-digital-col">
+                <div dir="ltr">
+                  <LiveClock className="display-datetime-digital" splitSeconds />
+                </div>
+                {nextPrayer ? (
+                  <p className="display-datetime-next-prayer">
+                    <span className="display-datetime-next-prayer-label">התפילה הבאה:</span>
+                    <span className="display-datetime-next-prayer-detail">
+                      {nextPrayer.label} ב {nextPrayer.time}
+                    </span>
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {currentScreen === "omer" ? (
           <section
             className={cn(
               "display-clock-screen display-card",
@@ -987,49 +1064,10 @@ export function DisplayRotator({
                   contentClassName="display-prayer-times-fit-inner"
                   deps={[currentScreen, prayerTimesScreenGroups, prayerTimesNextBanner]}
                 >
-                <div className="display-prayer-times-groups">
-                  {prayerTimesScreenGroups.map(({ group, title, rows }) => (
-                    <div key={group} className="display-prayer-times-group">
-                      <div className="display-time-section-title">{title}</div>
-                      <div className="display-prayer-times-row-line" dir="rtl">
-                        {rows.map((item, idx) => {
-                          const isNext =
-                            nextTodayPrayerHighlight !== null &&
-                            nextTodayPrayerHighlight.label === item.label &&
-                            nextTodayPrayerHighlight.time === item.time;
-                          return (
-                            <div
-                              key={`${group}-${item.label}-${item.time}-${idx}`}
-                              data-next-anchor={isNext ? "true" : undefined}
-                              className={cn(
-                                "display-time-row display-time-row--prayer display-prayer-times-cell",
-                                isNext && "display-time-row--next"
-                              )}
-                            >
-                              <div className="display-time-main display-prayer-times-time-main">
-                                <span className="display-time-value-wrap">
-                                  <span
-                                    className={cn(
-                                      "display-time-value display-prayer-times-time-value",
-                                      isNext && "display-time-value--next"
-                                    )}
-                                  >
-                                    {item.time}
-                                  </span>
-                                </span>
-                              </div>
-                              {item.details ? (
-                                <div className="display-time-details display-prayer-times-cell-detail">
-                                  {item.details}
-                                </div>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                  <PrayerTimesGroupedRows
+                    groups={prayerTimesScreenGroups}
+                    nextHighlight={nextTodayPrayerHighlight}
+                  />
                 </AutoFit>
               )}
             </CardContent>
@@ -1136,15 +1174,42 @@ export function DisplayRotator({
             </div>
 
             {!isWoodSilverRevolution ? (
-            <Card className="display-card display-main-times-card">
-              <CardHeader>
-                <CardTitle className="display-times-title">זמני היום ותפילות</CardTitle>
-                {nextPrayer ? (
-                  <p className="display-next-prayer">
-                    התפילה הבאה: {nextPrayer.label} - {nextPrayer.time}
-                  </p>
-                ) : null}
-              </CardHeader>
+            <Card
+              className={cn(
+                "display-card display-main-times-card",
+                isVeryBold && scheduleTimesListMode === "prayers_only" && "display-main-times-card--prayers"
+              )}
+            >
+              {!(isVeryBold && scheduleTimesListMode === "prayers_only") ? (
+                <CardHeader>
+                  <CardTitle className="display-times-title">
+                    {scheduleTimesListMode === "prayers_only" ? "זמני תפילות" : "זמני היום ותפילות"}
+                  </CardTitle>
+                  {nextPrayer ? (
+                    <p className="display-next-prayer">
+                      התפילה הבאה: {nextPrayer.label} - {nextPrayer.time}
+                    </p>
+                  ) : null}
+                </CardHeader>
+              ) : null}
+              {isVeryBold && scheduleTimesListMode === "prayers_only" ? (
+                <CardContent className="display-prayer-times-body">
+                  {prayerTimesScreenGroups.length === 0 ? (
+                    <p className="display-daily-learning-empty">אין תפילות להיום.</p>
+                  ) : (
+                    <AutoFit
+                      className="display-prayer-times-fit"
+                      contentClassName="display-prayer-times-fit-inner"
+                      deps={[currentScreen, prayerTimesScreenGroups, nextTodayPrayerHighlight]}
+                    >
+                      <PrayerTimesGroupedRows
+                        groups={prayerTimesScreenGroups}
+                        nextHighlight={nextTodayPrayerHighlight}
+                      />
+                    </AutoFit>
+                  )}
+                </CardContent>
+              ) : (
               <CardContent className="display-times-content">
                 <div
                   ref={timesScrollRef}
@@ -1225,6 +1290,7 @@ export function DisplayRotator({
                   </div>
                 </div>
               </CardContent>
+              )}
             </Card>
             ) : null}
           </section>
@@ -1373,6 +1439,7 @@ function PrimaryInfoStack({
     .filter((value): value is string => Boolean(value))
     .flatMap((value) => value.split("\n").map((line) => line.trim()).filter(Boolean));
   const lastExtraSpans = extraTiles.length % 2 === 1;
+  const additionTileCount = 2 + extraTiles.length;
   const additionsClass =
     extraTiles.length >= 3
       ? "display-main-additions display-main-additions--many"
@@ -1412,7 +1479,7 @@ function PrimaryInfoStack({
           </div>
         </div>
       ) : (
-        <div className={additionsClass}>
+        <div className={additionsClass} data-addition-count={additionTileCount}>
           <Card className="display-card">
             <CardContent className="display-addition-content !p-0">
               <p className="display-addition-text">{snapshot.rainText}</p>

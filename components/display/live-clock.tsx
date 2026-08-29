@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useJerusalemClock } from "@/hooks/use-jerusalem-clock";
+import { padClock } from "@/lib/jerusalem-clock";
 
 function formatClockWithSeconds(now: Date) {
   return new Intl.DateTimeFormat("he-IL", {
@@ -24,21 +26,39 @@ function formatClockHoursMinutes(now: Date) {
 
 export function LiveClock({
   className,
-  showSeconds = true
+  showSeconds = true,
+  splitSeconds = false
 }: {
   className?: string;
   /** כש־false — רק שעות ודקות (למשל כותרת Classic). */
   showSeconds?: boolean;
+  /** שעות:דקות גדולות, שניות בפונט נפרד וקטן יותר. */
+  splitSeconds?: boolean;
 }) {
-  const placeholder = showSeconds ? "--:--:--" : "--:--";
-  const [timeText, setTimeText] = useState(placeholder);
+  const synced = useJerusalemClock();
+  const [timeText, setTimeText] = useState(showSeconds ? "--:--:--" : "--:--");
 
   useEffect(() => {
-    const format = showSeconds ? formatClockWithSeconds : formatClockHoursMinutes;
-    setTimeText(format(new Date()));
-    const id = setInterval(() => setTimeText(format(new Date())), showSeconds ? 1000 : 1000);
-    return () => clearInterval(id);
-  }, [showSeconds]);
+    if (splitSeconds && showSeconds) return;
+    const tick = () => {
+      const now = new Date();
+      setTimeText(showSeconds ? formatClockWithSeconds(now) : formatClockHoursMinutes(now));
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [showSeconds, splitSeconds]);
+
+  if (splitSeconds && showSeconds) {
+    return (
+      <p className={cn("display-clock-text", className)} suppressHydrationWarning>
+        <span className="display-clock-hm">
+          {padClock(synced.hour)}:{padClock(synced.minute)}
+        </span>
+        <span className="display-clock-seconds">:{padClock(synced.second)}</span>
+      </p>
+    );
+  }
 
   return (
     <p className={cn("display-clock-text", className)} suppressHydrationWarning>

@@ -106,6 +106,11 @@ body {
     flex: none;
   }
 
+  .display-screen-stage > .display-datetime-screen {
+    justify-content: center;
+    align-items: center;
+  }
+
   .display-screen-stage > .display-card > div:first-child,
   .display-main-times-card > div:first-child {
     align-items: center;
@@ -743,6 +748,158 @@ body {
     justify-content: center;
     padding: 3.5rem 4rem;
     text-align: center;
+  }
+
+  .display-datetime-screen {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(0.75rem, 2.4vh, 2rem);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+
+  .display-datetime-pair {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1.4rem, 4.2vw, 3.8rem);
+  }
+
+  .display-datetime-digital-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateY(-1.15rem);
+  }
+
+  .display-analog-clock {
+    width: clamp(18rem, 48vmin, 34rem);
+    aspect-ratio: 1;
+    height: auto;
+    display: block;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    filter: drop-shadow(0 16px 28px rgb(16 26 44 / 0.16));
+  }
+
+  .display-analog-clock svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .display-analog-clock-bezel {
+    fill: color-mix(in srgb, currentColor 14%, white);
+    stroke: currentColor;
+    stroke-width: 2.6;
+  }
+
+  .display-analog-clock-face {
+    fill: color-mix(in srgb, currentColor 7%, white);
+    stroke: none;
+  }
+
+  .display-analog-clock-ring {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.15;
+    opacity: 0.22;
+  }
+
+  .display-analog-clock-tick {
+    fill: currentColor;
+    opacity: 0.55;
+  }
+
+  .display-analog-clock-numeral {
+    fill: currentColor;
+    font-size: 18px;
+    font-weight: 600;
+    font-family: ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  .display-analog-clock-hand--hour,
+  .display-analog-clock-hand--minute {
+    fill: currentColor;
+    stroke: none;
+  }
+
+  .display-analog-clock-hand--second {
+    fill: currentColor;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    opacity: 0.92;
+  }
+
+  .display-analog-clock-second-weight {
+    fill: currentColor;
+    opacity: 0.55;
+  }
+
+  .display-analog-clock-hub-ring {
+    fill: color-mix(in srgb, currentColor 12%, white);
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+
+  .display-analog-clock-cap {
+    fill: currentColor;
+  }
+
+  .display-datetime-digital {
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    font-size: clamp(6.6rem, 21vmin, 15rem);
+    font-weight: 800;
+    line-height: 0.92;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  .display-datetime-digital .display-clock-seconds {
+    font-size: 0.38em;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    margin-inline-start: 0.12em;
+    opacity: 0.72;
+  }
+
+  .display-datetime-next-prayer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.28em;
+    margin: 3.4rem 0 0;
+    font-size: clamp(2.4rem, 5.6vmin, 3.8rem);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    text-align: center;
+  }
+
+  .display-datetime-next-prayer-detail {
+    font-size: 1.35em;
+  }
+
+  .display-analog-clock--mobile {
+    width: min(14.5rem, 64vw);
+  }
+
+  .display-datetime-digital--mobile {
+    font-size: clamp(3.1rem, 16vw, 4.6rem);
   }
 
   .display-halacha-title {
@@ -1835,6 +1992,17 @@ body {
     justify-content: center;
     width: 100%;
   }
+  .display--modern .display-datetime-screen {
+    color: #ffffff;
+  }
+  .display--modern .display-datetime-digital {
+    color: #ffffff;
+    text-shadow: 0 2px 16px rgb(0 0 0 / 0.35);
+  }
+  .display--modern .display-analog-clock-face {
+    fill: rgb(15 23 42 / 0.55);
+    stroke: #f8fafc;
+  }
   .display--modern .display-empty {
     color: #7dd3fc;
   }
@@ -2039,6 +2207,16 @@ body {
   .display--woodSilver .display-clock-screen .display-omer-line {
     color: #1e293b;
     text-shadow: none;
+  }
+  .display--woodSilver .display-datetime-screen {
+    color: #1a120d;
+  }
+  .display--woodSilver .display-datetime-digital {
+    color: #0f172a;
+  }
+  .display--woodSilver .display-analog-clock-face {
+    fill: rgb(255 251 235 / 0.88);
+    stroke: #3d2918;
   }
   /* מסך תאריך+שעה: השעון רק בכותרת — הגוף רק תאריך לועזי/עומר */
   .display--woodSilver .display-clock-screen--ws-revolution {
@@ -2440,6 +2618,21 @@ body {
       0 3px 12px rgb(0 0 0 / 0.55),
       0 0 40px rgb(250 204 21 / 0.2);
   }
+  .display--classic .display-datetime-screen {
+    color: #fffbeb;
+  }
+  .display--classic .display-datetime-digital {
+    color: #fffbeb;
+    text-shadow: 0 3px 12px rgb(0 0 0 / 0.55);
+  }
+  .display--classic .display-analog-clock-face {
+    fill: rgb(80 12 28 / 0.92);
+    stroke: rgb(251 191 36 / 0.85);
+  }
+  .display--classic .display-analog-clock-hand--second {
+    stroke: #fcd34d;
+    opacity: 1;
+  }
   .display--classic .display-daily-learning-title {
     color: #fef08a;
     font-weight: 900;
@@ -2811,6 +3004,16 @@ body {
   .display--royalBlue .display-clock-screen .display-omer-line {
     color: #2a1c08;
     text-shadow: none;
+  }
+  .display--royalBlue .display-datetime-screen {
+    color: #241708;
+  }
+  .display--royalBlue .display-datetime-digital {
+    color: #241708;
+  }
+  .display--royalBlue .display-analog-clock-face {
+    fill: var(--royal-parchment, #f4e6c8);
+    stroke: #8a6a28;
   }
   .display--royalBlue .display-empty {
     color: #fde68a;
