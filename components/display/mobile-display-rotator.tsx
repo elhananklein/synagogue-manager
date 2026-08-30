@@ -332,64 +332,66 @@ export function MobileDisplayRotator({
             <LiveClock className="m-header-clock-time" showSeconds={false} />
           </div>
         </div>
-        <div
-          className={cn("m-day-nav", dayLoading && "m-day-nav--loading")}
-          onTouchStart={(e) => {
-            dayTouchRef.current = { x: e.touches[0].clientX };
-          }}
-          onTouchEnd={(e) => {
-            const start = dayTouchRef.current;
-            dayTouchRef.current = null;
-            if (!start) return;
-            const dx = e.changedTouches[0].clientX - start.x;
-            if (Math.abs(dx) < 40) return;
-            if (dx > 0) shiftViewDate(-1);
-            else shiftViewDate(1);
-          }}
-        >
-          <button
-            type="button"
-            className="m-day-nav-btn"
-            aria-label="היום הקודם"
-            disabled={!canGoPrev || dayLoading}
-            onClick={() => shiftViewDate(-1)}
+        <div className="m-toolbar">
+          <div
+            className={cn("m-day-nav", dayLoading && "m-day-nav--loading")}
+            onTouchStart={(e) => {
+              dayTouchRef.current = { x: e.touches[0].clientX };
+            }}
+            onTouchEnd={(e) => {
+              const start = dayTouchRef.current;
+              dayTouchRef.current = null;
+              if (!start) return;
+              const dx = e.changedTouches[0].clientX - start.x;
+              if (Math.abs(dx) < 40) return;
+              if (dx > 0) shiftViewDate(-1);
+              else shiftViewDate(1);
+            }}
           >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-          <div className="m-day-nav-center">
-            <p className="m-day-nav-label">{dayTitle}</p>
-            <p className="m-day-nav-date">{snapshot.hebrewDate}</p>
-            {!isViewingToday ? (
-              <button
-                type="button"
-                className="m-day-today-btn"
-                disabled={dayLoading}
-                onClick={() => void loadViewDate(jerusalemTodayIso)}
-              >
-                חזרה להיום
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className="m-day-nav-btn"
+              aria-label="היום הקודם"
+              disabled={!canGoPrev || dayLoading}
+              onClick={() => shiftViewDate(-1)}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+            <div className="m-day-nav-center">
+              <p className="m-day-nav-label">{dayTitle}</p>
+              <p className="m-day-nav-date">{snapshot.hebrewDate}</p>
+              {!isViewingToday ? (
+                <button
+                  type="button"
+                  className="m-day-today-btn"
+                  disabled={dayLoading}
+                  onClick={() => void loadViewDate(jerusalemTodayIso)}
+                >
+                  חזרה להיום
+                </button>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              className="m-day-nav-btn"
+              aria-label="היום הבא"
+              disabled={!canGoNext || dayLoading}
+              onClick={() => shiftViewDate(1)}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
           </div>
-          <button
-            type="button"
-            className="m-day-nav-btn"
-            aria-label="היום הבא"
-            disabled={!canGoNext || dayLoading}
-            onClick={() => shiftViewDate(1)}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
+          {scheduleTimesListMode === "prayers_only" ? (
+            <button
+              type="button"
+              className={cn("m-schedule-toggle", showFullSchedule && "m-schedule-toggle--on")}
+              aria-pressed={showFullSchedule}
+              onClick={() => setShowFullSchedule((value) => !value)}
+            >
+              {showFullSchedule ? "הצג תפילות בלבד" : "הצג לוח זמנים מלא"}
+            </button>
+          ) : null}
         </div>
-        {scheduleTimesListMode === "prayers_only" ? (
-          <button
-            type="button"
-            className={cn("m-schedule-toggle", showFullSchedule && "m-schedule-toggle--on")}
-            aria-pressed={showFullSchedule}
-            onClick={() => setShowFullSchedule((value) => !value)}
-          >
-            {showFullSchedule ? "הצג תפילות בלבד" : "הצג לוח זמנים מלא"}
-          </button>
-        ) : null}
         {showHeaderShabbatZmanim ? (
           <div className="m-header-shabbat">
             {headerCandleLighting ? (
