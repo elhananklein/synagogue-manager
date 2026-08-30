@@ -610,11 +610,16 @@
   min-height: 0;
 }
 
+.display.display--veryBold .display-prayer-times-row-line .display-prayer-times-cell.display-time-row {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .display.display--veryBold .display-main-times-card--prayers .display-prayer-times-body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding: 0;
+  padding-inline-end: 0.4rem;
 }
 
 .display.display--veryBold .display-main-times-card--prayers .display-prayer-times-fit {
@@ -662,8 +667,15 @@
 }
 
 .display.display--veryBold .display-main-times-card--prayers .display-prayer-times-row-line {
-  grid-template-columns: repeat(auto-fit, minmax(6.2rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 0.55rem;
+  min-width: 0;
+  padding-inline-end: 0.2rem;
+}
+
+.display.display--veryBold .display-main-times-card--prayers .display-time-row--next {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--vb-gold-bright, #d4b15a);
 }
 
 .display.display--veryBold .display-main-times-card--prayers .display-prayer-times-time-value {
