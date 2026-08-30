@@ -39,5 +39,5 @@ export function setPreferredSynagogue(pref: PreferredSynagogue) {
 export function buildDisplayHref(pref: PreferredSynagogue) {
   const params = new URLSearchParams({ synagogueId: pref.synagogueId });
   if (pref.minyan) params.set("minyan", pref.minyan);
-  return `/display?${params.toString()}`;
+  return `/m/display?${params.toString()}`;
 }

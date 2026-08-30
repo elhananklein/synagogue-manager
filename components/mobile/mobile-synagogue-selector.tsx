@@ -31,7 +31,7 @@ export function MobileSynagogueSelector({ synagogues }: { synagogues: SynagogueO
           {filtered.map((synagogue) => (
             <li key={synagogue.id}>
               <Link
-                href={`/display?synagogueId=${encodeURIComponent(synagogue.id)}`}
+                href={`/m/display?synagogueId=${encodeURIComponent(synagogue.id)}`}
                 onClick={() => setPreferredSynagogue({ synagogueId: synagogue.id })}
                 className="m-list-item"
               >

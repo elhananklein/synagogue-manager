@@ -1,6 +1,7 @@
 import { DisplayRotator } from "@/components/display/display-rotator";
 import { DisplayStyleSheet } from "@/components/display/display-style-sheet";
 import { PersistDisplaySynagogueCookie } from "@/components/display/persist-display-synagogue-cookie";
+import { RedirectHandheldToMobile } from "@/components/mobile/redirect-handheld-to-mobile";
 import { buildDisplayView, type DisplayViewParams } from "@/lib/build-display-view";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export default async function DisplayPage({
 
   return (
     <>
+      <RedirectHandheldToMobile />
       <PersistDisplaySynagogueCookie synagogueId={view.synagogueId} />
       <DisplayStyleSheet style={view.style} />
       <DisplayRotator

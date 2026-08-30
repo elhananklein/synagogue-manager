@@ -8,11 +8,16 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 /** גיבוי לזיהוי המובנה של Next (כולל מכשירים שה־parser מפספס). */
 const MOBILE_UA_RE = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Silk/i;
 
-function isMobileRequest(request: NextRequest): boolean {
+function isPhoneRequest(request: NextRequest): boolean {
   const { device, ua } = userAgent(request);
   if (device.type === "mobile") return true;
   if (device.type === "tablet") return false;
   return MOBILE_UA_RE.test(ua);
+}
+
+function isTabletRequest(request: NextRequest): boolean {
+  const { device, ua } = userAgent(request);
+  return device.type === "tablet" || /iPad/i.test(ua);
 }
 
 const LOGIN_PATH = "/admin/login";
@@ -85,19 +90,20 @@ export async function middleware(request: NextRequest) {
   }
 
   const cookieMode = request.cookies.get(VIEW_COOKIE)?.value;
-  const isMobile = isMobileRequest(request);
+  const isPhone = isPhoneRequest(request);
+  const isTablet = isTabletRequest(request);
 
-  // במכשיר מובייל אמיתי — תמיד תצוגת מובייל (עוגיית view=full לא תדחוף תצוגת קיר).
-  // בדסקטופ: ברירת מחדל תצוגה רגילה; ?view=mobile מאפשר תצוגת מובייל לבדיקות.
-  const useMobile = isMobile ? true : cookieMode === "mobile";
+  // טלפון: תמיד מובייל. טאבלט/אייפד: מובייל, אלא אם ביקשו במפורש תצוגת קיר.
+  // דסקטופ: תצוגת קיר, אלא אם ?view=mobile.
+  const useMobile = isPhone || (isTablet && cookieMode !== "full") || cookieMode === "mobile";
 
-  if (!useMobile) {
+  if (!useMobile || path === "/m" || path.startsWith("/m/")) {
     return NextResponse.next();
   }
 
-  const rewriteUrl = nextUrl.clone();
-  rewriteUrl.pathname = path === "/" ? "/m" : `/m${path}`;
-  return NextResponse.rewrite(rewriteUrl);
+  const mobileUrl = nextUrl.clone();
+  mobileUrl.pathname = path === "/" ? "/m" : `/m${path}`;
+  return NextResponse.redirect(mobileUrl);
 }
 
 /** רץ על הדפים הציבוריים (תצוגת מובייל) ועל כל /admin (הזדהות). */

@@ -1,5 +1,5 @@
 /* Service worker — נדרש ב-Android Chrome ליצירת WebAPK (אפליקציה) ולא רק קיצור דרך. */
-const CACHE = "synagogue-shell-v4";
+const CACHE = "synagogue-shell-v5";
 const OFFLINE_URLS = ["/admin/login", "/icons/admin-icon-192.png", "/icons/admin-icon-512.png"];
 const DISPLAY_LAST = "/__display-last";
 const DISPLAY_NAV_TIMEOUT_MS = 12000;
@@ -38,6 +38,13 @@ function isDisplayPath(url) {
   return url.pathname === "/display" || url.pathname.startsWith("/display/");
 }
 
+function isMobileRequest(request) {
+  const ch = request.headers.get("Sec-CH-UA-Mobile");
+  if (ch === "?1") return true;
+  const ua = request.headers.get("User-Agent") || "";
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Silk/i.test(ua);
+}
+
 function isDisplayHtmlGet(request) {
   const url = new URL(request.url);
   if (!isDisplayPath(url)) return false;
@@ -66,21 +73,25 @@ self.addEventListener("fetch", (event) => {
 
     event.respondWith(
       (async () => {
+        const mobileNav = isMobileRequest(request);
         try {
-          const res = await fetchWithTimeout(request, displayNav ? DISPLAY_NAV_TIMEOUT_MS : 20000);
-          if (displayNav && res.ok) {
+          const res = await fetchWithTimeout(
+            request,
+            displayNav && !mobileNav ? DISPLAY_NAV_TIMEOUT_MS : 20000
+          );
+          if (displayNav && res.ok && !mobileNav) {
             const cache = await caches.open(CACHE);
             await cache.put(DISPLAY_LAST, res.clone());
             return res;
           }
-          if (displayNav && !res.ok) {
+          if (displayNav && !res.ok && !mobileNav) {
             const cache = await caches.open(CACHE);
             const cached = await cache.match(DISPLAY_LAST);
             if (cached) return cached;
           }
           return res;
         } catch {
-          if (displayNav) {
+          if (displayNav && !mobileNav) {
             const cache = await caches.open(CACHE);
             const cached = await cache.match(DISPLAY_LAST);
             if (cached) return cached;
@@ -102,7 +113,7 @@ self.addEventListener("fetch", (event) => {
         if (response.ok && request.url.includes("/icons/")) {
           await cache.put(request, response.clone());
         }
-        if (response.ok && isDisplayHtmlGet(request)) {
+        if (response.ok && isDisplayHtmlGet(request) && !isMobileRequest(request)) {
           await cache.put(DISPLAY_LAST, response.clone());
         }
         return response;

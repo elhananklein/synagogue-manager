@@ -1,6 +1,7 @@
 import { SynagogueSelector } from "@/components/home/synagogue-selector";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { RedirectHandheldToMobile } from "@/components/mobile/redirect-handheld-to-mobile";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <RedirectHandheldToMobile />
       <SiteHeader />
 
       <main className="container py-10">
