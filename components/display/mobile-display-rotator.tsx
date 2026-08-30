@@ -321,11 +321,9 @@ export function MobileDisplayRotator({
       <header className="m-header">
         <div className="m-header-top">
           <div className="m-header-names">
-            <h1>{synagogueName}</h1>
-            {minyanName ? <p className="m-header-minyan">{minyanName}</p> : null}
-            <div className="m-header-links">
-              <Link href="/?pick=1">החלפת בית כנסת</Link>
-              <Link href="/admin/login">כניסה כמנהל</Link>
+            <div className="m-header-title-row">
+              <h1>{synagogueName}</h1>
+              {minyanName ? <p className="m-header-minyan">{minyanName}</p> : null}
             </div>
           </div>
           <div className="m-header-clock">
@@ -424,7 +422,13 @@ export function MobileDisplayRotator({
             {renderPanel(screen.screenKey)}
           </section>
         ))}
-        {footerText ? <footer className="m-footer">{footerText}</footer> : null}
+        <footer className="m-footer">
+          {footerText ? <p className="m-footer-text">{footerText}</p> : null}
+          <div className="m-footer--links">
+            <Link href="/?pick=1">החלפת בית כנסת</Link>
+            <Link href="/admin/login">כניסה כמנהל</Link>
+          </div>
+        </footer>
       </div>
     </div>
   );
