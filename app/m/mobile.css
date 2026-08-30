@@ -457,15 +457,30 @@
 }
 
 .m-footer {
-  padding: 0.75rem 1rem 1rem;
+  padding: 0.65rem 1rem 0.85rem;
   text-align: center;
   font-size: 0.86rem;
   color: var(--m-cream);
   background: var(--m-burgundy-deep);
 }
 
-.m-footer-text {
-  margin: 0 0 0.45rem;
+.m-bottom-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1rem;
+  padding: 0.85rem 1rem 1.15rem;
+}
+
+.m-bottom-nav a {
+  color: var(--m-burgundy);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.m-bottom-nav a:hover {
+  color: var(--m-ink);
 }
 
 .m-footer--links {

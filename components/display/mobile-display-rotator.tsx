@@ -422,13 +422,11 @@ export function MobileDisplayRotator({
             {renderPanel(screen.screenKey)}
           </section>
         ))}
-        <footer className="m-footer">
-          {footerText ? <p className="m-footer-text">{footerText}</p> : null}
-          <div className="m-footer--links">
-            <Link href="/?pick=1">החלפת בית כנסת</Link>
-            <Link href="/admin/login">כניסה כמנהל</Link>
-          </div>
-        </footer>
+        {footerText ? <footer className="m-footer">{footerText}</footer> : null}
+        <nav className="m-bottom-nav" aria-label="ניווט">
+          <Link href="/?pick=1">החלפת בית כנסת</Link>
+          <Link href="/admin/login">כניסה כמנהל</Link>
+        </nav>
       </div>
     </div>
   );
