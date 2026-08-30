@@ -35,6 +35,9 @@ export default async function MobileDisplayPage({
       halacha={view.halacha}
       prayerSchedule={view.prayerSchedule}
       timeSections={view.timeSections}
+      timeSectionsAll={view.timeSectionsAll}
+      viewDate={view.viewDate}
+      scheduleTimesListMode={view.scheduleTimesListMode}
       shabbat={view.shabbat}
       bulletinItems={view.bulletinItems}
     />

@@ -4,47 +4,41 @@ import { ContactForm } from "@/components/contact/contact-form";
 
 export default function MobileContactPage() {
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-gradient-to-b from-slate-50 to-slate-100 text-slate-900">
-      <header className="flex items-center gap-3 border-b border-slate-200 bg-white/85 px-4 py-4 backdrop-blur">
-        <Link href="/" aria-label="חזרה" className="text-slate-500">
+    <div className="m-shell">
+      <header className="m-header m-header--simple">
+        <Link href="/" aria-label="חזרה" className="text-[#fff8ea]">
           <ArrowRight className="h-5 w-5" />
         </Link>
-        <span className="text-base font-bold">צור קשר</span>
+        <span className="text-base font-extrabold">צור קשר</span>
       </header>
 
-      <main className="flex-1 px-4 py-6">
-        <p className="mb-5 text-sm text-slate-500">לשאלות, תמיכה או בקשות שיפור אפשר לפנות אלינו:</p>
+      <main className="m-main">
+        <p className="m-lead">לשאלות, תמיכה או בקשות שיפור אפשר לפנות אלינו:</p>
 
         <div className="mb-6 space-y-3">
-          <a
-            href="tel:+972526480000"
-            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm active:scale-[0.99]"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+          <a href="tel:+972526480000" className="m-contact-row">
+            <span className="m-contact-icon">
               <Phone className="h-5 w-5" />
             </span>
             <span>
-              <span className="block text-sm text-slate-500">טלפון</span>
-              <span className="block text-base font-semibold">052-6480000</span>
+              <span className="m-tile-label">טלפון</span>
+              <span className="m-list-item-title">052-6480000</span>
             </span>
           </a>
 
-          <a
-            href="mailto:synagogues.manager@gmail.com"
-            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm active:scale-[0.99]"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+          <a href="mailto:synagogues.manager@gmail.com" className="m-contact-row">
+            <span className="m-contact-icon">
               <Mail className="h-5 w-5" />
             </span>
             <span>
-              <span className="block text-sm text-slate-500">דוא״ל</span>
-              <span className="block text-base font-semibold">synagogues.manager@gmail.com</span>
+              <span className="m-tile-label">דוא״ל</span>
+              <span className="m-list-item-title">synagogues.manager@gmail.com</span>
             </span>
           </a>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-base font-semibold">שלחו לנו הודעה</h2>
+        <div className="m-card">
+          <h2 className="m-section-title">שלחו לנו הודעה</h2>
           <ContactForm />
         </div>
       </main>

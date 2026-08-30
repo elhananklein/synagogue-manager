@@ -139,27 +139,17 @@ export function PwaInstallBanner({
   if (hidden) return null;
 
   return (
-    <div
-      className={cn(
-        "rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm",
-        className
-      )}
-    >
+    <div className={cn("m-pwa text-sm", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="font-semibold">{title ?? (showIosHint ? "התקנת האפליקציה" : "התקינו את האפליקציה")}</p>
-          <p className="mt-1 text-emerald-800/90">
+          <p className="m-pwa-title">{title ?? (showIosHint ? "התקנת האפליקציה" : "התקינו את האפליקציה")}</p>
+          <p className="m-pwa-desc">
             {showIosHint
               ? "ב-Safari: לחצו על כפתור ההתקנה למטה להוראות קצרות."
               : description ?? "גישה מהירה ישירות ממסך הבית."}
           </p>
         </div>
-        <button
-          type="button"
-          aria-label="סגור"
-          onClick={dismiss}
-          className="shrink-0 rounded-md p-1 text-emerald-700 hover:bg-emerald-100"
-        >
+        <button type="button" aria-label="סגור" onClick={dismiss} className="m-pwa-close">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -168,14 +158,14 @@ export function PwaInstallBanner({
         type="button"
         onClick={() => void onInstallClick()}
         disabled={busy}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 font-semibold text-white active:scale-[0.99] disabled:opacity-70"
+        className="m-pwa-cta"
       >
         {showIosHint ? <Share className="h-4 w-4" /> : <Download className="h-4 w-4" />}
         {busy ? "פותח…" : installLabel ?? (showIosHint ? "איך להתקין ב-iPhone" : "התקן אפליקציה")}
       </button>
 
       {showManual ? (
-        <div className="mt-3 rounded-lg border border-emerald-200 bg-white/70 px-3 py-2 text-xs leading-relaxed text-emerald-900">
+        <div className="m-pwa-manual">
           {showIosHint ? (
             <ol className="list-decimal space-y-1 pr-4">
               <li>
@@ -194,7 +184,7 @@ export function PwaInstallBanner({
             </ol>
           )}
           {!showIosHint && !deferredPrompt ? (
-            <p className="mt-2 text-emerald-800/80">
+            <p className="m-pwa-desc mt-2">
               אם מופיע רק «צור קיצור דרך» — הסירו קיצורים/אפליקציות ישנות של האתר ממסך הבית, רעננו את הדף
               (לאחר העדכון), ונסו שוב כשאתם מחוברים לניהול.
             </p>

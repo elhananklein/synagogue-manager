@@ -22,32 +22,25 @@ export default async function MobileHomePage() {
     })) ?? [];
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-gradient-to-b from-slate-50 to-slate-100 text-slate-900">
+    <div className="m-shell">
       <Suspense fallback={null}>
         <MobileHomeRedirect />
       </Suspense>
-      <header className="flex items-center gap-2 border-b border-slate-200 bg-white/85 px-4 py-4 backdrop-blur">
-        <Building2 className="h-5 w-5 text-emerald-600" />
-        <span className="text-base font-bold">מערכת לניהול בתי כנסת</span>
+      <header className="m-header m-header--simple">
+        <Building2 className="h-5 w-5" />
+        <span className="text-base font-extrabold">מערכת לניהול בתי כנסת</span>
       </header>
 
-      <main className="flex-1 px-4 py-6">
-        <h1 className="mb-1 text-2xl font-bold tracking-tight">ברוכים הבאים</h1>
-        <p className="mb-5 text-sm text-slate-500">בחרו בית כנסת כדי לצפות בזמני התפילה והלימוד.</p>
+      <main className="m-main">
+        <h1 className="m-title">ברוכים הבאים</h1>
+        <p className="m-lead">בחרו בית כנסת כדי לצפות בזמני התפילה והלימוד.</p>
         <PwaInstallBanner className="mb-5" />
         <MobileSynagogueSelector synagogues={synagogues} />
       </main>
 
-      <footer className="flex items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-3 text-sm">
-        <Link href="/contact" className="text-slate-600">
-          צור קשר
-        </Link>
-        <span className="text-slate-300" aria-hidden>
-          |
-        </span>
-        <Link href="/admin/login" className="font-medium text-emerald-700">
-          כניסה כמנהל
-        </Link>
+      <footer className="m-footer m-footer--links">
+        <Link href="/contact">צור קשר</Link>
+        <Link href="/admin/login">כניסה כמנהל</Link>
       </footer>
     </div>
   );

@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { getPublishedBulletinItems, type BulletinItem } from "@/lib/bulletin-board";
-import { addDaysIsoDate, buildZmanimRows, fetchHebcalLeyningForDate, formatOmerShortLabel, getDisplaySnapshot, getTomorrowIsoDateFrom, resolveShabbatMevarchimText, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
+import { addDaysIsoDate, buildZmanimRows, fetchHebcalLeyningForDate, formatOmerShortLabel, getDisplaySnapshot, getTomorrowIsoDateFrom, resolveShabbatMevarchimText, toIsoDateJerusalem, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
 import { resolveHaftarahDisplay, type HaftarahDisplay } from "@/lib/haftarah";
 import { PREVIEW_LITURGICAL_TILES, previewTilesFromKeys } from "@/lib/liturgical-additions";
 import { DISPLAY_STYLES, isDisplayPalette, resolveDisplayPalette } from "@/lib/display-theme";
@@ -8,6 +8,7 @@ import { getDisplayConfig, type DisplayPalette, type DisplayStyle, type Schedule
 import { getPublicHomeData } from "@/lib/data/public-content";
 import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule, settingsNeedSundayZmanim } from "@/lib/build-prayer-schedule";
 import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
+import { hebrewWeekdayLong, resolveViewIsoDate } from "@/lib/view-date";
 
 export type DisplayViewParams = {
   synagogueId?: string | string[];
@@ -23,6 +24,8 @@ export type DisplayViewParams = {
   style?: string | string[];
   /** דריסת פלטה זמנית, למשל palette=inkIvory */
   palette?: string | string[];
+  /** תאריך תצוגה YYYY-MM-DD (מובייל: דפדוף בין ימים) */
+  date?: string | string[];
 };
 
 export type DisplayTimeSection = {
@@ -67,6 +70,10 @@ export type DisplayView = {
   } | null;
   prayerSchedule: DisplayPrayerSlot[];
   timeSections: DisplayTimeSection[];
+  /** תמיד כולל זמנים הלכתיים — למתג המובייל, בלי לשנות את הגדרת הגבאי לקיר */
+  timeSectionsAll: DisplayTimeSection[];
+  /** היום האזרחי לפיו נבנתה התצוגה */
+  viewDate: string;
   shabbat: DisplayShabbat | null;
   bulletinItems: BulletinItem[];
 };
@@ -93,13 +100,6 @@ async function resolveSynagogueId(params: DisplayViewParams): Promise<string | n
   return fromEnv || null;
 }
 
-function getHebrewWeekdayLabel(isoDate: string) {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-  if (date.getUTCDay() === 6) return "שבת";
-  return new Intl.DateTimeFormat("he-IL", { weekday: "long", timeZone: "UTC" }).format(date);
-}
-
 /** יום בשבוע (0=ראשון … 6=שבת) מתאריך אזרחי YYYY-MM-DD — בלי תלות ב־timezone של השרת. */
 function jsWeekdayFromIsoDate(isoDate: string): number {
   const [year, month, day] = isoDate.split("-").map(Number);
@@ -116,12 +116,8 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const synagogueId = await resolveSynagogueId(params);
   const minyanSelector = singleQueryParam(params.minyan) ?? singleQueryParam(params.minyanId);
 
-  const todayIsoDate = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Jerusalem",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date());
+  const jerusalemTodayIso = toIsoDateJerusalem();
+  const todayIsoDate = resolveViewIsoDate(singleQueryParam(params.date), jerusalemTodayIso);
   const tomorrowIsoDate = getTomorrowIsoDateFrom(todayIsoDate);
 
   // נשלף קודם את הגדרות בית הכנסת כדי לקבל את המיקום, ואז נחשב את הזמנים לפיו.
@@ -284,37 +280,47 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     };
   }
 
+  const todayZmanimItems = buildZmanimRows(snapshot.zmanimSourceTimes, displayConfig.scheduleZmanimKeys).map((row) => ({
+    label: row.label,
+    time: row.time,
+    kind: "zman" as const
+  }));
+  const tomorrowZmanimItems = buildZmanimRows(tomorrowSnapshot.zmanimSourceTimes, displayConfig.scheduleZmanimKeys).map(
+    (row) => ({
+      label: row.label,
+      time: row.time,
+      kind: "zman" as const
+    })
+  );
+  const todayPrayerItems = prayerSchedule.map((row) => ({
+    label: row.label,
+    time: row.time,
+    details: row.details,
+    kind: "prayer" as const
+  }));
+  const tomorrowPrayerItems = tomorrowPrayerSchedule.map((row) => ({
+    label: row.label,
+    time: row.time,
+    details: row.details,
+    kind: "prayer" as const
+  }));
   const includeZmanimInTimesList = displayConfig.scheduleTimesListMode !== "prayers_only";
-  const todayZmanimItems = includeZmanimInTimesList
-    ? buildZmanimRows(snapshot.zmanimSourceTimes, displayConfig.scheduleZmanimKeys).map((row) => ({
-        label: row.label,
-        time: row.time,
-        kind: "zman" as const
-      }))
-    : [];
-  const tomorrowZmanimItems = includeZmanimInTimesList
-    ? buildZmanimRows(tomorrowSnapshot.zmanimSourceTimes, displayConfig.scheduleZmanimKeys).map((row) => ({
-        label: row.label,
-        time: row.time,
-        kind: "zman" as const
-      }))
-    : [];
-  const timeSections: DisplayTimeSection[] = [
+  const timeSectionsAll: DisplayTimeSection[] = [
     {
-      title: `היום (${getHebrewWeekdayLabel(todayIsoDate)})`,
-      items: [
-        ...todayZmanimItems,
-        ...prayerSchedule.map((row) => ({ label: row.label, time: row.time, details: row.details, kind: "prayer" as const }))
-      ]
+      title: `היום (${hebrewWeekdayLong(todayIsoDate)})`,
+      items: [...todayZmanimItems, ...todayPrayerItems]
     },
     {
-      title: `מחר (${getHebrewWeekdayLabel(tomorrowIsoDate)})`,
-      items: [
-        ...tomorrowZmanimItems,
-        ...tomorrowPrayerSchedule.map((row) => ({ label: row.label, time: row.time, details: row.details, kind: "prayer" as const }))
-      ]
+      title: `מחר (${hebrewWeekdayLong(tomorrowIsoDate)})`,
+      items: [...tomorrowZmanimItems, ...tomorrowPrayerItems]
     }
   ];
+  const timeSections: DisplayTimeSection[] = includeZmanimInTimesList
+    ? timeSectionsAll
+    : [
+        { title: timeSectionsAll[0].title, items: todayPrayerItems },
+        { title: timeSectionsAll[1].title, items: tomorrowPrayerItems }
+      ];
 
   return {
     style: effectiveStyle,
@@ -340,6 +346,8 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       : null,
     prayerSchedule,
     timeSections,
+    timeSectionsAll,
+    viewDate: todayIsoDate,
     shabbat,
     bulletinItems
   };

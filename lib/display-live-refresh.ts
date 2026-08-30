@@ -27,12 +27,17 @@ export function pickDisplayLiveFields(view: DisplayView) {
     halacha: view.halacha,
     prayerSchedule: view.prayerSchedule,
     timeSections: view.timeSections,
+    timeSectionsAll: view.timeSectionsAll,
+    viewDate: view.viewDate,
     shabbat: view.shabbat,
     bulletinItems: view.bulletinItems
   };
 }
 
-export async function fetchDisplayLiveView(timeoutMs = DISPLAY_LIVE_TIMEOUT_MS): Promise<DisplayView | null> {
+export async function fetchDisplayLiveView(
+  timeoutMs = DISPLAY_LIVE_TIMEOUT_MS,
+  extraParams?: Record<string, string | null | undefined>
+): Promise<DisplayView | null> {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
 
   const controller = new AbortController();
@@ -40,6 +45,12 @@ export async function fetchDisplayLiveView(timeoutMs = DISPLAY_LIVE_TIMEOUT_MS):
   try {
     const url = new URL("/api/display", window.location.origin);
     url.search = window.location.search;
+    if (extraParams) {
+      for (const [key, value] of Object.entries(extraParams)) {
+        if (value) url.searchParams.set(key, value);
+        else url.searchParams.delete(key);
+      }
+    }
     const res = await fetch(url, {
       method: "GET",
       cache: "no-store",
