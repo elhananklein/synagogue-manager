@@ -1,6 +1,7 @@
 import { MobileDisplayRotator } from "@/components/display/mobile-display-rotator";
 import { SaveSynagoguePreference } from "@/components/mobile/save-synagogue-preference";
 import { buildDisplayView, type DisplayViewParams } from "@/lib/build-display-view";
+import { listActiveMinyanim, resolveMinyanOrdinal } from "@/lib/display-config";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +21,18 @@ export default async function MobileDisplayPage({
   const view = await buildDisplayView(params);
   const synagogueId = singleParam(params.synagogueId);
   const minyan = singleParam(params.minyan) ?? singleParam(params.minyanId);
+  const minyanOptions = synagogueId ? await listActiveMinyanim(synagogueId) : [];
+  const currentMinyanIndex = resolveMinyanOrdinal(minyanOptions, minyan, view.minyanName);
 
   return (
     <>
       <SaveSynagoguePreference synagogueId={synagogueId} minyan={minyan} />
       <MobileDisplayRotator
+      synagogueId={synagogueId}
       synagogueName={view.synagogueName}
       minyanName={view.minyanName}
+      minyanOptions={minyanOptions}
+      currentMinyanIndex={currentMinyanIndex}
       footerText={view.footerText}
       screens={view.screens}
       dailyLearning={view.dailyLearning}

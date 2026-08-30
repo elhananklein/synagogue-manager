@@ -85,6 +85,49 @@
   color: #f3d48a;
 }
 
+.m-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.m-minyan-switch {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: 46%;
+  align-items: center;
+}
+
+.m-minyan-select {
+  appearance: none;
+  max-width: 100%;
+  padding: 0 1.15rem 0 0;
+  border: 0;
+  background: transparent;
+  color: #f3d48a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+}
+
+.m-minyan-select:disabled {
+  opacity: 0.55;
+}
+
+.m-minyan-caret {
+  position: absolute;
+  inset-inline-end: 0;
+  width: 0.85rem;
+  height: 0.85rem;
+  pointer-events: none;
+  color: #f3d48a;
+}
+
 .m-header-links {
   display: flex;
   flex-wrap: wrap;

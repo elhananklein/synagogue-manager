@@ -35,6 +35,44 @@ function isOrdinalToken(s: string) {
   return /^\d+$/.test(s.trim());
 }
 
+export type MobileMinyanOption = {
+  index: number;
+  name: string;
+};
+
+export async function listActiveMinyanim(synagogueId: string): Promise<MobileMinyanOption[]> {
+  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
+  if (!supabase || !synagogueId.trim()) return [];
+  const listRes = await supabase
+    .from("minyanim")
+    .select("name")
+    .eq("synagogue_id", synagogueId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+  if (listRes.error || !listRes.data?.length) return [];
+  return listRes.data.map((row, i) => ({
+    index: i + 1,
+    name: typeof row.name === "string" && row.name.trim() ? row.name.trim() : `מניין ${i + 1}`
+  }));
+}
+
+export function resolveMinyanOrdinal(
+  options: MobileMinyanOption[],
+  selector: string | null | undefined,
+  currentName?: string | null
+) {
+  if (!options.length) return 1;
+  const token = selector?.trim() ?? "";
+  if (isOrdinalToken(token)) {
+    const n = Number.parseInt(token, 10);
+    if (n >= 1 && n <= options.length) return n;
+  }
+  const byName = options.find(
+    (item) => item.name === token || (currentName && item.name === currentName.trim())
+  );
+  return byName?.index ?? 1;
+}
+
 export type ScreenKey =
   | "main"
   | "mainInfo"

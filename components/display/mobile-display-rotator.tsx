@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText, Megaphone, Flame, MoonStar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText, Megaphone, Flame, MoonStar, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { AnalogClock } from "@/components/display/analog-clock";
 import { LiveClock } from "@/components/display/live-clock";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,8 @@ import type {
 import { fetchDisplayLiveView, pickDisplayLiveFields, useDisplayLiveRefresh, useHalachicDayLiveRefresh } from "@/lib/display-live-refresh";
 import { addDaysIsoDate, toIsoDateJerusalem } from "@/lib/hebcal";
 import { daysBetweenIso, relativeDayLabel, VIEW_DATE_RANGE_DAYS } from "@/lib/view-date";
-import type { ScheduleTimesListMode } from "@/lib/display-config";
+import type { MobileMinyanOption, ScheduleTimesListMode } from "@/lib/display-config";
+import { setPreferredSynagogue } from "@/lib/mobile-synagogue-preference";
 
 type ScreenKey =
   | "main"
@@ -53,8 +54,11 @@ type Snapshot = {
 };
 
 type MobileDisplayRotatorProps = {
+  synagogueId?: string | null;
   synagogueName: string;
   minyanName: string | null;
+  minyanOptions?: MobileMinyanOption[];
+  currentMinyanIndex?: number;
   footerText?: string | null;
   screens: RotatorScreen[];
   dailyLearning: DailyLearningLine[];
@@ -125,8 +129,11 @@ function toMinutes(time: string) {
 }
 
 export function MobileDisplayRotator({
+  synagogueId = null,
   synagogueName: synagogueNameProp,
   minyanName: minyanNameProp,
+  minyanOptions = [],
+  currentMinyanIndex: currentMinyanIndexProp = 1,
   footerText: footerTextProp,
   screens: screensProp,
   dailyLearning: dailyLearningProp,
@@ -176,6 +183,7 @@ export function MobileDisplayRotator({
     bulletinItems
   } = live;
   const [showFullSchedule, setShowFullSchedule] = useState(scheduleTimesListModeProp === "all");
+  const [minyanIndex, setMinyanIndex] = useState(currentMinyanIndexProp);
   const [dayLoading, setDayLoading] = useState(false);
   const dayLoadingRef = useRef(false);
   const dayTouchRef = useRef<{ x: number } | null>(null);
@@ -206,6 +214,10 @@ export function MobileDisplayRotator({
     if (url.href !== window.location.href) window.history.replaceState(null, "", url);
   }, []);
 
+  useEffect(() => {
+    setShowFullSchedule(scheduleTimesListMode === "all");
+  }, [scheduleTimesListMode]);
+
   const refreshLive = useDisplayLiveRefresh(applyView);
   useHalachicDayLiveRefresh(snapshot.halachicDayRollIso, refreshLive);
 
@@ -233,6 +245,35 @@ export function MobileDisplayRotator({
       }
     },
     [applyView]
+  );
+
+  const loadMinyan = useCallback(
+    async (ordinal: number) => {
+      if (dayLoadingRef.current || ordinal === minyanIndex) return;
+      dayLoadingRef.current = true;
+      setDayLoading(true);
+      try {
+        const todayIso = toIsoDateJerusalem();
+        const dateParam = viewDate === todayIso ? null : viewDate;
+        const view = await fetchDisplayLiveView(15_000, {
+          minyan: String(ordinal),
+          date: dateParam
+        });
+        if (!view) return;
+        applyView(view);
+        setMinyanIndex(ordinal);
+        const url = new URL(window.location.href);
+        url.searchParams.set("minyan", String(ordinal));
+        if (dateParam) url.searchParams.set("date", dateParam);
+        else url.searchParams.delete("date");
+        window.history.replaceState(null, "", url);
+        if (synagogueId) setPreferredSynagogue({ synagogueId, minyan: String(ordinal) });
+      } finally {
+        dayLoadingRef.current = false;
+        setDayLoading(false);
+      }
+    },
+    [applyView, minyanIndex, synagogueId, viewDate]
   );
 
   const enabledScreens = useMemo(() => {
@@ -323,7 +364,26 @@ export function MobileDisplayRotator({
           <div className="m-header-names">
             <div className="m-header-title-row">
               <h1>{synagogueName}</h1>
-              {minyanName ? <p className="m-header-minyan">{minyanName}</p> : null}
+              {minyanOptions.length > 1 ? (
+                <label className="m-minyan-switch">
+                  <span className="m-visually-hidden">בחירת מניין</span>
+                  <select
+                    className="m-minyan-select"
+                    value={minyanIndex}
+                    disabled={dayLoading}
+                    onChange={(e) => void loadMinyan(Number(e.target.value))}
+                  >
+                    {minyanOptions.map((option) => (
+                      <option key={option.index} value={option.index}>
+                        {option.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="m-minyan-caret" aria-hidden />
+                </label>
+              ) : minyanName ? (
+                <p className="m-header-minyan">{minyanName}</p>
+              ) : null}
             </div>
           </div>
           <div className="m-header-clock">
