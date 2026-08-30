@@ -1,4 +1,4 @@
-import { addDaysIsoDate, toIsoDateJerusalem } from "@/lib/hebcal";
+import { toIsoDateJerusalem } from "@/lib/hebcal";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export const VIEW_DATE_RANGE_DAYS = 21;
