@@ -427,6 +427,11 @@ export function addDaysIsoDate(isoDate: string, days: number) {
   return `${y}-${m}-${d}`;
 }
 
+function gregorianYmdQuery(isoDate: string) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return `gy=${year}&gm=${month}&gd=${day}`;
+}
+
 /** מפתח תצוגה לפרשה — זהה ללוגיקת המסך (Hebcal: hebrew או title). */
 export function parashaDisplayKeyFromHebcalParashatItem(item: { hebrew?: string; title: string }) {
   return item.hebrew ?? item.title ?? "לא נמצא";
@@ -585,34 +590,30 @@ export async function getDisplaySnapshot(
   const havdalahQuery =
     location?.havdalahMode === "minutes" ? `m=${location.havdalahMinutes ?? 72}` : "M=on";
   const zmanimUrl = `https://www.hebcal.com/zmanim?cfg=json&${geoQuery}&date=${civilIso}`;
-  const shabbatUrl = `https://www.hebcal.com/shabbat?cfg=json&${geoQuery}&b=${candleMinutes}&${havdalahQuery}`;
 
-  const [shabbatRes, zmanimRes] = await Promise.all([
-    fetch(shabbatUrl, hebcalDisplayFetch),
-    fetch(zmanimUrl, hebcalDisplayFetch)
-  ]);
-
-  if (!shabbatRes.ok || !zmanimRes.ok) {
+  const zmanimRes = await fetch(zmanimUrl, hebcalDisplayFetch);
+  if (!zmanimRes.ok) {
     throw new Error("Failed to load Hebcal data");
   }
-
-  const shabbat = (await shabbatRes.json()) as HebcalShabbatResponse;
   const zmanim = (await zmanimRes.json()) as HebcalZmanimResponse;
 
   const halachicIso = halachicCivilIsoForConverter(civilIso, now, zmanim.times?.tzeit85deg);
+  const shabbatUrl = `https://www.hebcal.com/shabbat?cfg=json&${geoQuery}&b=${candleMinutes}&${havdalahQuery}&${gregorianYmdQuery(halachicIso)}`;
   const [hy, hm, hd] = halachicIso.split("-").map(Number);
   const converterUrl = `https://www.hebcal.com/converter?cfg=json&g2h=1&gy=${hy}&gm=${hm}&gd=${hd}`;
   const learningUrl = `https://www.hebcal.com/learning/${civilIso}?cfg=json&${geoQuery}`;
 
-  const converterRes = await fetch(converterUrl, hebcalDisplayFetch);
-  const learningRes =
-    options?.omitDailyLearning === true
-      ? null
-      : await fetch(learningUrl, hebcalDisplayFetch);
+  const [shabbatRes, converterRes, learningRes] = await Promise.all([
+    fetch(shabbatUrl, hebcalDisplayFetch),
+    fetch(converterUrl, hebcalDisplayFetch),
+    options?.omitDailyLearning === true ? Promise.resolve(null) : fetch(learningUrl, hebcalDisplayFetch)
+  ]);
 
-  if (!converterRes.ok) {
+  if (!shabbatRes.ok || !converterRes.ok) {
     throw new Error("Failed to load Hebcal data");
   }
+
+  const shabbat = (await shabbatRes.json()) as HebcalShabbatResponse;
 
   const converter = (await converterRes.json()) as HebcalConverterResponse;
 
