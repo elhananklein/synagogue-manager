@@ -1,9 +1,20 @@
+import type { Metadata } from "next";
+
 import { MobileDisplayRotator } from "@/components/display/mobile-display-rotator";
 import { SaveSynagoguePreference } from "@/components/mobile/save-synagogue-preference";
 import { buildDisplayView, type DisplayViewParams } from "@/lib/build-display-view";
 import { listActiveMinyanim, resolveMinyanOrdinal } from "@/lib/display-config";
+import { generateDisplayMetadata } from "@/lib/synagogue-public-title";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  searchParams
+}: {
+  searchParams: Promise<DisplayViewParams>;
+}): Promise<Metadata> {
+  return generateDisplayMetadata(await searchParams);
+}
 
 function singleParam(value: string | string[] | undefined): string | null {
   if (value == null) return null;

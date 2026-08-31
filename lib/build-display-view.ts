@@ -86,7 +86,7 @@ function singleQueryParam(value: string | string[] | undefined | null): string |
 }
 
 /** synagogueId מה־URL, אחרת מה־cookie / ברירת מחדל — בלי זה אין תפילות בלוח. */
-async function resolveSynagogueId(params: DisplayViewParams): Promise<string | null> {
+export async function resolveSynagogueId(params: DisplayViewParams): Promise<string | null> {
   const fromQuery = singleQueryParam(params.synagogueId);
   if (fromQuery) return fromQuery;
   try {
