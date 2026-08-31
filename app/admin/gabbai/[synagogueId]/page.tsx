@@ -29,6 +29,12 @@ import {
   type DisplayStyle
 } from "@/lib/display-theme";
 import {
+  DISPLAY_FONTS,
+  DEFAULT_DISPLAY_FONT,
+  resolveDisplayFont,
+  type DisplayFont
+} from "@/lib/display-font";
+import {
   DEFAULT_HAFTARAH_MINHAG,
   HAFTARAH_MINHAGIM,
   HAFTARAH_MINHAG_LABELS,
@@ -92,6 +98,7 @@ type MinyanModel = {
   name: string;
   displayStyle: DisplayStyle;
   displayPalette: DisplayPalette;
+  displayFont: DisplayFont;
   haftarahMinhag: HaftarahMinhag;
   scheduleTimesListMode: ScheduleTimesListMode;
   scheduleZmanimKeys: string[];
@@ -223,6 +230,7 @@ function createDefaultMinyan(): MinyanModel {
     name: "",
     displayStyle: "classic",
     displayPalette: DEFAULT_DISPLAY_PALETTE,
+    displayFont: DEFAULT_DISPLAY_FONT,
     haftarahMinhag: DEFAULT_HAFTARAH_MINHAG,
     scheduleTimesListMode: "all",
     scheduleZmanimKeys: [...DEFAULT_SCHEDULE_ZMANIM_KEYS],
@@ -333,6 +341,7 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
       ...m,
       displayStyle,
       displayPalette: resolveDisplayPalette(displayStyle, typeof m.displayPalette === "string" ? m.displayPalette : null),
+      displayFont: resolveDisplayFont(typeof m.displayFont === "string" ? m.displayFont : null),
       haftarahMinhag: resolveHaftarahMinhag(typeof m.haftarahMinhag === "string" ? m.haftarahMinhag : null),
       footerText: typeof m.footerText === "string" ? m.footerText : "",
       scheduleTimesListMode: (m.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all") as ScheduleTimesListMode,
@@ -650,6 +659,25 @@ export default function GabbaiSynagoguePage({ params }: { params: Promise<{ syna
                       {DISPLAY_STYLES.map((style) => (
                         <option key={style} value={style}>
                           {DISPLAY_STYLE_LABELS[style]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">פונט תצוגה</label>
+                    <select
+                      className="h-10 w-full rounded-md border border-border bg-background px-3"
+                      value={selectedMinyan.displayFont}
+                      onChange={(e) =>
+                        updateMinyan(selectedMinyanIndex, (m) => ({
+                          ...m,
+                          displayFont: e.target.value as DisplayFont
+                        }))
+                      }
+                    >
+                      {DISPLAY_FONTS.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
                         </option>
                       ))}
                     </select>

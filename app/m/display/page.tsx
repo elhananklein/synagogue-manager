@@ -44,6 +44,7 @@ export default async function MobileDisplayPage({
       minyanName={view.minyanName}
       minyanOptions={minyanOptions}
       currentMinyanIndex={currentMinyanIndex}
+      font={view.font}
       footerText={view.footerText}
       screens={view.screens}
       dailyLearning={view.dailyLearning}

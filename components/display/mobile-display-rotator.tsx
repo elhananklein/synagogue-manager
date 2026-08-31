@@ -17,6 +17,7 @@ import { fetchDisplayLiveView, pickDisplayLiveFields, useDisplayLiveRefresh, use
 import { addDaysIsoDate, toIsoDateJerusalem } from "@/lib/hebcal";
 import { daysBetweenIso, relativeDayLabel, VIEW_DATE_RANGE_DAYS } from "@/lib/view-date";
 import type { MobileMinyanOption, ScheduleTimesListMode } from "@/lib/display-config";
+import { DEFAULT_DISPLAY_FONT, type DisplayFont } from "@/lib/display-font";
 import { setPreferredSynagogue } from "@/lib/mobile-synagogue-preference";
 
 type ScreenKey =
@@ -59,6 +60,7 @@ type MobileDisplayRotatorProps = {
   minyanName: string | null;
   minyanOptions?: MobileMinyanOption[];
   currentMinyanIndex?: number;
+  font?: DisplayFont;
   footerText?: string | null;
   screens: RotatorScreen[];
   dailyLearning: DailyLearningLine[];
@@ -134,6 +136,7 @@ export function MobileDisplayRotator({
   minyanName: minyanNameProp,
   minyanOptions = [],
   currentMinyanIndex: currentMinyanIndexProp = 1,
+  font: fontProp = DEFAULT_DISPLAY_FONT,
   footerText: footerTextProp,
   screens: screensProp,
   dailyLearning: dailyLearningProp,
@@ -151,6 +154,7 @@ export function MobileDisplayRotator({
   const [live, setLive] = useState(() => ({
     synagogueName: synagogueNameProp,
     minyanName: minyanNameProp,
+    font: fontProp,
     footerText: footerTextProp ?? null,
     screens: screensProp,
     dailyLearning: dailyLearningProp,
@@ -168,6 +172,7 @@ export function MobileDisplayRotator({
   const {
     synagogueName,
     minyanName,
+    font,
     footerText,
     screens,
     dailyLearning,
@@ -193,6 +198,7 @@ export function MobileDisplayRotator({
     setLive({
       synagogueName: next.synagogueName,
       minyanName: next.minyanName,
+      font: next.font ?? DEFAULT_DISPLAY_FONT,
       footerText: next.footerText,
       screens: next.screens,
       dailyLearning: next.dailyLearning,
@@ -358,7 +364,7 @@ export function MobileDisplayRotator({
   );
 
   return (
-    <div className="m-shell">
+    <div className="m-shell" data-display-font={font}>
       <header className="m-header">
         <div className="m-header-top">
           <div className="m-header-names">

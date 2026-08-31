@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Heebo, Frank_Ruhl_Libre } from "next/font/google";
+import { Bona_Nova, David_Libre, Heebo, Frank_Ruhl_Libre } from "next/font/google";
 
 import { PwaMobileShell } from "@/components/mobile/pwa-install";
 import "./globals.css";
+import "./display-fonts.css";
 
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
@@ -14,6 +15,20 @@ const frankRuhl = Frank_Ruhl_Libre({
   weight: ["500", "700", "900"],
   display: "swap",
   variable: "--font-royal"
+});
+
+const bonaNova = Bona_Nova({
+  subsets: ["hebrew", "latin"],
+  weight: ["400", "700"],
+  display: "swap",
+  variable: "--font-bona-nova"
+});
+
+const davidLibre = David_Libre({
+  subsets: ["hebrew", "latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+  variable: "--font-david"
 });
 
 export const metadata: Metadata = {
@@ -48,7 +63,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="he" dir="rtl" className={frankRuhl.variable}>
+    <html lang="he" dir="rtl" className={`${frankRuhl.variable} ${bonaNova.variable} ${davidLibre.variable}`}>
       <body className={heebo.className}>
         <PwaMobileShell />
         {children}

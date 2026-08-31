@@ -14,6 +14,7 @@ import {
   type DisplayPalette,
   type DisplayStyle
 } from "@/lib/display-theme";
+import { resolveDisplayFont, type DisplayFont } from "@/lib/display-font";
 import { resolveHaftarahMinhag } from "@/lib/haftarah-minhag";
 import { resolveHalachaSourceKey, type HalachaSourceKey } from "@/lib/halacha-source";
 
@@ -61,6 +62,7 @@ type MinyanInput = {
   name: string;
   displayStyle: DisplayStyle;
   displayPalette?: DisplayPalette | string | null;
+  displayFont?: DisplayFont | string | null;
   haftarahMinhag?: string | null;
   /** לוח במסך הראשי: כל הזמנים או רק תפילות */
   scheduleTimesListMode: "all" | "prayers_only";
@@ -98,7 +100,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
 
   const minyanRes = await supabase
     .from("minyanim")
-    .select("id, name, display_style, display_palette, haftarah_minhag, is_active, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+    .select("id, name, display_style, display_palette, display_font, haftarah_minhag, is_active, schedule_times_list, schedule_zmanim_keys, display_footer_text")
     .eq("synagogue_id", synagogueId)
     .order("created_at", { ascending: true });
   const minyanIds = (minyanRes.data ?? []).map((m) => m.id);
@@ -137,6 +139,11 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
       isDisplayStyle(minyan.display_style) ? minyan.display_style : "classic",
       typeof (minyan as { display_palette?: string | null }).display_palette === "string"
         ? (minyan as { display_palette?: string | null }).display_palette
+        : null
+    ),
+    displayFont: resolveDisplayFont(
+      typeof (minyan as { display_font?: string | null }).display_font === "string"
+        ? (minyan as { display_font?: string | null }).display_font
         : null
     ),
     isActive: minyan.is_active,
@@ -281,6 +288,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
             isDisplayStyle(minyan.displayStyle) ? minyan.displayStyle : "classic",
             minyan.displayPalette
           ),
+          display_font: resolveDisplayFont(minyan.displayFont),
           schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
           schedule_zmanim_keys: sanitizeScheduleZmanimKeys(minyan.scheduleZmanimKeys),
           display_footer_text: minyan.footerText?.trim() ? minyan.footerText.trim() : null,
@@ -301,6 +309,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
             isDisplayStyle(minyan.displayStyle) ? minyan.displayStyle : "classic",
             minyan.displayPalette
           ),
+          display_font: resolveDisplayFont(minyan.displayFont),
           schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
           schedule_zmanim_keys: sanitizeScheduleZmanimKeys(minyan.scheduleZmanimKeys),
           display_footer_text: minyan.footerText?.trim() ? minyan.footerText.trim() : null,

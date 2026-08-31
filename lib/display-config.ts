@@ -8,6 +8,7 @@ import {
   type DisplayPalette,
   type DisplayStyle
 } from "@/lib/display-theme";
+import { resolveDisplayFont, type DisplayFont } from "@/lib/display-font";
 import { resolveHaftarahMinhag, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 
 export type { DisplayPalette, DisplayStyle } from "@/lib/display-theme";
@@ -18,6 +19,7 @@ type MinyanRow = {
   name: string;
   display_style: string;
   display_palette?: string | null;
+  display_font?: string | null;
   haftarah_minhag?: string | null;
   schedule_times_list?: string | null;
   schedule_zmanim_keys?: string[] | null;
@@ -146,6 +148,7 @@ export type DisplayConfig = {
   location: SynagogueZmanimLocation;
   displayStyle: DisplayStyle;
   displayPalette: DisplayPalette;
+  displayFont: DisplayFont;
   haftarahMinhag: HaftarahMinhag;
   /** לוח זמנים במסך הראשי: כל הזמנים או רק תפילות */
   scheduleTimesListMode: ScheduleTimesListMode;
@@ -165,6 +168,7 @@ const DEFAULT_CONFIG: DisplayConfig = {
   location: DEFAULT_ZMANIM_LOCATION,
   displayStyle: "classic",
   displayPalette: "inkIvory",
+  displayFont: "heebo",
   haftarahMinhag: "ashkenazi",
   scheduleTimesListMode: "all",
   scheduleZmanimKeys: DEFAULT_SCHEDULE_ZMANIM_KEYS,
@@ -227,7 +231,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   if (!token) {
     const r = await supabase
       .from("minyanim")
-      .select("id, name, display_style, display_palette, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+      .select("id, name, display_style, display_palette, display_font, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
       .order("created_at", { ascending: true })
@@ -237,7 +241,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   } else if (isUuid(token)) {
     const r = await supabase
       .from("minyanim")
-      .select("id, name, display_style, display_palette, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+      .select("id, name, display_style, display_palette, display_font, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
       .eq("id", token)
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
@@ -246,7 +250,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   } else {
     const listRes = await supabase
       .from("minyanim")
-      .select("id, name, display_style, display_palette, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+      .select("id, name, display_style, display_palette, display_font, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
       .order("created_at", { ascending: true });
@@ -330,6 +334,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
       normalizeDisplayStyle(chosenMinyan.display_style),
       chosenMinyan.display_palette
     ),
+    displayFont: resolveDisplayFont(chosenMinyan.display_font),
     haftarahMinhag: resolveHaftarahMinhag(chosenMinyan.haftarah_minhag),
     scheduleTimesListMode: normalizeScheduleTimesListMode(chosenMinyan.schedule_times_list),
     scheduleZmanimKeys: sanitizeScheduleZmanimKeys(chosenMinyan.schedule_zmanim_keys) ?? DEFAULT_SCHEDULE_ZMANIM_KEYS,

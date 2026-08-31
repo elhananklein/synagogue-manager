@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { DailyLearningLine } from "@/lib/hebcal";
 import type { BulletinItem } from "@/lib/bulletin-board";
 import type { DisplayPalette, DisplayStyle } from "@/lib/display-theme";
+import { DEFAULT_DISPLAY_FONT, type DisplayFont } from "@/lib/display-font";
 import { pickDisplayLiveFields, useDisplayLiveRefresh, useHalachicDayLiveRefresh } from "@/lib/display-live-refresh";
 
 type ScreenKey =
@@ -342,6 +343,7 @@ function ShabbatPrayerList({
 export function DisplayRotator({
   style,
   palette = "inkIvory",
+  font: fontProp = DEFAULT_DISPLAY_FONT,
   synagogueId: synagogueIdProp,
   synagogueName: synagogueNameProp,
   minyanName: minyanNameProp,
@@ -359,6 +361,7 @@ export function DisplayRotator({
 }: {
   style: DisplayStyle;
   palette?: DisplayPalette;
+  font?: DisplayFont;
   synagogueId: string | null;
   synagogueName: string;
   minyanName: string | null;
@@ -396,6 +399,7 @@ export function DisplayRotator({
     synagogueId: synagogueIdProp,
     synagogueName: synagogueNameProp,
     minyanName: minyanNameProp,
+    font: fontProp,
     screens: screensProp,
     dailyLearning: dailyLearningProp,
     snapshot: snapshotProp,
@@ -412,6 +416,7 @@ export function DisplayRotator({
     synagogueId,
     synagogueName,
     minyanName,
+    font,
     screens,
     dailyLearning,
     snapshot,
@@ -769,6 +774,7 @@ export function DisplayRotator({
     <main
       className={`display display--${style}${isVeryBold ? ` display-palette--${palette}` : ""}`}
       data-display-palette={isVeryBold ? palette : undefined}
+      data-display-font={font}
     >
       {!enabledScreens.length ? (
         <div className="display-empty">אין מסכים פעילים לתצוגה</div>

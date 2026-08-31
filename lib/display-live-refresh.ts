@@ -18,6 +18,7 @@ export function pickDisplayLiveFields(view: DisplayView) {
     synagogueId: view.synagogueId,
     synagogueName: view.synagogueName,
     minyanName: view.minyanName,
+    font: view.font,
     footerText: view.footerText ?? null,
     scheduleTimesListMode: view.scheduleTimesListMode,
     screens: view.screens,

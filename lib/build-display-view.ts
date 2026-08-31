@@ -4,6 +4,7 @@ import { addDaysIsoDate, buildZmanimRows, fetchHebcalLeyningForDate, formatOmerS
 import { resolveHaftarahDisplay, type HaftarahDisplay } from "@/lib/haftarah";
 import { PREVIEW_LITURGICAL_TILES, previewTilesFromKeys } from "@/lib/liturgical-additions";
 import { DISPLAY_STYLES, isDisplayPalette, resolveDisplayPalette } from "@/lib/display-theme";
+import { isDisplayFont, resolveDisplayFont, type DisplayFont } from "@/lib/display-font";
 import { getDisplayConfig, type DisplayPalette, type DisplayStyle, type ScheduleTimesListMode, type ScreenSetting } from "@/lib/display-config";
 import { getPublicHomeData } from "@/lib/data/public-content";
 import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule, settingsNeedSundayZmanim } from "@/lib/build-prayer-schedule";
@@ -24,6 +25,8 @@ export type DisplayViewParams = {
   style?: string | string[];
   /** דריסת פלטה זמנית, למשל palette=inkIvory */
   palette?: string | string[];
+  /** דריסת פונט זמנית, למשל font=bonaNova */
+  font?: string | string[];
   /** תאריך תצוגה YYYY-MM-DD (מובייל: דפדוף בין ימים) */
   date?: string | string[];
 };
@@ -50,6 +53,7 @@ export type DisplayShabbat = {
 export type DisplayView = {
   style: DisplayStyle;
   palette: DisplayPalette;
+  font: DisplayFont;
   synagogueId: string | null;
   synagogueName: string;
   minyanName: string | null;
@@ -159,6 +163,10 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     effectiveStyle,
     isDisplayPalette(paletteOverrideRaw) ? paletteOverrideRaw : displayConfig.displayPalette
   );
+  const fontOverrideRaw = singleQueryParam(params.font);
+  const effectiveFont = isDisplayFont(fontOverrideRaw)
+    ? fontOverrideRaw
+    : resolveDisplayFont(displayConfig.displayFont);
 
   const todayJsDay = jsWeekdayFromIsoDate(todayIsoDate);
   const tomorrowJsDay = jsWeekdayFromIsoDate(tomorrowIsoDate);
@@ -325,6 +333,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   return {
     style: effectiveStyle,
     palette: effectivePalette,
+    font: effectiveFont,
     synagogueId,
     synagogueName: displayConfig.synagogueName,
     minyanName: displayConfig.minyanName,

@@ -33,6 +33,7 @@ export default async function DisplayPage({
       <DisplayRotator
         style={view.style}
         palette={view.palette}
+        font={view.font}
         synagogueId={view.synagogueId}
         synagogueName={view.synagogueName}
         minyanName={view.minyanName}

@@ -22,6 +22,7 @@ export async function GET(request: Request) {
       forceTile: forceTile.length ? forceTile : undefined,
       style: param(searchParams, "style"),
       palette: param(searchParams, "palette"),
+      font: param(searchParams, "font"),
       date: param(searchParams, "date")
     };
     const view = await buildDisplayView(params);
