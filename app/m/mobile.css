@@ -337,6 +337,43 @@
   font-weight: 800;
 }
 
+.m-heading-minyan {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: calc(100% - 2.5rem);
+  flex: 0 1 auto;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+.m-heading-minyan-select {
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding-inline-end: 1.4rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.m-heading-minyan-select:disabled {
+  opacity: 0.55;
+}
+
+.m-heading-minyan-caret {
+  position: absolute;
+  inset-inline-end: 0;
+  width: 1.05rem;
+  height: 1.05rem;
+  pointer-events: none;
+  color: var(--m-ink-soft);
+}
+
 .m-heading-rule {
   flex: 1;
   height: 1px;
@@ -760,6 +797,68 @@
   font-size: 1.15rem;
   font-weight: 800;
   color: var(--m-ink-soft);
+}
+
+.m-halacha-fold {
+  border-radius: 1.15rem;
+  border: 1px solid var(--m-line);
+  background: var(--m-card);
+  box-shadow: 0 8px 22px rgb(58 21 32 / 0.06);
+}
+
+.m-halacha-fold-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3.25rem;
+  padding: 0.75rem 1.05rem;
+  list-style: none;
+  cursor: pointer;
+  color: var(--m-ink-soft);
+}
+
+.m-halacha-fold-summary::-webkit-details-marker,
+.m-halacha-fold-summary::marker {
+  display: none;
+  content: "";
+}
+
+.m-halacha-fold-title {
+  flex-shrink: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.m-halacha-fold-preview {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--m-muted);
+}
+
+.m-halacha-fold[open] .m-halacha-fold-preview {
+  display: none;
+}
+
+.m-halacha-fold-caret {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-inline-start: auto;
+  color: var(--m-ink-soft);
+  transition: transform 0.15s ease;
+}
+
+.m-halacha-fold[open] .m-halacha-fold-caret {
+  transform: rotate(180deg);
+}
+
+.m-halacha-fold-body {
+  padding: 0 1.05rem 1.05rem;
 }
 
 .m-halacha-meta {

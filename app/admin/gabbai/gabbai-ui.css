@@ -7,6 +7,9 @@
 }
 
 .gabbai-top {
+  position: sticky;
+  top: 0;
+  z-index: 45;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -14,6 +17,43 @@
   padding: 0.85rem 1rem;
   color: #fff8ea;
   background: #6b1a2e;
+}
+
+.gabbai-back-top {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.2rem;
+  margin-inline-start: -0.35rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.6rem;
+  color: #fff8ea;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.gabbai-back-top:hover,
+.gabbai-back-top:focus-visible {
+  background: rgb(255 248 234 / 0.14);
+  outline: none;
+}
+
+.gabbai-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0 0.85rem;
+  color: #6b1a2e;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.gabbai-back:hover,
+.gabbai-back:focus-visible {
+  text-decoration: underline;
+  outline: none;
 }
 
 .gabbai-top h1 {

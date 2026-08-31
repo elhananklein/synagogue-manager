@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Home, Megaphone, Settings, Sun } from "lucide-react";
+import { ArrowRight, CalendarDays, Home, Megaphone, Settings, Sun } from "lucide-react";
 import { LogoutButton } from "@/components/admin/logout-button";
 
 const NAV = [
@@ -28,10 +28,18 @@ export function GabbaiShell({
 }) {
   const pathname = usePathname();
   const base = `/admin/gabbai/${synagogueId}`;
+  const homeHref = navHref(synagogueId, "");
+  const isHome = pathname === base;
 
   return (
     <div className="gabbai-shell">
       <header className="gabbai-top">
+        {isHome ? null : (
+          <Link href={homeHref} className="gabbai-back-top" aria-label="חזרה למסך הראשי">
+            <ArrowRight className="h-5 w-5" aria-hidden />
+            <span>חזרה</span>
+          </Link>
+        )}
         <h1>{synagogueName || "בית הכנסת"}</h1>
         <LogoutButton className="gabbai-logout" />
       </header>
@@ -54,7 +62,15 @@ export function GabbaiShell({
           );
         })}
       </nav>
-      <div className="gabbai-body">{children}</div>
+      <div className="gabbai-body">
+        {isHome ? null : (
+          <Link href={homeHref} className="gabbai-back">
+            <ArrowRight className="h-5 w-5" aria-hidden />
+            חזרה למסך הראשי
+          </Link>
+        )}
+        {children}
+      </div>
       <nav className="gabbai-nav gabbai-nav--bottom" aria-label="ניהול">
         {NAV.map(({ href, label, Icon }) => {
           const to = navHref(synagogueId, href);

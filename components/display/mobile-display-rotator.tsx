@@ -54,6 +54,15 @@ type Snapshot = {
   liturgicalTiles?: string[];
 };
 
+type HalachaData = {
+  title: string;
+  text: string;
+  source?: string;
+  chapterNumber?: number;
+  sectionNumber?: number;
+  segments?: string[];
+};
+
 type MobileDisplayRotatorProps = {
   synagogueId?: string | null;
   synagogueName: string;
@@ -66,13 +75,7 @@ type MobileDisplayRotatorProps = {
   dailyLearning: DailyLearningLine[];
   snapshot: Snapshot;
   shabbatMevarchimText?: string | null;
-  halacha: {
-    title: string;
-    text: string;
-    source?: string;
-    chapterNumber?: number;
-    sectionNumber?: number;
-  } | null;
+  halacha: HalachaData | null;
   prayerSchedule: DisplayPrayerSlot[];
   timeSections: DisplayTimeSection[];
   timeSectionsAll?: DisplayTimeSection[];
@@ -83,7 +86,7 @@ type MobileDisplayRotatorProps = {
 };
 
 const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> = {
-  main: { title: "מבט כללי", Icon: Sparkles },
+  main: { title: "מניין", Icon: Sparkles },
   mainInfo: { title: "מידע מרכזי", Icon: Sparkles },
   clock: { title: "שעון", Icon: Clock },
   omer: { title: "ספירת העומר", Icon: Flame },
@@ -128,6 +131,25 @@ function nowJerusalemMinutes() {
 function toMinutes(time: string) {
   const [h, m] = time.split(":").map(Number);
   return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
+}
+
+/** במסך גלילה אחד: אם אותו מידע מופיע בכמה מסכים — נשארים עם העשיר ביותר. */
+function dropMobileDuplicateScreens(screens: RotatorScreen[]): RotatorScreen[] {
+  const keys = new Set(screens.map((s) => s.screenKey));
+  const hide = new Set<ScreenKey>();
+
+  if (keys.has("main")) {
+    hide.add("fullSchedule");
+    hide.add("prayerTimes");
+    hide.add("mainInfo");
+    hide.add("omer");
+  } else {
+    if (keys.has("fullSchedule")) hide.add("prayerTimes");
+    if (keys.has("mainInfo")) hide.add("omer");
+  }
+
+  if (hide.size === 0) return screens;
+  return screens.filter((s) => !hide.has(s.screenKey));
 }
 
 export function MobileDisplayRotator({
@@ -183,11 +205,10 @@ export function MobileDisplayRotator({
     timeSections,
     timeSectionsAll,
     viewDate,
-    scheduleTimesListMode,
     shabbat,
     bulletinItems
   } = live;
-  const [showFullSchedule, setShowFullSchedule] = useState(scheduleTimesListModeProp === "all");
+  const [showFullSchedule, setShowFullSchedule] = useState(false);
   const [minyanIndex, setMinyanIndex] = useState(currentMinyanIndexProp);
   const [dayLoading, setDayLoading] = useState(false);
   const dayLoadingRef = useRef(false);
@@ -220,16 +241,20 @@ export function MobileDisplayRotator({
     if (url.href !== window.location.href) window.history.replaceState(null, "", url);
   }, []);
 
-  useEffect(() => {
-    setShowFullSchedule(scheduleTimesListMode === "all");
-  }, [scheduleTimesListMode]);
-
   const refreshLive = useDisplayLiveRefresh(applyView);
   useHalachicDayLiveRefresh(snapshot.halachicDayRollIso, refreshLive);
 
   const jerusalemTodayIso = toIsoDateJerusalem();
   const isViewingToday = viewDate === jerusalemTodayIso;
-  const visibleTimeSections = showFullSchedule ? timeSectionsAll : timeSections;
+  const prayerOnlySections = useMemo(
+    () =>
+      (timeSectionsAll ?? timeSections).map((section) => ({
+        ...section,
+        items: section.items.filter((item) => item.kind === "prayer")
+      })),
+    [timeSections, timeSectionsAll]
+  );
+  const visibleTimeSections = showFullSchedule ? timeSectionsAll : prayerOnlySections;
   const dayOffset = daysBetweenIso(jerusalemTodayIso, viewDate);
   const canGoPrev = dayOffset > -VIEW_DATE_RANGE_DAYS;
   const canGoNext = dayOffset < VIEW_DATE_RANGE_DAYS;
@@ -286,12 +311,15 @@ export function MobileDisplayRotator({
     const [year, month, day] = viewDate.split("-").map(Number);
     const jsDay = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getUTCDay();
     const isFriOrSat = jsDay === 5 || jsDay === 6;
-    return screens.filter((s) => {
-      if (!s.enabled) return false;
-      if (s.screenKey === "shabbat" && !isFriOrSat) return false;
-      if (s.screenKey === "omer" && !snapshot.omerText) return false;
-      return true;
-    });
+    return dropMobileDuplicateScreens(
+      screens.filter((s) => {
+        if (!s.enabled) return false;
+        if (s.screenKey === "halacha") return false;
+        if (s.screenKey === "shabbat" && !isFriOrSat) return false;
+        if (s.screenKey === "omer" && !snapshot.omerText) return false;
+        return true;
+      })
+    );
   }, [screens, snapshot.omerText, viewDate]);
 
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -323,9 +351,22 @@ export function MobileDisplayRotator({
     void loadViewDate(nextIso);
   };
 
+  const mainEnabled = enabledScreens.some((s) => s.screenKey === "main");
+  const showHeaderMinyan = !mainEnabled && (minyanOptions.length > 1 || Boolean(minyanName));
+
   const renderPanel = (screenKey: ScreenKey) => (
     <>
-      <ScreenHeading screenKey={screenKey} />
+      {screenKey === "main" ? (
+        <MinyanHeading
+          name={minyanName}
+          options={minyanOptions}
+          index={minyanIndex}
+          disabled={dayLoading}
+          onChange={(ordinal) => void loadMinyan(ordinal)}
+        />
+      ) : (
+        <ScreenHeading screenKey={screenKey} />
+      )}
       <div className="mt-4">
         {screenKey === "main" && (
           <MainScreen
@@ -340,7 +381,6 @@ export function MobileDisplayRotator({
         )}
         {screenKey === "clock" && <ClockScreen nextPrayer={nextPrayer} />}
         {screenKey === "omer" && <OmerScreen snapshot={snapshot} />}
-        {screenKey === "halacha" && <HalachaScreen halacha={halacha} />}
         {screenKey === "dailyLearning" && <DailyLearningScreen lines={dailyLearning} />}
         {screenKey === "prayerTimes" && (
           <PrayerTimesScreen
@@ -370,25 +410,27 @@ export function MobileDisplayRotator({
           <div className="m-header-names">
             <div className="m-header-title-row">
               <h1>{synagogueName}</h1>
-              {minyanOptions.length > 1 ? (
-                <label className="m-minyan-switch">
-                  <span className="m-visually-hidden">בחירת מניין</span>
-                  <select
-                    className="m-minyan-select"
-                    value={minyanIndex}
-                    disabled={dayLoading}
-                    onChange={(e) => void loadMinyan(Number(e.target.value))}
-                  >
-                    {minyanOptions.map((option) => (
-                      <option key={option.index} value={option.index}>
-                        {option.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="m-minyan-caret" aria-hidden />
-                </label>
-              ) : minyanName ? (
-                <p className="m-header-minyan">{minyanName}</p>
+              {showHeaderMinyan ? (
+                minyanOptions.length > 1 ? (
+                  <label className="m-minyan-switch">
+                    <span className="m-visually-hidden">בחירת מניין</span>
+                    <select
+                      className="m-minyan-select"
+                      value={minyanIndex}
+                      disabled={dayLoading}
+                      onChange={(e) => void loadMinyan(Number(e.target.value))}
+                    >
+                      {minyanOptions.map((option) => (
+                        <option key={option.index} value={option.index}>
+                          {option.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="m-minyan-caret" aria-hidden />
+                  </label>
+                ) : minyanName ? (
+                  <p className="m-header-minyan">{minyanName}</p>
+                ) : null
               ) : null}
             </div>
           </div>
@@ -445,16 +487,14 @@ export function MobileDisplayRotator({
               <ChevronLeft className="h-5 w-5" />
             </button>
           </div>
-          {scheduleTimesListMode === "prayers_only" ? (
-            <button
-              type="button"
-              className={cn("m-schedule-toggle", showFullSchedule && "m-schedule-toggle--on")}
-              aria-pressed={showFullSchedule}
-              onClick={() => setShowFullSchedule((value) => !value)}
-            >
-              {showFullSchedule ? "הצג תפילות בלבד" : "הצג לוח זמנים מלא"}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className={cn("m-schedule-toggle", showFullSchedule && "m-schedule-toggle--on")}
+            aria-pressed={showFullSchedule}
+            onClick={() => setShowFullSchedule((value) => !value)}
+          >
+            {showFullSchedule ? "הצג תפילות בלבד" : "הצג לוח זמנים מלא"}
+          </button>
         </div>
         {showHeaderShabbatZmanim ? (
           <div className="m-header-shabbat">
@@ -483,11 +523,18 @@ export function MobileDisplayRotator({
       </header>
 
       <div ref={viewportRef} className="m-viewport">
-        {enabledScreens.map((screen, i) => (
-          <section key={`${screen.screenKey}-${i}`} className="m-section">
-            {renderPanel(screen.screenKey)}
-          </section>
-        ))}
+        {enabledScreens.flatMap((screen, i) => {
+          const section = (
+            <section key={`${screen.screenKey}-${i}`} className="m-section">
+              {renderPanel(screen.screenKey)}
+            </section>
+          );
+          if (screen.screenKey === "main") {
+            return [section, <HalachaFold key="halacha-fold" halacha={halacha} />];
+          }
+          return [section];
+        })}
+        {enabledScreens.some((s) => s.screenKey === "main") ? null : <HalachaFold halacha={halacha} />}
         {footerText ? <footer className="m-footer">{footerText}</footer> : null}
         <nav className="m-bottom-nav" aria-label="ניווט">
           <Link href="/?pick=1">החלפת בית כנסת</Link>
@@ -498,12 +545,101 @@ export function MobileDisplayRotator({
   );
 }
 
+function halachaSegments(halacha: HalachaData | null): string[] {
+  if (!halacha) return [];
+  const fromSegments = (halacha.segments ?? []).map((item) => item.trim()).filter(Boolean);
+  if (fromSegments.length) return fromSegments;
+  return halacha.text.trim() ? [halacha.text.trim()] : [];
+}
+
+function HalachaFold({ halacha }: { halacha: HalachaData | null }) {
+  const segments = halachaSegments(halacha);
+  if (!halacha || !segments.length) return null;
+
+  return (
+    <section className="m-section">
+      <details className="m-halacha-fold">
+        <summary className="m-halacha-fold-summary">
+          <ScrollText className="h-5 w-5 shrink-0" aria-hidden />
+          <span className="m-halacha-fold-title">הלכה יומית</span>
+          <span className="m-halacha-fold-preview">{halacha.title}</span>
+          <ChevronDown className="m-halacha-fold-caret" aria-hidden />
+        </summary>
+        <div className="m-halacha-fold-body">
+          <h3 className="m-halacha-title">{halacha.title}</h3>
+          {halacha.source ? <p className="m-halacha-meta">{halacha.source}</p> : null}
+          {segments.map((text, i) => (
+            <div key={`${i}-${text.slice(0, 24)}`}>
+              {segments.length > 1 ? (
+                <p className="m-halacha-meta">
+                  סעיף {i + 1} מתוך {segments.length}
+                </p>
+              ) : null}
+              <p className="m-halacha-body">{text}</p>
+            </div>
+          ))}
+        </div>
+      </details>
+    </section>
+  );
+}
+
 function ScreenHeading({ screenKey }: { screenKey: ScreenKey }) {
   const { title, Icon } = SCREEN_META[screenKey];
   return (
     <div className="m-heading">
       <Icon className="h-5 w-5" />
       <h2>{title}</h2>
+      <span className="m-heading-rule" aria-hidden />
+    </div>
+  );
+}
+
+function MinyanHeading({
+  name,
+  options,
+  index,
+  disabled,
+  onChange
+}: {
+  name: string | null;
+  options: MobileMinyanOption[];
+  index: number;
+  disabled: boolean;
+  onChange: (ordinal: number) => void;
+}) {
+  const label = name?.trim() || options.find((o) => o.index === index)?.name || null;
+  if (!label && options.length === 0) return null;
+
+  if (options.length > 1) {
+    return (
+      <div className="m-heading">
+        <Sparkles className="h-5 w-5" aria-hidden />
+        <label className="m-heading-minyan">
+          <span className="m-visually-hidden">בחירת מניין</span>
+          <select
+            className="m-heading-minyan-select"
+            value={index}
+            disabled={disabled}
+            onChange={(e) => onChange(Number(e.target.value))}
+          >
+            {options.map((option) => (
+              <option key={option.index} value={option.index}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="m-heading-minyan-caret" aria-hidden />
+        </label>
+        <span className="m-heading-rule" aria-hidden />
+      </div>
+    );
+  }
+
+  return (
+    <div className="m-heading">
+      <Sparkles className="h-5 w-5" aria-hidden />
+      <h2>{label}</h2>
       <span className="m-heading-rule" aria-hidden />
     </div>
   );
@@ -664,45 +800,6 @@ function OmerScreen({ snapshot }: { snapshot: Snapshot }) {
   return (
     <Card className="m-clock-panel m-center">
       <p className="m-omer-text">{snapshot.omerText}</p>
-    </Card>
-  );
-}
-
-function HalachaScreen({
-  halacha
-}: {
-  halacha: {
-    title: string;
-    text: string;
-    source?: string;
-    chapterNumber?: number;
-    sectionNumber?: number;
-    segments?: string[];
-  } | null;
-}) {
-  const segments = (halacha?.segments?.filter((item) => item.trim()) ?? []).length
-    ? (halacha?.segments ?? []).map((item) => item.trim()).filter(Boolean)
-    : halacha?.text?.trim()
-      ? [halacha.text.trim()]
-      : [];
-
-  if (!halacha || !segments.length) {
-    return <Card className="m-center m-muted">אין הלכה יומית להצגה כעת.</Card>;
-  }
-  return (
-    <Card>
-      <h3 className="m-halacha-title">{halacha.title}</h3>
-      {halacha.source ? <p className="m-halacha-meta">{halacha.source}</p> : null}
-      {segments.map((text, i) => (
-        <div key={`${i}-${text.slice(0, 24)}`}>
-          {segments.length > 1 ? (
-            <p className="m-halacha-meta">
-              סעיף {i + 1} מתוך {segments.length}
-            </p>
-          ) : null}
-          <p className="m-halacha-body">{text}</p>
-        </div>
-      ))}
     </Card>
   );
 }
