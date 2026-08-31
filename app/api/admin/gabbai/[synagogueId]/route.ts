@@ -225,13 +225,213 @@ export async function POST(request: Request, context: { params: Promise<{ synago
   if (!supabase) {
     return NextResponse.json({ ok: false, error: "missing_service_role_key" }, { status: 500 });
   }
+  const db = supabase;
 
   const payload = (await request.json()) as {
-    synagogueName: string;
-    minyanim: MinyanInput[];
+    section?: string;
+    synagogueName?: string;
+    minyanim?: MinyanInput[];
+    minyanId?: string;
+    minyanName?: string;
+    minyanNames?: Array<{ id: string; name: string }>;
+    prayerSettings?: PrayerSettingInput[];
+    screens?: ScreenInput[];
+    displayStyle?: DisplayStyle;
+    displayPalette?: DisplayPalette | string | null;
+    displayFont?: DisplayFont | string | null;
+    haftarahMinhag?: string | null;
+    scheduleTimesListMode?: "all" | "prayers_only";
+    scheduleZmanimKeys?: string[] | null;
+    footerText?: string | null;
+    shabbatAgendaItems?: ShabbatAgendaItemInput[];
     halachaSettings?: HalachaSettingsInput;
     bulletinItems?: BulletinItemInput[];
   };
+
+  const section = payload.section ?? "full";
+
+  async function ownedMinyanId(minyanId: string | undefined): Promise<string | null> {
+    if (!minyanId) return null;
+    const res = await db
+      .from("minyanim")
+      .select("id")
+      .eq("id", minyanId)
+      .eq("synagogue_id", synagogueId)
+      .maybeSingle();
+    return res.data?.id ? String(res.data.id) : null;
+  }
+
+  if (section === "bulletin") {
+    if (!payload.bulletinItems) {
+      return NextResponse.json({ ok: false, error: "missing_bulletin" }, { status: 400 });
+    }
+    const bulletinResult = await saveBulletinItems(synagogueId, payload.bulletinItems);
+    if (!bulletinResult.ok) {
+      return NextResponse.json({ ok: false, error: bulletinResult.error }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (section === "shabbat") {
+    const minyanId = await ownedMinyanId(payload.minyanId);
+    if (!minyanId) return NextResponse.json({ ok: false, error: "missing_minyan" }, { status: 400 });
+    const agendaResult = await saveShabbatAgendaItems(minyanId, payload.shabbatAgendaItems ?? []);
+    if (!agendaResult.ok) {
+      return NextResponse.json({ ok: false, error: agendaResult.error }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (section === "prayers") {
+    const minyanId = await ownedMinyanId(payload.minyanId);
+    if (!minyanId) return NextResponse.json({ ok: false, error: "missing_minyan" }, { status: 400 });
+    const prayerSettings = payload.prayerSettings ?? [];
+    for (const p of prayerSettings) {
+      if (p.mode === "parasha") {
+        if (p.category !== "weekday") {
+          return NextResponse.json({ ok: false, error: "parasha_mode_weekday_only" }, { status: 400 });
+        }
+        const usesCatalog =
+          !p.parashaKey?.trim() && (p.prayerType === "מנחה" || p.prayerType === "ערבית");
+        if (!usesCatalog && (!p.parashaKey?.trim() || !p.fixedTime?.trim())) {
+          return NextResponse.json({ ok: false, error: "parasha_requires_key_and_time" }, { status: 400 });
+        }
+      }
+    }
+    const { error: deletePrayerError } = await supabase.from("minyan_prayers").delete().eq("minyan_id", minyanId);
+    if (deletePrayerError) return NextResponse.json({ ok: false, error: deletePrayerError.message }, { status: 500 });
+    if (prayerSettings.length) {
+      const orderedPrayers = sortPrayersForSave(prayerSettings);
+      const { error: insertPrayerError } = await supabase.from("minyan_prayers").insert(
+        orderedPrayers.map((p, index) => ({
+          minyan_id: minyanId,
+          category: p.category,
+          prayer_type: p.prayerType,
+          days_of_week: p.category === "weekday" ? (p.daysOfWeek ?? []) : [],
+          mode: p.mode,
+          fixed_time: p.mode === "fixed" || p.mode === "parasha" ? p.fixedTime : null,
+          zman_anchor: p.mode === "relative" ? p.zmanAnchor : null,
+          offset_minutes: p.mode === "relative" ? p.offsetMinutes : null,
+          round_mode: p.mode === "relative" ? (p.roundMode ?? "none") : "none",
+          parasha_key: p.mode === "parasha" ? p.parashaKey?.trim() ?? null : null,
+          lock_to_sunday:
+            p.mode === "relative" &&
+            p.category === "weekday" &&
+            (p.prayerType === "מנחה" || p.prayerType === "ערבית") &&
+            Boolean(p.lockToSunday),
+          sort_order: index + 1
+        }))
+      );
+      if (insertPrayerError) return NextResponse.json({ ok: false, error: insertPrayerError.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (section === "look") {
+    const minyanId = await ownedMinyanId(payload.minyanId);
+    if (!minyanId) return NextResponse.json({ ok: false, error: "missing_minyan" }, { status: 400 });
+    const displayStyle = isDisplayStyle(payload.displayStyle) ? payload.displayStyle : "classic";
+    const { error } = await supabase
+      .from("minyanim")
+      .update({
+        display_style: displayStyle,
+        display_palette: resolveDisplayPalette(displayStyle, payload.displayPalette),
+        display_font: resolveDisplayFont(payload.displayFont),
+        schedule_times_list: payload.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
+        schedule_zmanim_keys: sanitizeScheduleZmanimKeys(payload.scheduleZmanimKeys),
+        display_footer_text: payload.footerText?.trim() ? payload.footerText.trim() : null,
+        haftarah_minhag: resolveHaftarahMinhag(payload.haftarahMinhag)
+      })
+      .eq("id", minyanId)
+      .eq("synagogue_id", synagogueId);
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    const { error: deleteScreenError } = await supabase.from("minyan_display_screens").delete().eq("minyan_id", minyanId);
+    if (deleteScreenError) return NextResponse.json({ ok: false, error: deleteScreenError.message }, { status: 500 });
+    const screens = payload.screens ?? [];
+    if (screens.length) {
+      const { error: insertScreenError } = await supabase.from("minyan_display_screens").insert(
+        screens.map((s) => ({
+          minyan_id: minyanId,
+          screen_key: s.screenKey,
+          sort_order: s.sortOrder,
+          duration_seconds: s.durationSeconds,
+          enabled: s.enabled
+        }))
+      );
+      if (insertScreenError) return NextResponse.json({ ok: false, error: insertScreenError.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (section === "settings") {
+    const synagogueName = payload.synagogueName?.trim();
+    if (!synagogueName) {
+      return NextResponse.json({ ok: false, error: "missing_synagogue_name" }, { status: 400 });
+    }
+    const { error: synagogueUpdateError } = await supabase
+      .from("synagogues")
+      .update({ name: synagogueName })
+      .eq("id", synagogueId);
+    if (synagogueUpdateError) {
+      return NextResponse.json({ ok: false, error: synagogueUpdateError.message }, { status: 500 });
+    }
+    if (payload.halachaSettings) {
+      const { error: halachaSettingsError } = await supabase.from("synagogue_halacha_settings").upsert(
+        {
+          synagogue_id: synagogueId,
+          start_date: payload.halachaSettings.startDate,
+          source_key: resolveHalachaSourceKey(payload.halachaSettings.sourceKey),
+          display_mode: payload.halachaSettings.displayMode
+        },
+        { onConflict: "synagogue_id" }
+      );
+      if (halachaSettingsError) {
+        return NextResponse.json({ ok: false, error: halachaSettingsError.message }, { status: 500 });
+      }
+    }
+    for (const row of payload.minyanNames ?? []) {
+      if (!row.id || !row.name?.trim()) continue;
+      const { error } = await supabase
+        .from("minyanim")
+        .update({ name: row.name.trim() })
+        .eq("id", row.id)
+        .eq("synagogue_id", synagogueId);
+      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (section === "minyan-create") {
+    const name = payload.minyanName?.trim() || "מניין חדש";
+    const { data, error } = await supabase
+      .from("minyanim")
+      .insert({
+        synagogue_id: synagogueId,
+        name,
+        display_style: "classic",
+        display_palette: "inkIvory",
+        display_font: "heebo",
+        is_active: true
+      })
+      .select("id")
+      .single();
+    if (error || !data) return NextResponse.json({ ok: false, error: error?.message ?? "minyan_create_failed" }, { status: 500 });
+    const { error: screensError } = await supabase.from("minyan_display_screens").insert([
+      { minyan_id: data.id, screen_key: "main", sort_order: 1, duration_seconds: 20, enabled: true },
+      { minyan_id: data.id, screen_key: "clock", sort_order: 2, duration_seconds: 15, enabled: true },
+      { minyan_id: data.id, screen_key: "halacha", sort_order: 3, duration_seconds: 18, enabled: true }
+    ]);
+    if (screensError) return NextResponse.json({ ok: false, error: screensError.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (section === "minyan-delete") {
+    const minyanId = await ownedMinyanId(payload.minyanId);
+    if (!minyanId) return NextResponse.json({ ok: false, error: "missing_minyan" }, { status: 400 });
+    const { error } = await supabase.from("minyanim").delete().eq("id", minyanId).eq("synagogue_id", synagogueId);
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
 
   const synagogueName = payload.synagogueName?.trim();
   if (!synagogueName) {

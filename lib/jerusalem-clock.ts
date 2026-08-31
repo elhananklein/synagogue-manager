@@ -56,6 +56,8 @@ let lastTickKey = `${lastParts.hour}:${lastParts.minute}:${lastParts.second}`;
 let rafId = 0;
 let timeoutId = 0;
 let intervalId = 0;
+let watchdogId = 0;
+let lastEmitAt = Date.now();
 let mode: "off" | "interval" | "raf" = "off";
 
 function partsKey(parts: JerusalemClockParts) {
@@ -63,6 +65,7 @@ function partsKey(parts: JerusalemClockParts) {
 }
 
 function emitSweep(now = new Date()) {
+  lastEmitAt = Date.now();
   lastSweep = readJerusalemSweep(now);
   lastParts = lastSweep;
   sweepListeners.forEach((listener) => listener(lastSweep));
@@ -74,6 +77,7 @@ function emitSweep(now = new Date()) {
 }
 
 function emitTick(now = new Date()) {
+  lastEmitAt = Date.now();
   lastParts = readJerusalemClock(now);
   lastSweep = { ...lastParts, ms: now.getMilliseconds() };
   const key = partsKey(lastParts);
@@ -98,6 +102,7 @@ function startRaf() {
   if (typeof window === "undefined" || mode === "raf") return;
   stopAll();
   mode = "raf";
+  startWatchdog();
   const loop = () => {
     emitSweep();
     rafId = window.requestAnimationFrame(loop);
@@ -105,10 +110,37 @@ function startRaf() {
   rafId = window.requestAnimationFrame(loop);
 }
 
+function startWatchdog() {
+  if (typeof window === "undefined" || watchdogId) return;
+  watchdogId = window.setInterval(() => {
+    if (mode === "off") return;
+    if (Date.now() - lastEmitAt < 4000) return;
+    stopAll();
+    syncEngine();
+    emitTick();
+  }, 3000);
+}
+
+function onClockVisible() {
+  if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+  lastEmitAt = 0;
+  emitTick();
+  if (mode === "off") return;
+  stopAll();
+  syncEngine();
+}
+
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", onClockVisible);
+  window.addEventListener("focus", onClockVisible);
+  window.addEventListener("pageshow", onClockVisible);
+}
+
 function startInterval() {
   if (typeof window === "undefined" || mode === "interval") return;
   stopAll();
   mode = "interval";
+  startWatchdog();
   emitTick();
   timeoutId = window.setTimeout(() => {
     emitTick();

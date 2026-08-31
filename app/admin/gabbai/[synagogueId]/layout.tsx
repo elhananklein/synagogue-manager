@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getSupabaseAdminClient } from "@/lib/supabase-server";
+import { GabbaiShell } from "@/components/admin/gabbai-shell";
 import { canManageSynagogue, getAdminContext } from "@/lib/auth";
+import { getSupabaseAdminClient } from "@/lib/supabase-server";
+import "@/app/admin/gabbai/gabbai-ui.css";
 
 /**
  * מטא-דאטה לניהול בית כנסת.
@@ -56,5 +58,16 @@ export default async function GabbaiSynagogueLayout({
   if (!ctx) redirect("/admin/login");
   if (!canManageSynagogue(ctx, id)) redirect("/admin");
 
-  return <>{children}</>;
+  let name = id;
+  const supabase = getSupabaseAdminClient();
+  if (supabase) {
+    const res = await supabase.from("synagogues").select("name").eq("id", id).maybeSingle();
+    if (!res.error && res.data?.name) name = res.data.name as string;
+  }
+
+  return (
+    <GabbaiShell synagogueId={id} synagogueName={name}>
+      {children}
+    </GabbaiShell>
+  );
 }

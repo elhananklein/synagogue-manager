@@ -1,5 +1,5 @@
 /* Service worker — נדרש ב-Android Chrome ליצירת WebAPK (אפליקציה) ולא רק קיצור דרך. */
-const CACHE = "synagogue-shell-v5";
+const CACHE = "synagogue-shell-v6";
 const OFFLINE_URLS = ["/admin/login", "/icons/admin-icon-192.png", "/icons/admin-icon-512.png"];
 const DISPLAY_LAST = "/__display-last";
 const DISPLAY_NAV_TIMEOUT_MS = 12000;
@@ -38,11 +38,21 @@ function isDisplayPath(url) {
   return url.pathname === "/display" || url.pathname.startsWith("/display/");
 }
 
-function isMobileRequest(request) {
-  const ch = request.headers.get("Sec-CH-UA-Mobile");
-  if (ch === "?1") return true;
+function isTvRequest(request) {
   const ua = request.headers.get("User-Agent") || "";
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Silk/i.test(ua);
+  return /TV|SmartTV|Smart-TV|BRAVIA|AFT[A-Z0-9]|GoogleTV|CrKey|HbbTV|Web0S|Tizen|VIDAA|Hisense|NetCast|Android TV|AppleTV|Fire TV/i.test(
+    ua
+  );
+}
+
+function isMobileRequest(request) {
+  if (isTvRequest(request)) return false;
+  const ch = request.headers.get("Sec-CH-UA-Mobile");
+  const ua = request.headers.get("User-Agent") || "";
+  if (/iPhone|iPod|IEMobile|Opera Mini/i.test(ua)) return true;
+  if (/Android/i.test(ua) && /Mobile/i.test(ua) && !/iPad/i.test(ua)) return true;
+  if (ch === "?1" && /Mobile/i.test(ua)) return true;
+  return false;
 }
 
 function isDisplayHtmlGet(request) {

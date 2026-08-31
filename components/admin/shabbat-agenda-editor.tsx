@@ -60,15 +60,14 @@ export function ShabbatAgendaEditor({
       <CardHeader>
         <CardTitle>לוח זמנים לשבת</CardTitle>
         <p className="text-sm text-muted-foreground">
-          סדר היום לשבת הקרובה למניין זה
+          סדר היום לשבת הקרובה
           {parashaHint ? (
             <>
               {" "}
               (<span className="font-medium text-foreground">פרשת {parashaHint}</span>)
             </>
           ) : null}
-          . לכל שורה תוכן (חובה) ושעה אופציונלית. לדוגמה: כניסת שבת, שיר השירים, קריאת התורה, קידוש.
-          מוצג במסך «שבת» של המניין.
+          . לכל שורה אפשר לכתוב מה קורה, וגם שעה אם רוצים.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">

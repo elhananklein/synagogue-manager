@@ -103,11 +103,15 @@ export function useDisplayLiveRefresh(apply: (view: DisplayView) => void) {
       if (document.visibilityState === "visible") void refreshLive();
     };
     document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    window.addEventListener("pageshow", onVisible);
 
     return () => {
       window.clearInterval(intervalId);
       window.clearTimeout(midnightId);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      window.removeEventListener("pageshow", onVisible);
     };
   }, [refreshLive]);
 

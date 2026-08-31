@@ -37,11 +37,13 @@ function bulletinScheduleLabel(displayFrom: string, displayUntil: string) {
 export function BulletinBoardEditor({
   synagogueId,
   items,
-  onChange
+  onChange,
+  hideChrome = false
 }: {
   synagogueId: string;
   items: BulletinItemModel[];
   onChange: (items: BulletinItemModel[]) => void;
+  hideChrome?: boolean;
 }) {
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -85,16 +87,8 @@ export function BulletinBoardEditor({
     }
   }
 
-  return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle>לוח מודעות</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          הודעות טקסט או תמונה. קבעו תאריך התחלה וסיום — לאחר תאריך הסיום ההודעה והתמונה נמחקות אוטומטית מהמערכת.
-          יש להוסיף מסך «לוח מודעות» בהגדרות המניין.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
+  const body = (
+      <div className="space-y-4">
         {items.map((item, index) => (
           <div key={item.localKey} className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -259,7 +253,20 @@ export function BulletinBoardEditor({
             + הודעת תמונה
           </Button>
         </div>
-      </CardContent>
+      </div>
+  );
+
+  if (hideChrome) return body;
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>לוח מודעות</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          הודעת טקסט או תמונה על המסך בבית הכנסת. בחרו מתי היא תופיע — אחרי תאריך הסיום היא יורדת לבד.
+        </p>
+      </CardHeader>
+      <CardContent>{body}</CardContent>
     </Card>
   );
 }

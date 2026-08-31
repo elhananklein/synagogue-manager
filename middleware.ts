@@ -1,23 +1,30 @@
 import { NextResponse, userAgent, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/ssr-middleware";
 
-/** עוגיה לדריסת זיהוי המכשיר: "full" = תצוגת דסקטופ/קיר, "mobile" = תצוגת מובייל. */
+/** עוגיה לדריסת זיהוי המכשיר: "full" = תצוגת קיר/דסקטופ, "mobile" = תצוגת מובייל. */
 const VIEW_COOKIE = "viewMode";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-/** גיבוי לזיהוי המובנה של Next (כולל מכשירים שה־parser מפספס). */
-const MOBILE_UA_RE = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Silk/i;
+function isTvUa(ua: string) {
+  return /TV|SmartTV|Smart-TV|BRAVIA|AFT[A-Z0-9]|GoogleTV|CrKey|HbbTV|Web0S|Tizen|VIDAA|Hisense|NetCast|Android TV|AppleTV|Fire TV/i.test(
+    ua
+  );
+}
 
+/** טלפון בלבד — לא טלוויזיה, לא סטיק, לא טאבלט בלי Mobile. */
 function isPhoneRequest(request: NextRequest): boolean {
   const { device, ua } = userAgent(request);
-  if (device.type === "mobile") return true;
-  if (device.type === "tablet") return false;
-  return MOBILE_UA_RE.test(ua);
+  if (isTvUa(ua)) return false;
+  if (/iPhone|iPod|IEMobile|Opera Mini/i.test(ua)) return true;
+  if (/Android/i.test(ua) && /Mobile/i.test(ua) && !/iPad/i.test(ua)) return true;
+  if (device.type === "mobile" && /Mobile/i.test(ua)) return true;
+  return false;
 }
 
 function isTabletRequest(request: NextRequest): boolean {
   const { device, ua } = userAgent(request);
-  return device.type === "tablet" || /iPad/i.test(ua);
+  if (isTvUa(ua) || isPhoneRequest(request)) return false;
+  return device.type === "tablet" || /iPad/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua));
 }
 
 const LOGIN_PATH = "/admin/login";
@@ -92,10 +99,22 @@ export async function middleware(request: NextRequest) {
   const cookieMode = request.cookies.get(VIEW_COOKIE)?.value;
   const isPhone = isPhoneRequest(request);
   const isTablet = isTabletRequest(request);
+  const isDisplayPath = path === "/display" || path.startsWith("/display/");
+  const isMobileDisplayPath = path === "/m/display" || path.startsWith("/m/display/");
 
-  // טלפון: תמיד מובייל. טאבלט/אייפד: מובייל, אלא אם ביקשו במפורש תצוגת קיר.
-  // דסקטופ: תצוגת קיר, אלא אם ?view=mobile.
-  const useMobile = isPhone || (isTablet && cookieMode !== "full") || cookieMode === "mobile";
+  // קיר שכבר נפל ל־/m/display: מחזירים לתצוגת קיר, אלא אם זה טלפון אמיתי.
+  if (isMobileDisplayPath && !isPhone && cookieMode !== "mobile") {
+    const wallUrl = nextUrl.clone();
+    wallUrl.pathname = path.replace(/^\/m/, "") || "/display";
+    return NextResponse.redirect(wallUrl);
+  }
+
+  // /display = כתובת הקיר. לא בורחים למובייל בגלל עוגיה ישנה או Android של סטיק/טלוויזיה.
+  let useMobile = false;
+  if (cookieMode === "full") useMobile = false;
+  else if (isDisplayPath) useMobile = isPhone;
+  else if (cookieMode === "mobile") useMobile = true;
+  else useMobile = isPhone || isTablet;
 
   if (!useMobile || path === "/m" || path.startsWith("/m/")) {
     return NextResponse.next();
@@ -108,5 +127,5 @@ export async function middleware(request: NextRequest) {
 
 /** רץ על הדפים הציבוריים (תצוגת מובייל) ועל כל /admin (הזדהות). */
 export const config = {
-  matcher: ["/", "/display", "/contact", "/admin/:path*"]
+  matcher: ["/", "/display", "/contact", "/m", "/m/:path*", "/admin/:path*"]
 };

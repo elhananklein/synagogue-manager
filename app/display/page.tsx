@@ -27,7 +27,7 @@ export default async function DisplayPage({
 
   return (
     <>
-      <RedirectHandheldToMobile />
+      <RedirectHandheldToMobile wallPath />
       <PersistDisplaySynagogueCookie synagogueId={view.synagogueId} />
       <DisplayStyleSheet style={view.style} />
       <DisplayRotator

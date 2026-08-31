@@ -1,0 +1,234 @@
+/* ממשק גבאי — רק אזור /admin/gabbai, לא משפיע על תצוגת הקיר. */
+
+.gabbai-shell {
+  min-height: 100dvh;
+  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  background: #f6f3ee;
+}
+
+.gabbai-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  color: #fff8ea;
+  background: #6b1a2e;
+}
+
+.gabbai-top h1 {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.gabbai-top .gabbai-logout {
+  color: #fff8ea;
+  border-color: rgb(255 248 234 / 0.35);
+  background: transparent;
+}
+
+.gabbai-body {
+  padding: 1rem 1rem 1.25rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.gabbai-lead {
+  margin: 0 0 1.1rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #3a1520;
+}
+
+.gabbai-hint {
+  margin: -0.55rem 0 1.25rem;
+  color: #6b4e3e;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.gabbai-task-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.gabbai-task-card {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(107 26 46 / 0.12);
+  background: #fffdf8;
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 8px 20px rgb(58 21 32 / 0.06);
+  min-height: 4.75rem;
+}
+
+.gabbai-task-card:active {
+  transform: scale(0.99);
+}
+
+.gabbai-task-icon {
+  display: flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.85rem;
+  color: #6b1a2e;
+  background: rgb(107 26 46 / 0.1);
+}
+
+.gabbai-task-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #3a1520;
+}
+
+.gabbai-task-card p {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: #7a5a48;
+}
+
+.gabbai-page-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #3a1520;
+}
+
+.gabbai-page-desc {
+  margin: 0 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #6b4e3e;
+}
+
+.gabbai-nav {
+  position: fixed;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  padding: 0.35rem 0.2rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgb(107 26 46 / 0.16);
+  background: #fffdf8;
+}
+
+.gabbai-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 3.1rem;
+  padding: 0.2rem 0.15rem;
+  border-radius: 0.65rem;
+  color: #8a6a4a;
+  text-decoration: none;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.gabbai-nav a[aria-current="page"] {
+  color: #6b1a2e;
+  background: rgb(107 26 46 / 0.08);
+}
+
+.gabbai-save {
+  position: sticky;
+  bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  z-index: 30;
+  margin: 1.25rem -1rem 0;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid rgb(107 26 46 / 0.12);
+  background: rgb(246 243 238 / 0.96);
+}
+
+.gabbai-save-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.gabbai-save .gabbai-save-btn {
+  min-width: 9.5rem;
+  min-height: 2.75rem;
+  font-weight: 800;
+}
+
+.gabbai-ok {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #157a3a;
+}
+
+.gabbai-err {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #b42318;
+}
+
+.gabbai-nav--top {
+  display: none;
+}
+
+.gabbai-nav--bottom {
+  display: grid;
+}
+
+@media (min-width: 768px) {
+  .gabbai-shell {
+    padding-bottom: 1.5rem;
+  }
+
+  .gabbai-task-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .gabbai-nav--top {
+    display: grid;
+    position: static;
+    max-width: 52rem;
+    margin: 0 auto;
+    padding: 0.5rem 1rem 0;
+    border-top: 0;
+    background: transparent;
+  }
+
+  .gabbai-nav--bottom {
+    display: none;
+  }
+
+  .gabbai-nav a {
+    flex-direction: row;
+    gap: 0.4rem;
+    min-height: 2.75rem;
+    font-size: 0.9rem;
+  }
+
+  .gabbai-save {
+    position: static;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+}

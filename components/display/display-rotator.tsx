@@ -431,7 +431,11 @@ export function DisplayRotator({
   } = live;
 
   const refreshLive = useDisplayLiveRefresh((view) => {
-    setLive(pickDisplayLiveFields(view));
+    try {
+      setLive(pickDisplayLiveFields(view));
+    } catch {
+      /* ריענון רקע לא מפיל את המסך */
+    }
   });
   useHalachicDayLiveRefresh(snapshot.halachicDayRollIso, refreshLive);
 
@@ -579,6 +583,26 @@ export function DisplayRotator({
     requestFullscreen();
     const retryIds = [400, 1200, 3000].map((ms) => window.setTimeout(requestFullscreen, ms));
 
+    let wakeLock: { release: () => Promise<void>; addEventListener: (type: string, fn: () => void) => void } | null = null;
+    const requestWakeLock = () => {
+      const nav = navigator as Navigator & { wakeLock?: { request: (type: "screen") => Promise<typeof wakeLock> } };
+      if (!nav.wakeLock || document.visibilityState !== "visible") return;
+      void nav.wakeLock
+        .request("screen")
+        .then((lock) => {
+          wakeLock = lock;
+          lock?.addEventListener("release", () => {
+            wakeLock = null;
+          });
+        })
+        .catch(() => {});
+    };
+    requestWakeLock();
+    const onWakeVisible = () => {
+      if (document.visibilityState === "visible") requestWakeLock();
+    };
+    document.addEventListener("visibilitychange", onWakeVisible);
+
     const onClick = (event: MouseEvent) => {
       if (shouldIgnoreToggle(event.target)) return;
       if (isFullscreen()) {
@@ -598,6 +622,8 @@ export function DisplayRotator({
       retryIds.forEach((id) => clearTimeout(id));
       window.removeEventListener("click", onClick);
       window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("visibilitychange", onWakeVisible);
+      void wakeLock?.release?.();
     };
   }, []);
 
