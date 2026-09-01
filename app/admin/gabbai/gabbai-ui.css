@@ -66,10 +66,50 @@
   font-weight: 800;
 }
 
+.gabbai-top-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.gabbai-system-link {
+  display: inline-flex;
+  align-items: center;
+  max-width: 9.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgb(255 248 234 / 0.35);
+  color: #fff8ea;
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.gabbai-system-link:hover,
+.gabbai-system-link:focus-visible {
+  background: rgb(255 248 234 / 0.14);
+  outline: none;
+}
+
 .gabbai-top .gabbai-logout {
   color: #fff8ea;
   border-color: rgb(255 248 234 / 0.35);
   background: transparent;
+}
+
+.gabbai-admin-hub {
+  margin: 1.5rem 0 0.25rem;
+  text-align: center;
+}
+
+.gabbai-admin-hub a {
+  color: #6b1a2e;
+  font-size: 0.95rem;
+  font-weight: 800;
 }
 
 .gabbai-body {

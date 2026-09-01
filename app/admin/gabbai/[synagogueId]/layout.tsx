@@ -66,7 +66,12 @@ export default async function GabbaiSynagogueLayout({
   }
 
   return (
-    <GabbaiShell synagogueId={id} synagogueName={name}>
+    <GabbaiShell
+      synagogueId={id}
+      synagogueName={name}
+      adminHubHref={ctx.role === "system" ? "/admin" : ctx.synagogueIds.length > 1 ? "/admin/gabbai" : null}
+      adminHubLabel={ctx.role === "system" ? "ממשק מנהל המערכת" : "בתי הכנסת שלי"}
+    >
       {children}
     </GabbaiShell>
   );

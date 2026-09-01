@@ -20,10 +20,14 @@ function navHref(synagogueId: string, suffix: string) {
 export function GabbaiShell({
   synagogueId,
   synagogueName,
+  adminHubHref = null,
+  adminHubLabel = "ממשק מנהל המערכת",
   children
 }: {
   synagogueId: string;
   synagogueName: string;
+  adminHubHref?: string | null;
+  adminHubLabel?: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -41,7 +45,14 @@ export function GabbaiShell({
           </Link>
         )}
         <h1>{synagogueName || "בית הכנסת"}</h1>
-        <LogoutButton className="gabbai-logout" />
+        <div className="gabbai-top-actions">
+          {adminHubHref ? (
+            <Link href={adminHubHref} className="gabbai-system-link" aria-label={adminHubLabel}>
+              {adminHubHref === "/admin" ? "מערכת" : "בתי כנסת"}
+            </Link>
+          ) : null}
+          <LogoutButton className="gabbai-logout" />
+        </div>
       </header>
       <nav className="gabbai-nav gabbai-nav--top" aria-label="ניהול">
         {NAV.map(({ href, label, Icon }) => {
@@ -70,6 +81,11 @@ export function GabbaiShell({
           </Link>
         )}
         {children}
+        {isHome && adminHubHref ? (
+          <p className="gabbai-admin-hub">
+            <Link href={adminHubHref}>{adminHubLabel}</Link>
+          </p>
+        ) : null}
       </div>
       <nav className="gabbai-nav gabbai-nav--bottom" aria-label="ניהול">
         {NAV.map(({ href, label, Icon }) => {
