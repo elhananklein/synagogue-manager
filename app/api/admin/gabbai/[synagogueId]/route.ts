@@ -5,6 +5,7 @@ import { getShabbatAgendaItemsByMinyanIds, saveShabbatAgendaItems, type ShabbatA
 import { getDisplaySnapshot, toIsoDateJerusalem } from "@/lib/hebcal";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
+import { sanitizeDailyLearningKeys } from "@/lib/daily-learning-catalog";
 import { canManageSynagogue, getAdminContext } from "@/lib/auth";
 import { sortPrayersForSave } from "@/lib/prayer-order";
 import { getParashaPrayerCatalogByMinyanIds } from "@/lib/parasha-prayer-catalog-db";
@@ -68,6 +69,7 @@ type MinyanInput = {
   scheduleTimesListMode: "all" | "prayers_only";
   /** אילו זמנים הלכתיים להציג בלוח המסך הראשי (מפתחות Hebcal) */
   scheduleZmanimKeys?: string[] | null;
+  dailyLearningKeys?: string[] | null;
   /** טקסט חופשי לכותרת תחתונה בתצוגה */
   footerText?: string | null;
   prayerSettings: PrayerSettingInput[];
@@ -100,7 +102,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
 
   const minyanRes = await supabase
     .from("minyanim")
-    .select("id, name, display_style, display_palette, display_font, haftarah_minhag, is_active, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+    .select("id, name, display_style, display_palette, display_font, haftarah_minhag, is_active, schedule_times_list, schedule_zmanim_keys, daily_learning_keys, display_footer_text")
     .eq("synagogue_id", synagogueId)
     .order("created_at", { ascending: true });
   const minyanIds = (minyanRes.data ?? []).map((m) => m.id);
@@ -151,6 +153,9 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
       (minyan as { schedule_times_list?: string }).schedule_times_list === "prayers_only" ? "prayers_only" : "all",
     scheduleZmanimKeys: sanitizeScheduleZmanimKeys(
       (minyan as { schedule_zmanim_keys?: string[] | null }).schedule_zmanim_keys
+    ),
+    dailyLearningKeys: sanitizeDailyLearningKeys(
+      (minyan as { daily_learning_keys?: string[] | null }).daily_learning_keys
     ),
     footerText: (minyan as { display_footer_text?: string | null }).display_footer_text ?? null,
     haftarahMinhag: resolveHaftarahMinhag(
@@ -242,6 +247,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     haftarahMinhag?: string | null;
     scheduleTimesListMode?: "all" | "prayers_only";
     scheduleZmanimKeys?: string[] | null;
+    dailyLearningKeys?: string[] | null;
     footerText?: string | null;
     shabbatAgendaItems?: ShabbatAgendaItemInput[];
     halachaSettings?: HalachaSettingsInput;
@@ -339,6 +345,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
         display_font: resolveDisplayFont(payload.displayFont),
         schedule_times_list: payload.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
         schedule_zmanim_keys: sanitizeScheduleZmanimKeys(payload.scheduleZmanimKeys),
+        daily_learning_keys: sanitizeDailyLearningKeys(payload.dailyLearningKeys),
         display_footer_text: payload.footerText?.trim() ? payload.footerText.trim() : null,
         haftarah_minhag: resolveHaftarahMinhag(payload.haftarahMinhag)
       })
@@ -491,6 +498,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           display_font: resolveDisplayFont(minyan.displayFont),
           schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
           schedule_zmanim_keys: sanitizeScheduleZmanimKeys(minyan.scheduleZmanimKeys),
+          daily_learning_keys: sanitizeDailyLearningKeys(minyan.dailyLearningKeys),
           display_footer_text: minyan.footerText?.trim() ? minyan.footerText.trim() : null,
           haftarah_minhag: resolveHaftarahMinhag(minyan.haftarahMinhag),
           is_active: true
@@ -512,6 +520,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           display_font: resolveDisplayFont(minyan.displayFont),
           schedule_times_list: minyan.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
           schedule_zmanim_keys: sanitizeScheduleZmanimKeys(minyan.scheduleZmanimKeys),
+          daily_learning_keys: sanitizeDailyLearningKeys(minyan.dailyLearningKeys),
           display_footer_text: minyan.footerText?.trim() ? minyan.footerText.trim() : null,
           haftarah_minhag: resolveHaftarahMinhag(minyan.haftarahMinhag),
           is_active: true

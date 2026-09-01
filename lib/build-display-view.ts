@@ -9,6 +9,7 @@ import { getDisplayConfig, type DisplayPalette, type DisplayStyle, type Schedule
 import { getPublicHomeData } from "@/lib/data/public-content";
 import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule, settingsNeedSundayZmanim } from "@/lib/build-prayer-schedule";
 import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
+import { filterDailyLearningByKeys } from "@/lib/daily-learning-catalog";
 import { hebrewWeekdayLong, resolveViewIsoDate } from "@/lib/view-date";
 
 export type DisplayViewParams = {
@@ -340,7 +341,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     footerText: displayConfig.footerText,
     scheduleTimesListMode: displayConfig.scheduleTimesListMode,
     screens: displayConfig.screens,
-    dailyLearning: snapshot.dailyLearning,
+    dailyLearning: filterDailyLearningByKeys(snapshot.dailyLearning, displayConfig.dailyLearningKeys),
     snapshot: displaySnapshot,
     shabbatMevarchimText,
     halacha: publicData.halacha

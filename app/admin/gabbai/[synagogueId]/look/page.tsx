@@ -3,6 +3,7 @@
 import { use } from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { GabbaiLoadingPanel } from "@/components/admin/gabbai-loading";
 import { GabbaiMinyanSwitch } from "@/components/admin/gabbai-minyan-switch";
 import { GabbaiSaveBar } from "@/components/admin/gabbai-save-bar";
@@ -21,6 +22,10 @@ import {
 } from "@/lib/display-theme";
 import { HAFTARAH_MINHAGIM, HAFTARAH_MINHAG_LABELS, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 import { ZMANIM_CATALOG } from "@/lib/zmanim-catalog";
+import {
+  DAILY_LEARNING_CATALOG,
+  DEFAULT_DAILY_LEARNING_KEYS
+} from "@/lib/daily-learning-catalog";
 import type { ScreenKey, ScreenSetting } from "@/lib/gabbai-types";
 import { mapGabbaiSaveError, saveGabbaiSection, useGabbaiWorkspace, type GabbaiMinyan } from "@/lib/gabbai-workspace";
 
@@ -36,11 +41,6 @@ const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "shabbat", label: "שבת" },
   { key: "bulletin", label: "לוח מודעות" }
 ];
-
-function nextAvailableScreenKey(screens: ScreenSetting[]): ScreenKey | null {
-  const used = new Set(screens.map((s) => s.screenKey));
-  return SCREEN_OPTIONS.find((o) => !used.has(o.key))?.key ?? null;
-}
 
 function renumberScreens(screens: ScreenSetting[]): ScreenSetting[] {
   return screens.map((screen, index) => ({ ...screen, sortOrder: index + 1 }));
@@ -87,6 +87,11 @@ export default function GabbaiLookPage({
     setSaving(true);
     setMessage(null);
     setError(null);
+    if (minyan.screens.some((s) => !s.screenKey)) {
+      setSaving(false);
+      setError("יש לבחור סוג לכל מסך חדש");
+      return;
+    }
     const payload = await saveGabbaiSection(synagogueId, {
       section: "look",
       minyanId: minyan.id,
@@ -96,6 +101,7 @@ export default function GabbaiLookPage({
       haftarahMinhag: minyan.haftarahMinhag,
       scheduleTimesListMode: minyan.scheduleTimesListMode,
       scheduleZmanimKeys: minyan.scheduleZmanimKeys,
+      dailyLearningKeys: minyan.dailyLearningKeys,
       footerText: minyan.footerText,
       screens: minyan.screens
     });
@@ -251,6 +257,54 @@ export default function GabbaiLookPage({
       <div className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
+            <h2 className="text-base font-extrabold">לימוד יומי</h2>
+            <p className="text-sm text-muted-foreground">אילו ספרים יופיעו במסך הלימוד היומי על הקיר ובמובייל.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => update({ dailyLearningKeys: [...DEFAULT_DAILY_LEARNING_KEYS] })}
+            >
+              הכל
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => update({ dailyLearningKeys: [] })}>
+              נקה
+            </Button>
+          </div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {DAILY_LEARNING_CATALOG.map((book) => {
+            const checked = minyan.dailyLearningKeys.includes(book.id);
+            return (
+              <label
+                key={book.id}
+                className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) =>
+                    update({
+                      dailyLearningKeys: e.target.checked
+                        ? DAILY_LEARNING_CATALOG.filter(
+                            (item) => item.id === book.id || minyan.dailyLearningKeys.includes(item.id)
+                          ).map((item) => item.id)
+                        : minyan.dailyLearningKeys.filter((k) => k !== book.id)
+                    })
+                  }
+                />
+                {book.title}
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
             <h2 className="text-base font-extrabold">מסכים מתחלפים</h2>
             <p className="text-sm text-muted-foreground">מה יופיע על הקיר, ובאיזה סדר. החצים משנים סדר.</p>
           </div>
@@ -258,15 +312,19 @@ export default function GabbaiLookPage({
             type="button"
             variant="outline"
             size="sm"
-            disabled={!nextAvailableScreenKey(minyan.screens)}
+            disabled={minyan.screens.length >= SCREEN_OPTIONS.length}
             onClick={() => {
-              const key = nextAvailableScreenKey(minyan.screens);
-              if (!key) return;
               update((m) => ({
                 ...m,
                 screens: [
                   ...m.screens,
-                  { screenKey: key, sortOrder: m.screens.length + 1, durationSeconds: 20, enabled: true }
+                  {
+                    screenKey: "",
+                    sortOrder: m.screens.length + 1,
+                    durationSeconds: 20,
+                    enabled: true,
+                    unsaved: true
+                  }
                 ]
               }));
             }}
@@ -276,9 +334,19 @@ export default function GabbaiLookPage({
         </div>
         <div className="space-y-2">
           {minyan.screens.map((screen, screenIndex) => (
-            <div key={`${screen.screenKey}-${screenIndex}`} className="space-y-2 rounded-xl border border-border bg-white p-3">
+            <div
+              key={`${screen.screenKey}-${screenIndex}`}
+              className={cn(
+                "space-y-2 rounded-xl p-3",
+                screen.unsaved
+                  ? "border-2 border-dashed border-primary bg-primary/5 shadow-sm"
+                  : "border border-border bg-white"
+              )}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-sm font-semibold">מסך {screenIndex + 1}</span>
+                <span className="text-sm font-bold">
+                  {screen.unsaved ? "מסך חדש — עדיין לא נשמר" : `מסך ${screenIndex + 1}`}
+                </span>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
@@ -318,13 +386,14 @@ export default function GabbaiLookPage({
                   className="h-11 w-full rounded-md border border-border bg-background px-3"
                   value={screen.screenKey}
                   onChange={(e) => {
-                    const nextKey = e.target.value as ScreenKey;
+                    const nextKey = e.target.value as ScreenKey | "";
                     update((m) => ({
                       ...m,
                       screens: m.screens.map((s, j) => (j === screenIndex ? { ...s, screenKey: nextKey } : s))
                     }));
                   }}
                 >
+                  <option value="">בחרו מסך…</option>
                   {SCREEN_OPTIONS.map((opt) => {
                     const takenByOther = minyan.screens.some((s, j) => j !== screenIndex && s.screenKey === opt.key);
                     return (

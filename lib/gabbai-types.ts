@@ -25,7 +25,7 @@ export type ScreenKey =
 
 export type PrayerSetting = {
   category: PrayerCategory;
-  prayerType: PrayerType;
+  prayerType: PrayerType | "";
   daysOfWeek: number[];
   mode: PrayerMode;
   fixedTime: string | null;
@@ -39,8 +39,9 @@ export type PrayerSetting = {
 };
 
 export type ScreenSetting = {
-  screenKey: ScreenKey;
+  screenKey: ScreenKey | "";
   sortOrder: number;
   durationSeconds: number;
   enabled: boolean;
+  unsaved?: boolean;
 };

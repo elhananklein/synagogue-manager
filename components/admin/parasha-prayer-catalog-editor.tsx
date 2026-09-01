@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ParashaPrayerCatalogRow, ParashaPrayerParseWarning } from "@/lib/parasha-prayer-catalog";
-import { parashaPairParts, withParashaCatalogSelectKeys } from "@/lib/parasha-prayer-catalog";
+import { withParashaCatalogSelectKeys } from "@/lib/parasha-prayer-catalog";
 
 type EditorRow = ParashaPrayerCatalogRow & { clientId: string };
 
@@ -52,13 +52,9 @@ export function ParashaPrayerCatalogEditor({
   const usedKeys = new Set(rows.map((row) => row.parashaKey).filter(Boolean));
 
   function addRow() {
-    const nextKey =
-      allowedKeys.find((key) => !usedKeys.has(key) && !parashaPairParts(key)) ??
-      allowedKeys.find((key) => !usedKeys.has(key)) ??
-      "";
     setRows((current) => [
       ...current,
-      { clientId: newId(), parashaKey: nextKey, minchaTime: null, maarivTime: null }
+      { clientId: newId(), parashaKey: "", minchaTime: null, maarivTime: null }
     ]);
     setNeedsConfirm(true);
     setMessage(null);
@@ -136,6 +132,10 @@ export function ParashaPrayerCatalogEditor({
 
   async function saveCatalog() {
     if (!minyanId) return;
+    if (rows.some((row) => !row.parashaKey.trim())) {
+      setError("יש לבחור פרשה בכל שורה חדשה");
+      return;
+    }
     setError(null);
     setMessage(null);
     setIsSaving(true);

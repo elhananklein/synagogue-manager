@@ -23,6 +23,29 @@ body {
   @apply bg-background text-foreground antialiased;
 }
 
+/*
+ * תיבות <select> מקומיות ב-Chrome/Edge ב-Windows:
+ * פונט הווב של העמוד (Heebo) ו-height מ-Tailwind נמרחים על שורות הרשימה — טקסט חתוך וריווח מוגזם.
+ */
+select:not(.m-minyan-select):not(.m-heading-minyan-select) {
+  font-family: "Segoe UI", Tahoma, Arial, Helvetica, sans-serif;
+  height: auto;
+  min-height: 2.75rem;
+}
+
+select.h-10:not(.m-minyan-select):not(.m-heading-minyan-select) {
+  min-height: 2.5rem;
+}
+
+option,
+optgroup {
+  font-family: "Segoe UI", Tahoma, Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: normal;
+}
+
 @layer components {
   .display {
     min-height: 100vh;
@@ -2621,9 +2644,31 @@ body {
   .display--classic .display-datetime-screen {
     color: #fffbeb;
   }
-  .display--classic .display-datetime-digital {
+  .display--classic .display-datetime-digital-col {
+    padding: clamp(1.1rem, 2.4vh, 1.85rem) clamp(1.4rem, 3vw, 2.4rem) clamp(1.25rem, 2.6vh, 2rem);
+    border-radius: 1.15rem;
+    border: 1px solid rgb(251 191 36 / 0.65);
+    background: linear-gradient(
+      180deg,
+      rgb(88 10 28 / 0.94) 0%,
+      rgb(52 6 18 / 0.97) 48%,
+      rgb(30 4 12 / 0.98) 100%
+    );
     color: #fffbeb;
-    text-shadow: 0 3px 12px rgb(0 0 0 / 0.55);
+    box-shadow:
+      0 10px 36px rgb(0 0 0 / 0.45),
+      inset 0 1px 0 rgb(255 255 255 / 0.14);
+    transform: none;
+  }
+  .display--classic .display-datetime-digital {
+    color: #ffffff;
+    text-shadow:
+      0 3px 12px rgb(0 0 0 / 0.55),
+      0 0 40px rgb(250 204 21 / 0.2);
+  }
+  .display--classic .display-datetime-next-prayer {
+    color: #fef08a;
+    margin-top: 1.15rem;
   }
   .display--classic .display-analog-clock-face {
     fill: rgb(80 12 28 / 0.92);

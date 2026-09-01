@@ -1,5 +1,6 @@
-import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
+import { DAILY_LEARNING_CATALOG } from "@/lib/daily-learning-catalog";
 import type { HebcalLeyningItem } from "@/lib/haftarah";
+import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
 import { resolveLiturgicalTiles } from "@/lib/liturgical-additions";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, resolveScheduleZmanimKeys, zmanLabelForKey } from "@/lib/zmanim-catalog";
 import type { SynagogueZmanimLocation } from "@/lib/display-config";
@@ -505,25 +506,7 @@ function normalizeDafYomiHebrew(raw: string) {
 }
 
 /** סדר ובתי עמוד Hebcal learning — תואם ל־`<div class="mt-2 mb-4" id="…">` בעמוד. */
-const HEBCAL_LEARNING_BLOCK_META: Array<{ id: string; title: string }> = [
-  { id: "nachyomi", title: 'נ"ך יומי' },
-  { id: "tanakhYomi", title: 'תנ"ך יומי (חלוקת סדרים)' },
-  { id: "dailyPsalms", title: "תהילים יומי" },
-  { id: "dafyomi", title: "דף יומי" },
-  { id: "mishnayomi", title: "משנה יומי" },
-  { id: "perekYomi", title: "פרק יומי" },
-  { id: "yerushalmi-vilna", title: "ירושלמי יומי (וילנא)" },
-  { id: "yerushalmi-schottenstein", title: "ירושלמי יומי (שוטנשטיין)" },
-  { id: "dirshuAmudYomi", title: "עמוד היומי (דרשו)" },
-  { id: "dafWeekly", title: "דף בשבוע" },
-  { id: "dailyRambam1", title: 'רמב"ם — פרק יומי' },
-  { id: "dailyRambam3", title: 'רמב"ם — שלושה פרקים' },
-  { id: "seferHaMitzvot", title: "ספר המצוות" },
-  { id: "arukhHaShulchanYomi", title: "ערוך השולחן יומי" },
-  { id: "kitzurShulchanAruch", title: "קיצור שולחן ערוך יומי" },
-  { id: "chofetzChaim", title: "חפץ חיים יומי" },
-  { id: "shemiratHaLashon", title: "שמירת הלשון יומי" }
-];
+const HEBCAL_LEARNING_BLOCK_META = DAILY_LEARNING_CATALOG;
 
 function extractHebcalLearningBlockHtml(html: string, id: string): string | null {
   const open = `<div class="mt-2 mb-4" id="${id}">`;
@@ -640,15 +623,19 @@ export async function getDisplaySnapshot(
   let dafYomi = "לא זמין";
   let dailyLearning: DailyLearningLine[] = [];
   if (learningRes?.ok) {
-    const learningHtml = await learningRes.text();
-    dailyLearning = parseHebcalDailyLearningPage(learningHtml);
-    const dafRow = dailyLearning.find((r) => r.id === "dafyomi");
-    if (dafRow?.detail) dafYomi = dafRow.detail;
-    else {
-      const match = learningHtml.match(/Daf Yomi[\s\S]*?sefaria\.org\/([^"?]+)\?lang=bi/i);
-      if (match?.[1]) {
-        dafYomi = normalizeDafYomiHebrew(decodeURIComponent(match[1]).replaceAll("_", " "));
+    try {
+      const learningHtml = await learningRes.text();
+      dailyLearning = parseHebcalDailyLearningPage(learningHtml);
+      const dafRow = dailyLearning.find((r) => r.id === "dafyomi");
+      if (dafRow?.detail) dafYomi = dafRow.detail;
+      else {
+        const match = learningHtml.match(/Daf Yomi[\s\S]*?sefaria\.org\/([^"?]+)\?lang=bi/i);
+        if (match?.[1]) {
+          dafYomi = normalizeDafYomiHebrew(decodeURIComponent(match[1]).replaceAll("_", " "));
+        }
       }
+    } catch {
+      dailyLearning = [];
     }
   }
 

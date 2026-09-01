@@ -15,7 +15,8 @@ import { DEFAULT_HAFTARAH_MINHAG, resolveHaftarahMinhag, type HaftarahMinhag } f
 import type { HalachaSourceKey } from "@/lib/halacha-source";
 import type { ParashaPrayerCatalogRow } from "@/lib/parasha-prayer-catalog";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS } from "@/lib/zmanim-catalog";
-import type { PrayerSetting, ScheduleTimesListMode, ScreenSetting } from "@/lib/gabbai-types";
+import { DEFAULT_DAILY_LEARNING_KEYS, resolveDailyLearningKeys } from "@/lib/daily-learning-catalog";
+import type { PrayerSetting, PrayerType, ScheduleTimesListMode, ScreenSetting } from "@/lib/gabbai-types";
 
 export type HalachaSettingsModel = {
   startDate: string;
@@ -32,6 +33,7 @@ export type GabbaiMinyan = {
   haftarahMinhag: HaftarahMinhag;
   scheduleTimesListMode: ScheduleTimesListMode;
   scheduleZmanimKeys: string[];
+  dailyLearningKeys: string[];
   footerText: string;
   prayerSettings: PrayerSetting[];
   screens: ScreenSetting[];
@@ -46,10 +48,9 @@ function newPrayerClientId() {
   return `prayer-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function createPrayer(category: PrayerSetting["category"]): PrayerSetting {
+function prayerDefaults(category: PrayerSetting["category"]): Omit<PrayerSetting, "prayerType" | "unsaved"> {
   return {
     category,
-    prayerType: category === "weekday" ? "שחרית" : "שחרית שבת",
     daysOfWeek: category === "weekday" ? [0, 1, 2, 3, 4, 5] : [],
     mode: "fixed",
     fixedTime: "08:30",
@@ -58,7 +59,14 @@ export function createPrayer(category: PrayerSetting["category"]): PrayerSetting
     roundMode: "none",
     parashaKey: null,
     lockToSunday: false,
-    clientId: newPrayerClientId(),
+    clientId: newPrayerClientId()
+  };
+}
+
+export function createPrayer(category: PrayerSetting["category"]): PrayerSetting {
+  return {
+    ...prayerDefaults(category),
+    prayerType: "",
     unsaved: true
   };
 }
@@ -70,18 +78,20 @@ export function insertPrayerAtCategoryStart(prayers: PrayerSetting[], next: Pray
 }
 
 export function prayersForSave(prayers: PrayerSetting[]) {
-  return prayers.map((p) => ({
-    category: p.category,
-    prayerType: p.prayerType,
-    daysOfWeek: p.daysOfWeek,
-    mode: p.mode,
-    fixedTime: p.fixedTime,
-    zmanAnchor: p.zmanAnchor,
-    offsetMinutes: p.offsetMinutes,
-    roundMode: p.roundMode,
-    parashaKey: p.parashaKey,
-    lockToSunday: p.lockToSunday
-  }));
+  return prayers
+    .filter((p): p is PrayerSetting & { prayerType: PrayerType } => Boolean(p.prayerType))
+    .map((p) => ({
+      category: p.category,
+      prayerType: p.prayerType,
+      daysOfWeek: p.daysOfWeek,
+      mode: p.mode,
+      fixedTime: p.fixedTime,
+      zmanAnchor: p.zmanAnchor,
+      offsetMinutes: p.offsetMinutes,
+      roundMode: p.roundMode,
+      parashaKey: p.parashaKey,
+      lockToSunday: p.lockToSunday
+    }));
 }
 
 export function createDefaultMinyan(): GabbaiMinyan {
@@ -93,8 +103,12 @@ export function createDefaultMinyan(): GabbaiMinyan {
     haftarahMinhag: DEFAULT_HAFTARAH_MINHAG,
     scheduleTimesListMode: "all",
     scheduleZmanimKeys: [...DEFAULT_SCHEDULE_ZMANIM_KEYS],
+    dailyLearningKeys: [...DEFAULT_DAILY_LEARNING_KEYS],
     footerText: "",
-    prayerSettings: [createPrayer("weekday"), createPrayer("shabbat")],
+    prayerSettings: [
+      { ...prayerDefaults("weekday"), prayerType: "שחרית" as PrayerType, unsaved: false },
+      { ...prayerDefaults("shabbat"), prayerType: "שחרית שבת" as PrayerType, unsaved: false }
+    ],
     screens: [
       { screenKey: "main", sortOrder: 1, durationSeconds: 20, enabled: true },
       { screenKey: "clock", sortOrder: 2, durationSeconds: 15, enabled: true },
@@ -183,8 +197,9 @@ export function useGabbaiWorkspace(synagogueId: string) {
             scheduleZmanimKeys: Array.isArray(m.scheduleZmanimKeys)
               ? m.scheduleZmanimKeys
               : [...DEFAULT_SCHEDULE_ZMANIM_KEYS],
+            dailyLearningKeys: resolveDailyLearningKeys(m.dailyLearningKeys),
             prayerSettings: withClientIds(m.prayerSettings ?? []),
-            screens: [...(m.screens ?? [])].sort((a, b) => a.sortOrder - b.sortOrder),
+            screens: [...(m.screens ?? [])].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => ({ ...s, unsaved: false })),
             shabbatAgendaItems: mapShabbatAgendaFromApi(m.shabbatAgendaItems ?? []),
             parashaCatalog: Array.isArray(m.parashaCatalog) ? m.parashaCatalog : []
           };

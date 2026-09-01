@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
+import { DEFAULT_DAILY_LEARNING_KEYS, resolveDailyLearningKeys } from "@/lib/daily-learning-catalog";
 import { getParashaPrayerCatalog } from "@/lib/parasha-prayer-catalog-db";
 import type { ParashaPrayerCatalogRow } from "@/lib/parasha-prayer-catalog";
 import {
@@ -23,6 +24,7 @@ type MinyanRow = {
   haftarah_minhag?: string | null;
   schedule_times_list?: string | null;
   schedule_zmanim_keys?: string[] | null;
+  daily_learning_keys?: string[] | null;
   display_footer_text?: string | null;
 };
 
@@ -154,6 +156,8 @@ export type DisplayConfig = {
   scheduleTimesListMode: ScheduleTimesListMode;
   /** אילו זמנים הלכתיים להציג בלוח המסך הראשי (מפתחות Hebcal, בסדר הקטלוג) */
   scheduleZmanimKeys: string[];
+  /** אילו ספרי לימוד יומי להציג במסך הלימוד היומי */
+  dailyLearningKeys: string[];
   /** הודעת גבאי בת שורה אחת המוצגת בתחתית כל המסכים, בכל הסגנונות */
   footerText: string | null;
   screens: ScreenSetting[];
@@ -172,6 +176,7 @@ const DEFAULT_CONFIG: DisplayConfig = {
   haftarahMinhag: "ashkenazi",
   scheduleTimesListMode: "all",
   scheduleZmanimKeys: DEFAULT_SCHEDULE_ZMANIM_KEYS,
+  dailyLearningKeys: DEFAULT_DAILY_LEARNING_KEYS,
   footerText: null,
   screens: [{ screenKey: "main", sortOrder: 1, durationSeconds: 25, enabled: true }],
   prayerSettings: [],
@@ -231,7 +236,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   if (!token) {
     const r = await supabase
       .from("minyanim")
-      .select("id, name, display_style, display_palette, display_font, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+      .select("id, name, display_style, display_palette, display_font, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, daily_learning_keys, display_footer_text")
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
       .order("created_at", { ascending: true })
@@ -241,7 +246,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   } else if (isUuid(token)) {
     const r = await supabase
       .from("minyanim")
-      .select("id, name, display_style, display_palette, display_font, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+      .select("id, name, display_style, display_palette, display_font, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, daily_learning_keys, display_footer_text")
       .eq("id", token)
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
@@ -250,7 +255,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   } else {
     const listRes = await supabase
       .from("minyanim")
-      .select("id, name, display_style, display_palette, display_font, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, display_footer_text")
+      .select("id, name, display_style, display_palette, display_font, haftarah_minhag, schedule_times_list, schedule_zmanim_keys, daily_learning_keys, display_footer_text")
       .eq("synagogue_id", synagogueId)
       .eq("is_active", true)
       .order("created_at", { ascending: true });
@@ -338,6 +343,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
     haftarahMinhag: resolveHaftarahMinhag(chosenMinyan.haftarah_minhag),
     scheduleTimesListMode: normalizeScheduleTimesListMode(chosenMinyan.schedule_times_list),
     scheduleZmanimKeys: sanitizeScheduleZmanimKeys(chosenMinyan.schedule_zmanim_keys) ?? DEFAULT_SCHEDULE_ZMANIM_KEYS,
+    dailyLearningKeys: resolveDailyLearningKeys(chosenMinyan.daily_learning_keys),
     footerText,
     screens,
     prayerSettings,

@@ -55,6 +55,11 @@ export default function GabbaiPrayersPage({
     setSaving(true);
     setMessage(null);
     setError(null);
+    if (minyan.prayerSettings.some((p) => !p.prayerType)) {
+      setSaving(false);
+      setError("יש לבחור תפילה בכל שורה חדשה");
+      return;
+    }
     const payload = await saveGabbaiSection(synagogueId, {
       section: "prayers",
       minyanId: minyan.id,

@@ -65,7 +65,7 @@ export function PrayerEditor({
             className="h-11 w-full rounded-md border border-border bg-background px-3"
             value={setting.prayerType}
             onChange={(e) => {
-              const prayerType = e.target.value as PrayerType;
+              const prayerType = e.target.value as PrayerType | "";
               const canAnchorToMincha = prayerType === "ערבית" || prayerType === "ערבית מוצ'ש";
               onChange({
                 ...setting,
@@ -77,6 +77,7 @@ export function PrayerEditor({
               });
             }}
           >
+            <option value="">בחרו תפילה…</option>
             {prayerOptions.map((option) => (
               <option key={option} value={option}>
                 {option === "מנחה ערב שבת" ? "מנחה ערב שבת וקבלת שבת" : option}
