@@ -304,6 +304,11 @@
   padding-bottom: 0.2rem;
 }
 
+.display.display--veryBold .display-halacha-source {
+  color: var(--vb-gold, #b8923a);
+  font-weight: 800;
+}
+
 .display.display--veryBold .display-times-title::after,
 .display.display--veryBold .display-shabbat-title::after,
 .display.display--veryBold .display-halacha-title::after,

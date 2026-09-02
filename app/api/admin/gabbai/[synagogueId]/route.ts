@@ -95,10 +95,23 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     return NextResponse.json({ ok: false, error: "missing_service_role_key" }, { status: 500 });
   }
 
-  const synagogueRes = await supabase.from("synagogues").select("id, name").eq("id", synagogueId).maybeSingle();
+  let synagogueRes = await supabase
+    .from("synagogues")
+    .select("id, name, logo_url, logo_updated_at")
+    .eq("id", synagogueId)
+    .maybeSingle();
+  if (synagogueRes.error) {
+    synagogueRes = await supabase.from("synagogues").select("id, name").eq("id", synagogueId).maybeSingle();
+  }
   if (synagogueRes.error || !synagogueRes.data) {
     return NextResponse.json({ ok: false, error: "synagogue_not_found" }, { status: 404 });
   }
+  const synagogueRow = synagogueRes.data as {
+    id: string;
+    name: string;
+    logo_url?: string | null;
+    logo_updated_at?: string | null;
+  };
 
   const minyanRes = await supabase
     .from("minyanim")
@@ -212,7 +225,12 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
   return NextResponse.json({
     ok: true,
     data: {
-      synagogue: synagogueRes.data,
+      synagogue: {
+        id: synagogueRow.id,
+        name: synagogueRow.name,
+        logoUrl: typeof synagogueRow.logo_url === "string" && synagogueRow.logo_url.trim() ? synagogueRow.logo_url.trim() : null,
+        logoUpdatedAt: typeof synagogueRow.logo_updated_at === "string" ? synagogueRow.logo_updated_at : null
+      },
       minyanim: minyanimWithAgenda,
       halachaSettings,
       bulletinItems,

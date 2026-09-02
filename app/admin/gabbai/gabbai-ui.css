@@ -195,6 +195,26 @@
   color: #6b4e3e;
 }
 
+.gabbai-logo-preview {
+  display: flex;
+  height: 5.5rem;
+  width: 5.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid rgb(107 26 46 / 0.18);
+  background: #f3ead8;
+  box-shadow: 0 8px 18px rgb(58 21 32 / 0.12);
+}
+
+.gabbai-logo-preview img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
 .gabbai-nav {
   position: fixed;
   right: 0;

@@ -385,15 +385,49 @@ const RAMBAM_BOOK: Record<string, string> = {
   Ritual_Immersion: "הלכות מקוואות"
 };
 
+function rambamBookHe(bookKey: string): string | undefined {
+  const raw = bookKey.trim();
+  if (!raw) return undefined;
+  if (RAMBAM_BOOK[raw]) return RAMBAM_BOOK[raw];
+  const spaced = raw.replaceAll("_", " ");
+  if (RAMBAM_BOOK[spaced]) return RAMBAM_BOOK[spaced];
+  const underscored = spaced.replaceAll(" ", "_");
+  if (RAMBAM_BOOK[underscored]) return RAMBAM_BOOK[underscored];
+  const lower = spaced.toLowerCase();
+  for (const [key, value] of Object.entries(RAMBAM_BOOK)) {
+    if (key.replaceAll("_", " ").toLowerCase() === lower) return value;
+  }
+  return undefined;
+}
+
+function rambamChaptersHe(rest: string): string {
+  const range = rest.trim().match(/^(\d+)\s*[–-]\s*(\d+)$/);
+  if (range) {
+    const from = Number(range[1]);
+    const to = Number(range[2]);
+    if (from === to) return `פרק ${numberToHebrew(from)}`;
+    return `פרקים ${numberToHebrew(from)}–${numberToHebrew(to)}`;
+  }
+  const one = rest.trim().match(/^(\d+)$/);
+  if (one) return `פרק ${numberToHebrew(Number(one[1]))}`;
+  return allDigitRunsToHebrew(rest.replace(/:/g, "׃"));
+}
+
 function rambamPathToHebrew(path: string): string | null {
   const decoded = decodeURIComponent(path).replaceAll("_", " ");
-  const m = decoded.match(/^Mishneh Torah,?\s*([^.,]+)\.(.+)$/i);
+  const m = decoded.match(/^Mishneh Torah,?\s*(.+?)\.(\d+(?:\s*[–-]\s*\d+)?)$/i);
   if (!m?.[1] || !m[2]) return null;
-  const bookKey = m[1].trim();
-  const bookHe = RAMBAM_BOOK[bookKey];
-  if (!bookHe) return `רמב״ם — ${bookKey.replace(/_/g, " ")}, ${allDigitRunsToHebrew(m[2].replace(/:/g, "׃"))}`;
-  const chap = allDigitRunsToHebrew(m[2].replace(/:/g, "׃"));
-  return `${bookHe}, ${chap}`;
+  const bookHe = rambamBookHe(m[1]);
+  if (!bookHe) return null;
+  return `${bookHe} — ${rambamChaptersHe(m[2])}`;
+}
+
+function rambamEnglishToHebrew(eng: string): string | null {
+  const m = eng.trim().match(/^(.+?)\s+(\d+(?:\s*[–-]\s*\d+)?)$/);
+  if (!m?.[1] || !m[2]) return null;
+  const bookHe = rambamBookHe(m[1]);
+  if (!bookHe) return null;
+  return `${bookHe} — ${rambamChaptersHe(m[2])}`;
 }
 
 const AH_SECTION: Record<string, string> = {
@@ -413,17 +447,30 @@ function arukhHashulchanPathToHebrew(path: string): string | null {
 
 function kitzurPathToHebrew(path: string): string | null {
   const decoded = decodeURIComponent(path).replaceAll("_", " ");
-  const m = decoded.match(/^Kitzur Shulchan Arukh\.([\d.]+)$/i) ?? decoded.match(/^Kitzur Shulchan Arukh ([\d.]+)$/i);
+  const m =
+    decoded.match(/^Kitzur Shulchan Arukh\.(\d+)(?:\.(\d+)(?:\s*[–-]\s*(\d+))?)?$/i) ??
+    decoded.match(/^Kitzur Shulchan Arukh (\d+)(?:[:.](\d+)(?:\s*[–-]\s*(\d+))?)?$/i);
   if (!m?.[1]) return null;
-  const parts = m[1].split(".").map((p) => Number(p)).filter((n) => !Number.isNaN(n));
-  if (!parts.length) return "קיצור שולחן ערוך";
-  const siman = numberToHebrew(parts[0]);
-  if (parts.length >= 3) {
-    const from = numberToHebrew(parts[1]);
-    const to = numberToHebrew(parts[2]);
-    return `קיצור שולחן ערוך — סימן ${siman}, הלכות ${from}–${to}`;
+  return formatKitzurRef(Number(m[1]), m[2] ? Number(m[2]) : null, m[3] ? Number(m[3]) : null);
+}
+
+function formatKitzurRef(simanNum: number, fromSeif: number | null, toSeif: number | null): string {
+  if (!Number.isInteger(simanNum) || simanNum <= 0) return "קיצור שולחן ערוך";
+  const siman = numberToHebrew(simanNum);
+  if (fromSeif && Number.isInteger(fromSeif) && fromSeif > 0) {
+    const from = numberToHebrew(fromSeif);
+    if (toSeif && Number.isInteger(toSeif) && toSeif !== fromSeif) {
+      return `סימן ${siman}, סעיפים ${from}–${numberToHebrew(toSeif)}`;
+    }
+    return `סימן ${siman}, סעיף ${from}`;
   }
-  return `קיצור שולחן ערוך — סימן ${siman}`;
+  return `סימן ${siman}`;
+}
+
+function kitzurEnglishToHebrew(eng: string): string | null {
+  const m = eng.trim().match(/^(\d+)[:.](\d+)(?:\s*[–-]\s*(\d+))?$/);
+  if (!m?.[1] || !m[2]) return null;
+  return formatKitzurRef(Number(m[1]), Number(m[2]), m[3] ? Number(m[3]) : null);
 }
 
 function sefariaPathFromBlock(block: string): string | null {
@@ -435,12 +482,95 @@ function sefariaPathFromBlock(block: string): string | null {
 function englishTractFromDetail(detail: string): string | null {
   const m = detail.match(/^([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+(\d+)\s*$/);
   if (!m?.[1] || !m[2]) return null;
-  const key = m[1].replaceAll(" ", "");
-  const he = BAVLI_MASECHTA[key] ?? BAVLI_MASECHTA[m[1].trim()];
+  const name = m[1].trim();
+  const compact = name.replaceAll(" ", "");
+  const he =
+    BAVLI_MASECHTA[compact] ??
+    BAVLI_MASECHTA[name] ??
+    MISHNAH_TRACT[name] ??
+    MISHNAH_TRACT[compact];
   if (!he) return null;
   const n = Number(m[2]);
   if (Number.isNaN(n)) return null;
   return `${he} ${numberToHebrew(n)}`;
+}
+
+function yerushalmiToHebrew(path: string | null, eng: string): string | null {
+  const fromEng = englishTractFromDetail(eng.trim());
+  if (fromEng) return fromEng;
+  if (!path) return null;
+  const cleaned = decodeURIComponent(path)
+    .replaceAll("_", " ")
+    .replace(/^Jerusalem Talmud\s+/i, "")
+    .trim();
+  return englishTractFromDetail(cleaned);
+}
+
+function parseDottedSeifRange(raw: string): { major: number; from: number; to: number | null } | null {
+  const m = raw
+    .trim()
+    .replace(/–/g, "-")
+    .replace(/\s+/g, "")
+    .match(/^(\d+)\.(\d+)(?:-(\d+)(?:\.(\d+))?)?$/);
+  if (!m) return null;
+  const major = Number(m[1]);
+  const from = Number(m[2]);
+  if (m[3] === undefined) return { major, from, to: null };
+  if (m[4] !== undefined) return { major, from, to: Number(m[4]) };
+  return { major, from, to: Number(m[3]) };
+}
+
+function findDottedSeifRange(text: string): { major: number; from: number; to: number | null } | null {
+  const m = text.match(/(\d+\.\d+(?:\s*[–-]\s*(?:\d+\.)?\d+)?)/);
+  if (!m?.[1]) return null;
+  return parseDottedSeifRange(m[1]);
+}
+
+function formatMajorSeifim(majorWord: string, range: { major: number; from: number; to: number | null }): string {
+  const maj = numberToHebrew(range.major);
+  const a = numberToHebrew(range.from);
+  if (range.to != null && range.to !== range.from) {
+    return `${majorWord} ${maj}, סעיפים ${a}–${numberToHebrew(range.to)}`;
+  }
+  return `${majorWord} ${maj}, סעיף ${a}`;
+}
+
+function chofetzTopicHe(text: string): string | null {
+  const t = text.toLowerCase().replace(/[_-]+/g, " ");
+  if (t.includes("rechil")) return "הלכות רכילות";
+  if (t.includes("lashon hara") || t.includes("leshon hara") || t.includes("loshon hora")) {
+    return "הלכות לשון הרע";
+  }
+  if (/epilogue|chasimas hasefer|chasimat/.test(t)) return "חותם הספר";
+  if (/introduction|preface/.test(t)) return "הקדמה";
+  return null;
+}
+
+function chofetzChaimToHebrew(path: string | null, eng: string): string | null {
+  const blob = `${path ?? ""} ${eng}`;
+  const topic = chofetzTopicHe(blob);
+  const range = findDottedSeifRange(eng) ?? findDottedSeifRange(path ?? "");
+  if (topic && range) return `${topic} — ${formatMajorSeifim("עיקר", range)}`;
+  if (topic) return topic;
+  if (range) return formatMajorSeifim("עיקר", range);
+  return null;
+}
+
+function shemiratBookHe(text: string): string | null {
+  const t = text.replace(/[_-]+/g, " ");
+  if (/\bBook\s*(II|2)\b/i.test(t)) return "ספר ב";
+  if (/\bBook\s*(I|1)\b/i.test(t)) return "ספר א";
+  return null;
+}
+
+function shemiratHaLashonToHebrew(path: string | null, eng: string): string | null {
+  const blob = `${path ?? ""} ${eng}`;
+  const book = shemiratBookHe(blob);
+  const range = findDottedSeifRange(eng) ?? findDottedSeifRange(path ?? "");
+  if (book && range) return `שמירת הלשון — ${book}, ${formatMajorSeifim("פרק", range)}`;
+  if (book) return `שמירת הלשון — ${book}`;
+  if (range) return `שמירת הלשון — ${formatMajorSeifim("פרק", range)}`;
+  return null;
 }
 
 /** מחזיר פירוט בעברית לפי מזהה בלוק Hebcal ותוכן ה־HTML; אם אין המרה — מחזיר null. */
@@ -456,12 +586,8 @@ export function toHebrewDailyLearningDetail(id: string, block: string, englishFa
     const h = bavliPathToHebrew(path);
     if (h) return h;
   }
-  if ((id === "yerushalmi-vilna" || id === "yerushalmi-schottenstein") && path) {
-    const h = bavliPathToHebrew(path);
-    if (h) return h;
-  }
-  if (!path && (id === "yerushalmi-vilna" || id === "yerushalmi-schottenstein")) {
-    const h = englishTractFromDetail(eng);
+  if (id === "yerushalmi-vilna" || id === "yerushalmi-schottenstein") {
+    const h = yerushalmiToHebrew(path, eng);
     if (h) return h;
   }
 
@@ -484,9 +610,11 @@ export function toHebrewDailyLearningDetail(id: string, block: string, englishFa
     if (h) return h;
   }
 
-  if ((id === "dailyRambam1" || id === "dailyRambam3") && path) {
-    const h = rambamPathToHebrew(path);
-    if (h) return h;
+  if (id === "dailyRambam1" || id === "dailyRambam3") {
+    const fromPath = path ? rambamPathToHebrew(path) : null;
+    if (fromPath) return fromPath;
+    const fromEng = rambamEnglishToHebrew(eng);
+    if (fromEng) return fromEng;
   }
 
   if (id === "arukhHaShulchanYomi" && path) {
@@ -494,9 +622,11 @@ export function toHebrewDailyLearningDetail(id: string, block: string, englishFa
     if (h) return h;
   }
 
-  if (id === "kitzurShulchanAruch" && path) {
-    const h = kitzurPathToHebrew(path);
-    if (h) return h;
+  if (id === "kitzurShulchanAruch") {
+    const fromPath = path ? kitzurPathToHebrew(path) : null;
+    if (fromPath) return fromPath;
+    const fromEng = kitzurEnglishToHebrew(eng);
+    if (fromEng) return fromEng;
   }
 
   if (id === "seferHaMitzvot") {
@@ -505,11 +635,13 @@ export function toHebrewDailyLearningDetail(id: string, block: string, englishFa
     return eng.replace(/^Day\s+/i, "יום ");
   }
 
-  if (id === "chofetzChaim" || id === "shemiratHaLashon") {
-    if (eng.includes("Rechilut") || eng.includes("רכילות")) {
-      return eng.replace(/Hilchos\s+Rechilut/gi, "הלכות רכילות").replace(/Principle/gi, "עיקר");
-    }
-    return eng.replace(/Book\s+I/gi, "ספר א").replace(/Epilogue/gi, "חותם").replace(/Chasimas Hasefer/gi, "חותם הספר");
+  if (id === "chofetzChaim") {
+    const h = chofetzChaimToHebrew(path, eng);
+    if (h) return h;
+  }
+  if (id === "shemiratHaLashon") {
+    const h = shemiratHaLashonToHebrew(path, eng);
+    if (h) return h;
   }
 
   if (path?.toLowerCase().startsWith("mishnah")) {

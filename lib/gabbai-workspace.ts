@@ -150,6 +150,8 @@ export async function saveGabbaiSection(synagogueId: string, body: Record<string
 
 export function useGabbaiWorkspace(synagogueId: string) {
   const [synagogueName, setSynagogueName] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUpdatedAt, setLogoUpdatedAt] = useState<string | null>(null);
   const [minyanim, setMinyanim] = useState<GabbaiMinyan[]>([]);
   const [halachaSettings, setHalachaSettings] = useState<HalachaSettingsModel>({
     startDate: new Date().toISOString().slice(0, 10),
@@ -171,7 +173,7 @@ export function useGabbaiWorkspace(synagogueId: string) {
         ok: boolean;
         error?: string;
         data?: {
-          synagogue: { name: string };
+          synagogue: { name: string; logoUrl?: string | null; logoUpdatedAt?: string | null };
           minyanim: GabbaiMinyan[];
           halachaSettings: HalachaSettingsModel;
           bulletinItems?: Parameters<typeof mapBulletinFromApi>[0];
@@ -183,6 +185,8 @@ export function useGabbaiWorkspace(synagogueId: string) {
         return;
       }
       setSynagogueName(payload.data.synagogue.name);
+      setLogoUrl(payload.data.synagogue.logoUrl ?? null);
+      setLogoUpdatedAt(payload.data.synagogue.logoUpdatedAt ?? null);
       setMinyanim(
         (payload.data.minyanim.length ? payload.data.minyanim : [createDefaultMinyan()]).map((m) => {
           const displayStyle = isDisplayStyle(m.displayStyle) ? m.displayStyle : "classic";
@@ -223,6 +227,10 @@ export function useGabbaiWorkspace(synagogueId: string) {
   return {
     synagogueName,
     setSynagogueName,
+    logoUrl,
+    setLogoUrl,
+    logoUpdatedAt,
+    setLogoUpdatedAt,
     minyanim,
     setMinyanim,
     halachaSettings,

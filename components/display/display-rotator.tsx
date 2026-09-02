@@ -224,6 +224,7 @@ function AutoFit({
   deps = [],
   grow = false,
   maxScale = 1.45,
+  fillWidth = false,
   children
 }: {
   className?: string;
@@ -231,6 +232,8 @@ function AutoFit({
   deps?: unknown[];
   grow?: boolean;
   maxScale?: number;
+  /** אחרי כיווץ לגובה — שומר רוחב מלא (בלי שוליים בצדדים). */
+  fillWidth?: boolean;
   children: ReactNode;
 }) {
   const outerRef = useRef<HTMLDivElement | null>(null);
@@ -248,7 +251,7 @@ function AutoFit({
       const needH = inner.offsetHeight;
       const needW = inner.offsetWidth;
       if (!availH || !availW || !needH || !needW) return;
-      const fitted = Math.min(availH / needH, availW / needW);
+      const fitted = fillWidth ? availH / needH : Math.min(availH / needH, availW / needW);
       const capped = grow ? Math.min(maxScale, fitted) : Math.min(1, fitted);
       const safe = Number.isFinite(capped) && capped > 0 ? capped : 1;
       setScale((prev) => (Math.abs(prev - safe) > 0.004 ? safe : prev));
@@ -281,7 +284,10 @@ function AutoFit({
       <div
         ref={innerRef}
         className={cn("display-autofit-inner", contentClassName)}
-        style={scale !== 1 ? { transform: `scale(${scale})` } : undefined}
+        style={{
+          ...(scale !== 1 ? { transform: `scale(${scale})` } : {}),
+          ...(fillWidth && scale !== 1 ? { width: `${(100 / scale).toFixed(3)}%` } : {})
+        }}
       >
         {children}
       </div>
@@ -337,6 +343,23 @@ function ShabbatPrayerList({
     >
       {children}
     </CardContent>
+  );
+}
+
+const DAILY_LEARNING_SPLIT_AFTER = 8;
+
+function DailyLearningRowList({ rows }: { rows: DailyLearningLine[] }) {
+  return (
+    <ul className="display-daily-learning-list">
+      {rows.map((row) => (
+        <li key={row.id} className="display-daily-learning-row">
+          <span className="display-daily-learning-name">{row.title}</span>
+          <span className="display-daily-learning-detail" dir="rtl">
+            {row.detail}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -1032,7 +1055,6 @@ export function DisplayRotator({
                     {halachaSeifCounter ? (
                       <span className="display-halacha-source">{halachaSeifCounter}</span>
                     ) : null}
-                    {halacha.source ? <span className="display-halacha-source">({halacha.source})</span> : null}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -1062,16 +1084,27 @@ export function DisplayRotator({
             </CardHeader>
             <CardContent className="display-daily-learning-body">
               {dailyLearning.length ? (
-                <ul className="display-daily-learning-list">
-                  {dailyLearning.map((row) => (
-                    <li key={row.id} className="display-daily-learning-row">
-                      <span className="display-daily-learning-name">{row.title}</span>
-                      <span className="display-daily-learning-detail" dir="rtl">
-                        {row.detail}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <AutoFit
+                  className="display-daily-learning-fit"
+                  contentClassName="display-daily-learning-fit-inner"
+                  deps={[currentScreen, dailyLearning]}
+                  grow
+                  maxScale={1.28}
+                  fillWidth
+                >
+                  {dailyLearning.length > DAILY_LEARNING_SPLIT_AFTER ? (
+                    <div className="display-daily-learning-columns">
+                      <DailyLearningRowList
+                        rows={dailyLearning.slice(0, Math.ceil(dailyLearning.length / 2))}
+                      />
+                      <DailyLearningRowList
+                        rows={dailyLearning.slice(Math.ceil(dailyLearning.length / 2))}
+                      />
+                    </div>
+                  ) : (
+                    <DailyLearningRowList rows={dailyLearning} />
+                  )}
+                </AutoFit>
               ) : (
                 <p className="display-daily-learning-empty">לא ניתן לטעון את נתוני הלימוד כרגע.</p>
               )}

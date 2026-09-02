@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { setPreferredSynagogue } from "@/lib/mobile-synagogue-preference";
+import { setSynagogueIdCookie } from "@/lib/synagogue-id";
 
 /** שומר ב-localStorage את בית הכנסת מה-URL (לפתיחה ישירה בכניסה הבאה). */
 export function SaveSynagoguePreference({
@@ -13,10 +14,12 @@ export function SaveSynagoguePreference({
 }) {
   useEffect(() => {
     if (!synagogueId?.trim()) return;
+    const id = synagogueId.trim();
     setPreferredSynagogue({
-      synagogueId: synagogueId.trim(),
+      synagogueId: id,
       minyan: minyan?.trim() || null
     });
+    setSynagogueIdCookie(id);
   }, [synagogueId, minyan]);
 
   return null;

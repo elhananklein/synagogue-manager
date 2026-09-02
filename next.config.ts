@@ -8,7 +8,7 @@ export default function createNextConfig(phase: string): NextConfig {
   return {
     reactStrictMode: true,
     distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
-    serverExternalPackages: ["xlsx"],
+    serverExternalPackages: ["xlsx", "sharp"],
     async headers() {
       return [
         {

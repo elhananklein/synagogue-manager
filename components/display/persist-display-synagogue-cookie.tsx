@@ -2,14 +2,14 @@
 
 import { useEffect } from "react";
 import { isPhoneBrowser, isTvUserAgent, isWallSizedScreen } from "@/lib/handheld";
+import { setSynagogueIdCookie } from "@/lib/synagogue-id";
 
 /** שומר את בית הכנסת מה-URL ב־cookie, ונועל תצוגת קיר כדי שריענון לא יברח ל־/m. */
 export function PersistDisplaySynagogueCookie({ synagogueId }: { synagogueId: string | null }) {
   useEffect(() => {
-    const maxAge = 60 * 60 * 24 * 180;
     const id = synagogueId?.trim();
     if (id) {
-      document.cookie = `synagogue_id=${encodeURIComponent(id)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+      setSynagogueIdCookie(id);
     }
 
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";

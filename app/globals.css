@@ -999,7 +999,9 @@ optgroup {
   .display-daily-learning-body {
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     padding-top: 0.35rem;
   }
 
@@ -1009,27 +1011,57 @@ optgroup {
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
+    gap: 0.4rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .display-daily-learning-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem 1.15rem;
+    width: 100%;
+    min-width: 0;
+    align-items: stretch;
+  }
+
+  .display-daily-learning-fit {
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .display-daily-learning-fit-inner {
+    width: 100%;
+    max-width: 100%;
+    align-items: stretch;
+    transform-origin: top center;
   }
 
   .display-daily-learning-row {
     display: grid;
-    grid-template-columns: minmax(8.5rem, 1fr) minmax(0, 1.35fr);
-    gap: 0.65rem 1rem;
+    grid-template-columns: minmax(7.5rem, 0.95fr) minmax(0, 1.2fr);
+    gap: 0.4rem 0.75rem;
     align-items: baseline;
-    padding: 0.55rem 0.4rem;
+    padding: 0.5rem 0.7rem;
     border-radius: 0.5rem;
     border: 1px solid rgb(148 163 184 / 0.38);
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .display-daily-learning-columns .display-daily-learning-row {
+    grid-template-columns: minmax(6.25rem, 0.92fr) minmax(0, 1.15fr);
+    padding: 0.48rem 0.75rem;
   }
 
   .display-daily-learning-name {
-    font-size: clamp(1.05rem, 2vw, 1.5rem);
+    font-size: clamp(1.2rem, 2.35vw, 1.85rem);
     font-weight: 800;
     line-height: 1.25;
   }
 
   .display-daily-learning-detail {
-    font-size: clamp(1rem, 1.85vw, 1.35rem);
+    font-size: clamp(1.15rem, 2.15vw, 1.7rem);
     font-weight: 700;
     line-height: 1.3;
     word-break: break-word;
@@ -2016,11 +2048,35 @@ optgroup {
     width: 100%;
   }
   .display--modern .display-datetime-screen {
-    color: #ffffff;
+    color: #f8fafc;
+  }
+  .display--modern .display-datetime-digital-col {
+    padding: clamp(1.1rem, 2.4vh, 1.85rem) clamp(1.4rem, 3vw, 2.4rem) clamp(1.25rem, 2.6vh, 2rem);
+    border-radius: 1.15rem;
+    border: 1px solid rgb(56 189 248 / 0.8);
+    background: linear-gradient(
+      180deg,
+      rgb(30 41 59 / 0.97) 0%,
+      rgb(15 23 42 / 0.98) 48%,
+      rgb(2 6 23 / 0.99) 100%
+    );
+    color: #f8fafc;
+    box-shadow:
+      0 10px 36px rgb(0 0 0 / 0.4),
+      inset 0 1px 0 rgb(56 189 248 / 0.2);
+    outline: 1px solid rgb(251 191 36 / 0.35);
+    outline-offset: -5px;
+    transform: none;
   }
   .display--modern .display-datetime-digital {
     color: #ffffff;
-    text-shadow: 0 2px 16px rgb(0 0 0 / 0.35);
+    text-shadow:
+      0 3px 12px rgb(0 0 0 / 0.55),
+      0 0 32px rgb(56 189 248 / 0.28);
+  }
+  .display--modern .display-datetime-next-prayer {
+    color: #7dd3fc;
+    margin-top: 1.15rem;
   }
   .display--modern .display-analog-clock-face {
     fill: rgb(15 23 42 / 0.55);
@@ -2954,7 +3010,7 @@ optgroup {
     justify-content: space-between;
     gap: clamp(0.35rem, 1.2vw, 0.85rem);
     width: 100%;
-    min-height: clamp(4.75rem, 13vh, 8.5rem);
+    min-height: clamp(6.25rem, 17vh, 10.25rem);
   }
 
   .display--royalBlue .display-ws-header-band--shabbat {
@@ -3007,13 +3063,15 @@ optgroup {
     font-size: clamp(1.28rem, 2.8vw, 2rem);
   }
   .display--royalBlue .display-ws-clock-circle {
-    flex: 1.5 1 0;
+    flex: 1.7 1 0;
     width: auto;
-    height: clamp(7.5rem, 21vh, 13rem);
+    min-width: clamp(17.5rem, 34vw, 28rem);
+    height: clamp(6.4rem, 16.5vh, 9.5rem);
+    padding: 0.25rem clamp(1.5rem, 2.6vw, 2.4rem);
     display: flex;
     align-items: center;
     justify-content: center;
-    background-image: url("/display/royal/clock-orb.svg");
+    background-image: url("/display/royal/clock-orb.svg?v=2");
     background-size: 100% 100%;
     background-position: center;
     background-repeat: no-repeat;
@@ -3021,11 +3079,12 @@ optgroup {
     border-radius: 50%;
   }
   .display--royalBlue .display-ws-clock-circle .display-clock-text {
-    font-size: clamp(2.3rem, 10vh, 4.6rem);
+    font-size: clamp(2.1rem, 6.4vh, 3.6rem);
     font-weight: 900;
     color: #ffffff;
     letter-spacing: 0.03em;
     line-height: 1;
+    white-space: nowrap;
     text-shadow:
       0 0 2px rgb(0 0 0 / 0.85),
       0 2px 6px rgb(0 0 0 / 0.6);

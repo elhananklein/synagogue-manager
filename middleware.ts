@@ -1,9 +1,39 @@
 import { NextResponse, userAgent, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/ssr-middleware";
+import { parseSynagogueId, SYNAGOGUE_ID_COOKIE, SYNAGOGUE_ID_COOKIE_MAX_AGE } from "@/lib/synagogue-id";
 
 /** עוגיה לדריסת זיהוי המכשיר: "full" = תצוגת קיר/דסקטופ, "mobile" = תצוגת מובייל. */
 const VIEW_COOKIE = "viewMode";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function withSynagogueCookie(request: NextRequest, response: NextResponse): NextResponse {
+  const fromQuery = parseSynagogueId(request.nextUrl.searchParams.get("synagogueId"));
+  if (fromQuery) {
+    response.cookies.set(SYNAGOGUE_ID_COOKIE, fromQuery, {
+      path: "/",
+      maxAge: SYNAGOGUE_ID_COOKIE_MAX_AGE,
+      sameSite: "lax"
+    });
+  }
+  return response;
+}
+
+function knownSynagogueId(request: NextRequest): string | null {
+  return (
+    parseSynagogueId(request.nextUrl.searchParams.get("synagogueId")) ??
+    parseSynagogueId(request.cookies.get(SYNAGOGUE_ID_COOKIE)?.value)
+  );
+}
+
+function mobileDisplayUrl(request: NextRequest, synagogueId: string): URL {
+  const url = request.nextUrl.clone();
+  url.pathname = "/m/display";
+  url.search = "";
+  url.searchParams.set("synagogueId", synagogueId);
+  const minyan = request.nextUrl.searchParams.get("minyan")?.trim();
+  if (minyan) url.searchParams.set("minyan", minyan);
+  return url;
+}
 
 function isTvUa(ua: string) {
   return /TV|SmartTV|Smart-TV|BRAVIA|AFT[A-Z0-9]|GoogleTV|CrKey|HbbTV|Web0S|Tizen|VIDAA|Hisense|NetCast|Android TV|AppleTV|Fire TV/i.test(
@@ -93,7 +123,7 @@ export async function middleware(request: NextRequest) {
     } else {
       response.cookies.set(VIEW_COOKIE, viewParam, { path: "/", maxAge: COOKIE_MAX_AGE });
     }
-    return response;
+    return withSynagogueCookie(request, response);
   }
 
   const cookieMode = request.cookies.get(VIEW_COOKIE)?.value;
@@ -106,7 +136,7 @@ export async function middleware(request: NextRequest) {
   if (isMobileDisplayPath && !isPhone && cookieMode !== "mobile") {
     const wallUrl = nextUrl.clone();
     wallUrl.pathname = path.replace(/^\/m/, "") || "/display";
-    return NextResponse.redirect(wallUrl);
+    return withSynagogueCookie(request, NextResponse.redirect(wallUrl));
   }
 
   // /display = כתובת הקיר. לא בורחים למובייל בגלל עוגיה ישנה או Android של סטיק/טלוויזיה.
@@ -116,13 +146,29 @@ export async function middleware(request: NextRequest) {
   else if (cookieMode === "mobile") useMobile = true;
   else useMobile = isPhone || isTablet;
 
+  const synagogueId = knownSynagogueId(request);
+  const wantsPicker = nextUrl.searchParams.get("pick") === "1";
+
+  // קישור/עוגייה כבר מזהים בית כנסת — לא מציגים מסך בחירה.
+  if (useMobile && !wantsPicker && synagogueId && (path === "/" || path === "/m")) {
+    return withSynagogueCookie(request, NextResponse.redirect(mobileDisplayUrl(request, synagogueId)));
+  }
+
   if (!useMobile || path === "/m" || path.startsWith("/m/")) {
-    return NextResponse.next();
+    return withSynagogueCookie(request, NextResponse.next());
   }
 
   const mobileUrl = nextUrl.clone();
-  mobileUrl.pathname = path === "/" ? "/m" : `/m${path}`;
-  return NextResponse.redirect(mobileUrl);
+  if (path === "/" && synagogueId && !wantsPicker) {
+    mobileUrl.pathname = "/m/display";
+    mobileUrl.search = "";
+    mobileUrl.searchParams.set("synagogueId", synagogueId);
+    const minyan = nextUrl.searchParams.get("minyan")?.trim();
+    if (minyan) mobileUrl.searchParams.set("minyan", minyan);
+  } else {
+    mobileUrl.pathname = path === "/" ? "/m" : `/m${path}`;
+  }
+  return withSynagogueCookie(request, NextResponse.redirect(mobileUrl));
 }
 
 /** רץ על הדפים הציבוריים (תצוגת מובייל) ועל כל /admin (הזדהות). */

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
 import { MobileDisplayRotator } from "@/components/display/mobile-display-rotator";
+import { PublicSynagogueManifestLink } from "@/components/mobile/public-synagogue-manifest-link";
+import { PwaInstallBanner } from "@/components/mobile/pwa-install";
 import { SaveSynagoguePreference } from "@/components/mobile/save-synagogue-preference";
 import { buildDisplayView, type DisplayViewParams } from "@/lib/build-display-view";
 import { listActiveMinyanim, resolveMinyanOrdinal } from "@/lib/display-config";
@@ -13,7 +15,7 @@ export async function generateMetadata({
 }: {
   searchParams: Promise<DisplayViewParams>;
 }): Promise<Metadata> {
-  return generateDisplayMetadata(await searchParams);
+  return generateDisplayMetadata(await searchParams, { mobilePwa: true });
 }
 
 function singleParam(value: string | string[] | undefined): string | null {
@@ -30,14 +32,16 @@ export default async function MobileDisplayPage({
 }) {
   const params = await searchParams;
   const view = await buildDisplayView(params);
-  const synagogueId = singleParam(params.synagogueId);
+  const synagogueId = singleParam(params.synagogueId) ?? view.synagogueId;
   const minyan = singleParam(params.minyan) ?? singleParam(params.minyanId);
   const minyanOptions = synagogueId ? await listActiveMinyanim(synagogueId) : [];
   const currentMinyanIndex = resolveMinyanOrdinal(minyanOptions, minyan, view.minyanName);
 
   return (
     <>
+      <PublicSynagogueManifestLink synagogueId={synagogueId} />
       <SaveSynagoguePreference synagogueId={synagogueId} minyan={minyan} />
+      <PwaInstallBanner className="mx-4 mt-3" />
       <MobileDisplayRotator
       synagogueId={synagogueId}
       synagogueName={view.synagogueName}

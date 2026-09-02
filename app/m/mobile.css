@@ -976,3 +976,36 @@
   line-height: 1.45;
   color: var(--m-ink-soft);
 }
+
+.m-waiting {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem 1.25rem;
+  text-align: center;
+  color: var(--m-burgundy);
+}
+
+.m-waiting-spin {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid rgb(201 162 74 / 0.28);
+  border-top-color: var(--m-gold);
+  border-radius: 50%;
+  animation: m-waiting-spin 0.75s linear infinite;
+}
+
+.m-waiting-text {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+@keyframes m-waiting-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

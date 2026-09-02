@@ -537,7 +537,7 @@ export function MobileDisplayRotator({
         {enabledScreens.some((s) => s.screenKey === "main") ? null : <HalachaFold halacha={halacha} />}
         {footerText ? <footer className="m-footer">{footerText}</footer> : null}
         <nav className="m-bottom-nav" aria-label="ניווט">
-          <Link href="/?pick=1">החלפת בית כנסת</Link>
+          <Link href="/m?pick=1">החלפת בית כנסת</Link>
           <Link href="/admin/login">כניסה כמנהל</Link>
         </nav>
       </div>

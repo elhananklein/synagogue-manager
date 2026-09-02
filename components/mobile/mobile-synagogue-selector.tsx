@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronLeft, Search } from "lucide-react";
 import { setPreferredSynagogue } from "@/lib/mobile-synagogue-preference";
+import { setSynagogueIdCookie } from "@/lib/synagogue-id";
 
 type SynagogueOption = {
   id: string;
@@ -32,7 +33,10 @@ export function MobileSynagogueSelector({ synagogues }: { synagogues: SynagogueO
             <li key={synagogue.id}>
               <Link
                 href={`/m/display?synagogueId=${encodeURIComponent(synagogue.id)}`}
-                onClick={() => setPreferredSynagogue({ synagogueId: synagogue.id })}
+                onClick={() => {
+                  setPreferredSynagogue({ synagogueId: synagogue.id });
+                  setSynagogueIdCookie(synagogue.id);
+                }}
                 className="m-list-item"
               >
                 <span className="min-w-0">

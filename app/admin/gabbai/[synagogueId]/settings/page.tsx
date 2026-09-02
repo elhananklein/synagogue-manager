@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { GabbaiLoadingPanel } from "@/components/admin/gabbai-loading";
 import { GabbaiSaveBar } from "@/components/admin/gabbai-save-bar";
+import { SynagogueLogoField } from "@/components/admin/synagogue-logo-field";
 import { isLiveHalachaSource } from "@/lib/halacha-source";
 import {
   mapGabbaiSaveError,
@@ -22,6 +23,10 @@ export default function GabbaiSettingsPage({
   const {
     synagogueName,
     setSynagogueName,
+    logoUrl,
+    setLogoUrl,
+    logoUpdatedAt,
+    setLogoUpdatedAt,
     minyanim,
     setMinyanim,
     halachaSettings,
@@ -97,7 +102,7 @@ export default function GabbaiSettingsPage({
   return (
     <>
       <h1 className="gabbai-page-title">הגדרות בית הכנסת</h1>
-      <p className="gabbai-page-desc">שם בית הכנסת, המניינים, ומאיפה מגיעה ההלכה היומית.</p>
+      <p className="gabbai-page-desc">שם בית הכנסת, לוגו, המניינים, ומאיפה מגיעה ההלכה היומית.</p>
 
       <label className="mb-6 block">
         <span className="mb-1 block text-sm font-medium">שם בית הכנסת</span>
@@ -110,6 +115,16 @@ export default function GabbaiSettingsPage({
           }}
         />
       </label>
+
+      <SynagogueLogoField
+        synagogueId={synagogueId}
+        logoUrl={logoUrl}
+        logoUpdatedAt={logoUpdatedAt}
+        onChanged={({ logoUrl: nextUrl, logoUpdatedAt: nextAt }) => {
+          setLogoUrl(nextUrl);
+          setLogoUpdatedAt(nextAt);
+        }}
+      />
 
       <section className="mb-8">
         <div className="mb-3 flex items-center justify-between gap-2">
