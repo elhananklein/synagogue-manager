@@ -173,5 +173,5 @@ export async function middleware(request: NextRequest) {
 
 /** רץ על הדפים הציבוריים (תצוגת מובייל) ועל כל /admin (הזדהות). */
 export const config = {
-  matcher: ["/", "/display", "/contact", "/m", "/m/:path*", "/admin/:path*"]
+  matcher: ["/", "/display", "/contact", "/join", "/m", "/m/:path*", "/admin/:path*"]
 };

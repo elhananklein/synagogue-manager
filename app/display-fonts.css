@@ -1,19 +1,22 @@
 /* פונטי תצוגה לבחירת הגבאי — סלקטורים חדשים בלבד, בלי לגעת בסגנונות הקיר הקיימים. */
 
 .display[data-display-font="bonaNova"],
-.m-shell[data-display-font="bonaNova"] {
+.m-shell[data-display-font="bonaNova"],
+.congregant-theme[data-display-font="bonaNova"] {
   font-family: var(--font-bona-nova), "Bona Nova", serif;
   --royal-font: var(--font-bona-nova), "Bona Nova", serif;
 }
 
 .display[data-display-font="david"],
-.m-shell[data-display-font="david"] {
+.m-shell[data-display-font="david"],
+.congregant-theme[data-display-font="david"] {
   font-family: var(--font-david), "David Libre", David, serif;
   --royal-font: var(--font-david), "David Libre", David, serif;
 }
 
 .display[data-display-font="arial"],
-.m-shell[data-display-font="arial"] {
+.m-shell[data-display-font="arial"],
+.congregant-theme[data-display-font="arial"] {
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
   --royal-font: Arial, "Helvetica Neue", Helvetica, sans-serif;
 }

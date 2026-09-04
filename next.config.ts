@@ -9,6 +9,7 @@ export default function createNextConfig(phase: string): NextConfig {
     reactStrictMode: true,
     distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
     serverExternalPackages: ["xlsx", "sharp"],
+    transpilePackages: ["@hebcal/core", "@hebcal/hdate"],
     async headers() {
       return [
         {

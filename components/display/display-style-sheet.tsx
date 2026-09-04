@@ -5,7 +5,7 @@ import type { DisplayStyle } from "@/lib/display-theme";
  * סגנונות ישנים נשארים ב-globals.css כמו היום — כאן אין להם הפניה.
  */
 const STYLE_STYLESHEETS: Partial<Record<DisplayStyle, string>> = {
-  veryBold: "/display/very-bold.css?v=42"
+  veryBold: "/display/very-bold.css?v=43"
 };
 
 export function DisplayStyleSheet({ style }: { style: DisplayStyle }) {

@@ -1,0 +1,416 @@
+/* טופס מתפללים — צבעי המניין, בלי לגעת בסגנונות הקיר. */
+
+.congregant-theme {
+  --c-bg: #f6f3ee;
+  --c-panel: #fffdf8;
+  --c-ink: #3a1520;
+  --c-muted: #6b4e3e;
+  --c-accent: #6b1a2e;
+  --c-on-accent: #fff8ea;
+  --c-border: rgb(107 26 46 / 0.18);
+  --c-gold: #c9a24a;
+  --c-input: #fff;
+  color: var(--c-ink);
+}
+
+.congregant-theme[data-display-style="classic"] {
+  --c-bg: #f6efe8;
+  --c-panel: #fffdf8;
+  --c-ink: #3f0d18;
+  --c-muted: #7a4a52;
+  --c-accent: #6b1a2e;
+  --c-on-accent: #fff8ea;
+  --c-border: rgb(107 26 46 / 0.2);
+  --c-gold: #c9a24a;
+}
+
+.congregant-theme[data-display-style="modern"] {
+  --c-bg: #eef3fb;
+  --c-panel: #f8fafc;
+  --c-ink: #0f172a;
+  --c-muted: #475569;
+  --c-accent: #1d4ed8;
+  --c-on-accent: #f8fafc;
+  --c-border: rgb(14 116 144 / 0.28);
+  --c-gold: #fbbf24;
+}
+
+.congregant-theme[data-display-style="minimal"] {
+  --c-bg: #f8fafc;
+  --c-panel: #ffffff;
+  --c-ink: #0f172a;
+  --c-muted: #64748b;
+  --c-accent: #334155;
+  --c-on-accent: #ffffff;
+  --c-border: #cbd5e1;
+  --c-gold: #94a3b8;
+}
+
+.congregant-theme[data-display-style="woodSilver"] {
+  --c-bg: #f3e6d6;
+  --c-panel: #fffaf2;
+  --c-ink: #1a110b;
+  --c-muted: #6b5340;
+  --c-accent: #6f4a2e;
+  --c-on-accent: #fff8ea;
+  --c-border: rgb(111 74 46 / 0.28);
+  --c-gold: #c0c7d1;
+}
+
+.congregant-theme[data-display-style="royalBlue"] {
+  --c-bg: #e8eef8;
+  --c-panel: #fffdf6;
+  --c-ink: #0d2a61;
+  --c-muted: #3d5278;
+  --c-accent: #0d2a61;
+  --c-on-accent: #f7e7b8;
+  --c-border: rgb(202 162 74 / 0.55);
+  --c-gold: #caa24a;
+}
+
+.congregant-theme[data-display-style="veryBold"] {
+  --c-bg: #f3ead8;
+  --c-panel: #fff8ea;
+  --c-ink: #152238;
+  --c-muted: #2a3b58;
+  --c-accent: #152238;
+  --c-on-accent: #fff8ea;
+  --c-border: rgb(184 146 58 / 0.45);
+  --c-gold: #b8923a;
+}
+
+.congregant-theme[data-display-style="veryBold"][data-display-palette="azureGold"] {
+  --c-bg: #d7ecf8;
+  --c-panel: #f4fbff;
+  --c-ink: #0c3a6b;
+  --c-muted: #15518d;
+  --c-accent: #1460a8;
+  --c-on-accent: #ffffff;
+  --c-border: rgb(201 162 39 / 0.45);
+  --c-gold: #c9a227;
+}
+
+.congregant-theme[data-display-style="veryBold"][data-display-palette="classicBurgundy"] {
+  --c-bg: #f3e4de;
+  --c-panel: #fff8f4;
+  --c-ink: #3f0d18;
+  --c-muted: #7a2438;
+  --c-accent: #6b1a2e;
+  --c-on-accent: #fff8ea;
+  --c-border: rgb(201 162 74 / 0.4);
+  --c-gold: #c9a24a;
+}
+
+.congregant-card {
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid var(--c-border);
+  background: var(--c-panel);
+  box-shadow: 0 10px 24px rgb(15 23 42 / 0.06);
+}
+
+.congregant-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  color: var(--c-on-accent);
+  background: var(--c-accent);
+  border-bottom: 3px solid var(--c-gold);
+}
+
+.congregant-card-head h2,
+.congregant-card-head p {
+  margin: 0;
+}
+
+.congregant-card-head h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.congregant-card-head p {
+  font-size: 0.82rem;
+  opacity: 0.86;
+}
+
+.congregant-card-body {
+  padding: 1rem;
+}
+
+.congregant-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .congregant-grid--2 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .congregant-grid--3 {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+.congregant-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.congregant-field span {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--c-muted);
+}
+
+.congregant-field input,
+.congregant-field select,
+.congregant-field textarea {
+  min-height: 2.7rem;
+  width: 100%;
+  border-radius: 0.7rem;
+  border: 1px solid var(--c-border);
+  background: var(--c-input, #fff);
+  color: var(--c-ink);
+  padding: 0.45rem 0.7rem;
+  font: inherit;
+}
+
+.congregant-field textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.congregant-field input:read-only {
+  background: rgb(15 23 42 / 0.04);
+}
+
+.congregant-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.4rem;
+  font-weight: 700;
+  color: var(--c-ink);
+}
+
+.congregant-check input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.congregant-source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.congregant-source button {
+  min-height: 2.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--c-border);
+  background: transparent;
+  color: var(--c-ink);
+  font: inherit;
+  font-weight: 700;
+}
+
+.congregant-source button[aria-pressed="true"] {
+  color: var(--c-on-accent);
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+}
+
+.congregant-prayer-name {
+  margin: 0.15rem 0 0.35rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.75rem;
+  background: rgb(15 23 42 / 0.04);
+  border: 1px dashed var(--c-gold);
+  font-weight: 800;
+}
+
+.congregant-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.congregant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--c-border);
+  background: var(--c-panel);
+  color: inherit;
+  text-decoration: none;
+}
+
+.congregant-row h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.congregant-row p {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: var(--c-muted);
+}
+
+.congregant-badge {
+  flex-shrink: 0;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.congregant-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0 0 1rem;
+}
+
+.congregant-issues {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.75rem;
+  background: rgb(180 35 24 / 0.08);
+  color: #8a1f16;
+  font-size: 0.88rem;
+}
+
+.congregant-issues ul {
+  margin: 0.35rem 0 0;
+  padding: 0 1.1rem 0 0;
+}
+
+.congregant-empty {
+  margin: 0;
+  padding: 1.4rem 1rem;
+  text-align: center;
+  color: var(--c-muted);
+}
+
+.congregant-theme .congregant-field input,
+.congregant-theme .congregant-field select,
+.congregant-theme .congregant-field textarea {
+  font-size: 16px;
+  min-height: 2.75rem;
+}
+
+.congregant-join-page {
+  min-height: 100dvh;
+  padding: 1rem 0.85rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  background: var(--c-bg);
+}
+
+.congregant-join-page--embedded {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.congregant-join-page .congregant-card {
+  width: 100%;
+  max-width: 42rem;
+  margin-inline: auto;
+}
+
+.congregant-join-success {
+  margin: 0;
+  padding: 0.35rem 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.congregant-honeypot {
+  position: absolute;
+  left: -10000px;
+  height: 0;
+  overflow: hidden;
+}
+
+.congregant-public-submit {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 1rem -1rem 0;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, transparent, var(--c-panel) 28%);
+}
+
+.congregant-public-submit-btn {
+  width: 100%;
+  min-height: 2.9rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.congregant-badge--pending {
+  background: #b45309;
+}
+
+.congregant-row-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.congregant-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.congregant-link-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px dashed var(--c-gold);
+  background: var(--c-panel);
+  font-size: 0.88rem;
+}
+
+.congregant-link-box code {
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+
+@media (min-width: 768px) {
+  .congregant-join-page {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2.25rem 1.5rem 3rem;
+  }
+
+  .congregant-public-submit {
+    position: static;
+    margin: 1.1rem 0 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  .congregant-public-submit-btn {
+    width: auto;
+    min-width: 14rem;
+  }
+}
+

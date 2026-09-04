@@ -63,7 +63,8 @@ export function GabbaiShell({
               : href === "/more"
                 ? pathname.startsWith(`${base}/more`) ||
                   pathname.startsWith(`${base}/look`) ||
-                  pathname.startsWith(`${base}/settings`)
+                  pathname.startsWith(`${base}/settings`) ||
+                  pathname.startsWith(`${base}/congregants`)
                 : pathname.startsWith(base + href);
           return (
             <Link key={href || "home"} href={to} aria-current={current ? "page" : undefined}>
@@ -96,7 +97,8 @@ export function GabbaiShell({
               : href === "/more"
                 ? pathname.startsWith(`${base}/more`) ||
                   pathname.startsWith(`${base}/look`) ||
-                  pathname.startsWith(`${base}/settings`)
+                  pathname.startsWith(`${base}/settings`) ||
+                  pathname.startsWith(`${base}/congregants`)
                 : pathname.startsWith(base + href);
           return (
             <Link key={`m-${href || "home"}`} href={to} aria-current={current ? "page" : undefined}>
