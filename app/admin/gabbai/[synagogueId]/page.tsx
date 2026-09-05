@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Megaphone, Monitor, Settings, Sun, Users } from "lucide-react";
+import { CalendarDays, Megaphone, Monitor, ScrollText, Settings, Sun, Users } from "lucide-react";
 
 export default async function GabbaiHomePage({
   params
@@ -15,6 +15,12 @@ export default async function GabbaiHomePage({
       title: "מתפללים",
       desc: "לרשום מתפלל, לערוך כרטיס, או לייבא מאקסל",
       Icon: Users
+    },
+    {
+      href: `${base}/aliyot`,
+      title: "עליות",
+      desc: "לסמן מי עלה לתורה בשבת ובחג",
+      Icon: ScrollText
     },
     {
       href: `${base}/prayers`,

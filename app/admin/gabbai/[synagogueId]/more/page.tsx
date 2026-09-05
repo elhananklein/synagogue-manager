@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Monitor, Settings, Tv, Users } from "lucide-react";
+import { Monitor, ScrollText, Settings, Tv, Users } from "lucide-react";
 
 export default async function GabbaiMorePage({
   params
@@ -21,6 +21,15 @@ export default async function GabbaiMorePage({
           <span>
             <h2>מתפללים</h2>
             <p>כרטיס מתפלל, מניין, וייבוא מאקסל</p>
+          </span>
+        </Link>
+        <Link href={`${base}/aliyot`} className="gabbai-task-card">
+          <span className="gabbai-task-icon">
+            <ScrollText className="h-5 w-5" aria-hidden />
+          </span>
+          <span>
+            <h2>עליות</h2>
+            <p>מי עלה לתורה בשבת ובחג</p>
           </span>
         </Link>
         <Link href={`${base}/look`} className="gabbai-task-card">

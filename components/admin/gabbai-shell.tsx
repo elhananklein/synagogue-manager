@@ -64,7 +64,8 @@ export function GabbaiShell({
                 ? pathname.startsWith(`${base}/more`) ||
                   pathname.startsWith(`${base}/look`) ||
                   pathname.startsWith(`${base}/settings`) ||
-                  pathname.startsWith(`${base}/congregants`)
+                  pathname.startsWith(`${base}/congregants`) ||
+                  pathname.startsWith(`${base}/aliyot`)
                 : pathname.startsWith(base + href);
           return (
             <Link key={href || "home"} href={to} aria-current={current ? "page" : undefined}>
@@ -98,7 +99,8 @@ export function GabbaiShell({
                 ? pathname.startsWith(`${base}/more`) ||
                   pathname.startsWith(`${base}/look`) ||
                   pathname.startsWith(`${base}/settings`) ||
-                  pathname.startsWith(`${base}/congregants`)
+                  pathname.startsWith(`${base}/congregants`) ||
+                  pathname.startsWith(`${base}/aliyot`)
                 : pathname.startsWith(base + href);
           return (
             <Link key={`m-${href || "home"}`} href={to} aria-current={current ? "page" : undefined}>

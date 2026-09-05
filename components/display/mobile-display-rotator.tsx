@@ -786,7 +786,10 @@ function ClockScreen({ nextPrayer }: { nextPrayer: { label: string; time: string
             <p className="display-datetime-next-prayer">
               <span className="display-datetime-next-prayer-label">התפילה הבאה:</span>
               <span className="display-datetime-next-prayer-detail">
-                {nextPrayer.label} ב {nextPrayer.time}
+                {nextPrayer.label}{" "}
+                <span className="display-datetime-next-prayer-at">
+                  ב־<span dir="ltr">{nextPrayer.time}</span>
+                </span>
               </span>
             </p>
           ) : null}

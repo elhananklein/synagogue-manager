@@ -917,6 +917,10 @@ optgroup {
     font-size: 1.35em;
   }
 
+  .display-datetime-next-prayer-at {
+    white-space: nowrap;
+  }
+
   .display-analog-clock--mobile {
     width: min(14.5rem, 64vw);
   }
