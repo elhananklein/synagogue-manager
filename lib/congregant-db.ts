@@ -180,8 +180,9 @@ export async function insertCongregant(synagogueId: string, input: CongregantInp
   const row = inputToRow(synagogueId, input);
   const res = await supabase.from("congregants").insert(row).select(SELECT_FIELDS).single();
   if (res.error && missingStatusColumn(res.error.message) && row.registration_status === "approved") {
-    const withoutStatus = { ...row };
-    delete withoutStatus.registration_status;
+    const withoutStatus = Object.fromEntries(
+      Object.entries(row).filter(([key]) => key !== "registration_status")
+    );
     const fallback = await supabase.from("congregants").insert(withoutStatus).select(SELECT_BASE).single();
     if (fallback.error) return { row: null, error: mapDbError(fallback.error.message, input) };
     return { row: rowToRecord(fallback.data as CongregantRow) };
