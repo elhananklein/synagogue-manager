@@ -1,0 +1,385 @@
+/* דף הסבר לגבאי — לא נוגע בסגנונות הקיר. */
+
+.gabbai-shell:has(.guide-page) .gabbai-body {
+  max-width: 68rem;
+}
+
+.guide-page {
+  color: #3a1520;
+}
+
+.guide-page h1.gabbai-page-title {
+  margin-bottom: 0.25rem;
+}
+
+.guide-intro {
+  margin: 0 0 1rem;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: #5a3a30;
+}
+
+.guide-toc {
+  position: sticky;
+  top: 3.55rem;
+  z-index: 35;
+  display: flex;
+  gap: 0.4rem;
+  margin: 0 -1rem 1.15rem;
+  padding: 0.55rem 1rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  background: rgb(246 243 238 / 0.96);
+  border-bottom: 1px solid rgb(107 26 46 / 0.1);
+  scrollbar-width: thin;
+}
+
+.guide-toc a {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgb(107 26 46 / 0.14);
+  background: #fffdf8;
+  color: #6b1a2e;
+  text-decoration: none;
+  font-size: 0.86rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.guide-toc a[aria-current="true"] {
+  background: #6b1a2e;
+  border-color: #6b1a2e;
+  color: #fff8ea;
+}
+
+.guide-section {
+  scroll-margin-top: 7.2rem;
+  margin: 0 0 1.75rem;
+  padding: 1.05rem 1rem 1.15rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgb(107 26 46 / 0.12);
+  background: #fffdf8;
+  box-shadow: 0 8px 22px rgb(58 21 32 / 0.05);
+}
+
+.guide-section h2 {
+  margin: 0 0 0.45rem;
+  font-size: 1.22rem;
+  font-weight: 800;
+}
+
+.guide-section h3 {
+  margin: 1.1rem 0 0.4rem;
+  font-size: 1.02rem;
+  font-weight: 800;
+}
+
+.guide-section p,
+.guide-section li {
+  font-size: 0.97rem;
+  line-height: 1.55;
+  color: #4a2c28;
+}
+
+.guide-section ul,
+.guide-section ol {
+  margin: 0.35rem 0 0.7rem;
+  padding-inline-start: 1.2rem;
+}
+
+.guide-section li + li {
+  margin-top: 0.28rem;
+}
+
+.guide-worlds {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.85rem 0 1rem;
+}
+
+.guide-world {
+  padding: 0.85rem 0.9rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgb(107 26 46 / 0.12);
+  background: #f6f0e8;
+}
+
+.guide-world strong {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 1.02rem;
+}
+
+.guide-world span {
+  color: #6b4e3e;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.guide-where {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.45rem 0 0.7rem;
+}
+
+.guide-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.guide-pill--wall {
+  background: #152238;
+  color: #fff8ea;
+}
+
+.guide-pill--phone {
+  background: #1460a8;
+  color: #fff;
+}
+
+.guide-pill--gabbai {
+  background: #6b1a2e;
+  color: #fff8ea;
+}
+
+.guide-pill--none {
+  background: #efe6dc;
+  color: #6b4e3e;
+}
+
+.guide-pair {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0 0.35rem;
+}
+
+.guide-shot {
+  min-width: 0;
+}
+
+.guide-shot figcaption {
+  margin: 0.4rem 0 0;
+  color: #6b4e3e;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.guide-frame {
+  overflow: hidden;
+  border-radius: 0.85rem;
+  border: 1px solid rgb(107 26 46 / 0.16);
+  background: #1a1014;
+  box-shadow: 0 10px 24px rgb(15 23 42 / 0.12);
+}
+
+.guide-frame--wall img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.guide-frame--phone {
+  max-width: 18rem;
+  margin-inline: auto;
+  border-radius: 1.35rem;
+  border-width: 6px;
+  border-color: #1f1a16;
+}
+
+.guide-frame--phone img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.guide-live {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.guide-live-btn {
+  min-height: 2.7rem;
+  padding: 0 0.95rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(107 26 46 / 0.2);
+  background: #fff;
+  color: #6b1a2e;
+  font-weight: 800;
+}
+
+.guide-live-stage {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.guide-iframe-wall,
+.guide-iframe-phone {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.85rem;
+  border: 1px solid rgb(107 26 46 / 0.16);
+  background: #111;
+  container-type: inline-size;
+}
+
+.guide-iframe-wall {
+  aspect-ratio: 16 / 9;
+}
+
+.guide-iframe-phone {
+  width: min(100%, 18rem);
+  margin-inline: auto;
+  aspect-ratio: 390 / 844;
+  border-radius: 1.3rem;
+}
+
+.guide-iframe-wall iframe,
+.guide-iframe-phone iframe {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 0;
+  border: 0;
+  transform-origin: top right;
+}
+
+.guide-iframe-wall iframe {
+  width: 1920px;
+  height: 1080px;
+  transform: scale(calc(100cqi / 1920));
+}
+
+.guide-iframe-phone iframe {
+  width: 390px;
+  height: 844px;
+  transform: scale(calc(100cqi / 390));
+}
+
+.guide-note {
+  margin: 0.7rem 0 0;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.75rem;
+  background: #fff4d6;
+  color: #6b3f12;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.guide-note--ok {
+  background: #e7f6ec;
+  color: #146c2e;
+}
+
+.guide-note--mute {
+  background: #efe6dc;
+  color: #5a4034;
+}
+
+.guide-admin {
+  margin: 0.7rem 0;
+  padding: 0.8rem 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px dashed rgb(107 26 46 / 0.28);
+  background: #f8f1ea;
+}
+
+.guide-admin strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.guide-admin p {
+  margin: 0;
+}
+
+.guide-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.guide-card {
+  padding: 0.75rem 0.8rem;
+  border-radius: 0.8rem;
+  background: #f6f0e8;
+}
+
+.guide-card h3 {
+  margin: 0 0 0.3rem;
+}
+
+.guide-card p {
+  margin: 0;
+}
+
+.guide-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
+.guide-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.4rem;
+  padding: 0 0.8rem;
+  border-radius: 0.7rem;
+  background: #6b1a2e;
+  color: #fff8ea;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.guide-links a.guide-links--ghost {
+  background: #fff;
+  color: #6b1a2e;
+  border: 1px solid rgb(107 26 46 / 0.2);
+}
+
+@media (min-width: 768px) {
+  .guide-toc {
+    top: 4.35rem;
+    margin: 0 0 1.2rem;
+    padding: 0.55rem 0;
+    background: transparent;
+    border: 0;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .guide-section {
+    scroll-margin-top: 8.5rem;
+    padding: 1.2rem 1.2rem 1.3rem;
+  }
+
+  .guide-worlds {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .guide-pair,
+  .guide-live-stage,
+  .guide-grid {
+    grid-template-columns: 1.4fr 0.8fr;
+    align-items: start;
+  }
+
+  .guide-grid--3 {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .guide-frame--phone {
+    max-width: none;
+  }
+
+}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Megaphone, Monitor, ScrollText, Settings, Sun, Users } from "lucide-react";
+import { BookOpen, CalendarDays, Megaphone, Monitor, ScrollText, Settings, Sun, Users } from "lucide-react";
 
 export default async function GabbaiHomePage({
   params
@@ -10,6 +10,12 @@ export default async function GabbaiHomePage({
   const base = `/admin/gabbai/${encodeURIComponent(synagogueId)}`;
 
   const tasks = [
+    {
+      href: `${base}/guide`,
+      title: "הסבר למערכת",
+      desc: "מה כל הגדרה עושה — על הקיר ובטלפון, עם תמונות",
+      Icon: BookOpen
+    },
     {
       href: `${base}/congregants`,
       title: "מתפללים",

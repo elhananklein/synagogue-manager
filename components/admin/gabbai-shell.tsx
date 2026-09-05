@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRight, CalendarDays, Home, Megaphone, Settings, Sun } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Home, Megaphone, Settings, Sun } from "lucide-react";
 import { LogoutButton } from "@/components/admin/logout-button";
 
 const NAV = [
@@ -46,6 +46,15 @@ export function GabbaiShell({
         )}
         <h1>{synagogueName || "בית הכנסת"}</h1>
         <div className="gabbai-top-actions">
+          <Link
+            href={navHref(synagogueId, "/guide")}
+            className="gabbai-system-link"
+            aria-label="הסבר למערכת"
+            aria-current={pathname.startsWith(`${base}/guide`) ? "page" : undefined}
+          >
+            <BookOpen className="h-3.5 w-3.5" aria-hidden />
+            הסבר
+          </Link>
           {adminHubHref ? (
             <Link href={adminHubHref} className="gabbai-system-link" aria-label={adminHubLabel}>
               {adminHubHref === "/admin" ? "מערכת" : "בתי כנסת"}
@@ -65,7 +74,8 @@ export function GabbaiShell({
                   pathname.startsWith(`${base}/look`) ||
                   pathname.startsWith(`${base}/settings`) ||
                   pathname.startsWith(`${base}/congregants`) ||
-                  pathname.startsWith(`${base}/aliyot`)
+                  pathname.startsWith(`${base}/aliyot`) ||
+                  pathname.startsWith(`${base}/guide`)
                 : pathname.startsWith(base + href);
           return (
             <Link key={href || "home"} href={to} aria-current={current ? "page" : undefined}>
@@ -100,7 +110,8 @@ export function GabbaiShell({
                   pathname.startsWith(`${base}/look`) ||
                   pathname.startsWith(`${base}/settings`) ||
                   pathname.startsWith(`${base}/congregants`) ||
-                  pathname.startsWith(`${base}/aliyot`)
+                  pathname.startsWith(`${base}/aliyot`) ||
+                  pathname.startsWith(`${base}/guide`)
                 : pathname.startsWith(base + href);
           return (
             <Link key={`m-${href || "home"}`} href={to} aria-current={current ? "page" : undefined}>

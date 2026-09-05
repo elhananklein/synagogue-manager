@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Monitor, ScrollText, Settings, Tv, Users } from "lucide-react";
+import { BookOpen, Monitor, ScrollText, Settings, Tv, Users } from "lucide-react";
 
 export default async function GabbaiMorePage({
   params
@@ -14,6 +14,15 @@ export default async function GabbaiMorePage({
       <h1 className="gabbai-lead">עוד פעולות</h1>
       <p className="gabbai-hint">הגדרות שמשנים לעיתים רחוקות יותר.</p>
       <div className="gabbai-task-grid">
+        <Link href={`${base}/guide`} className="gabbai-task-card">
+          <span className="gabbai-task-icon">
+            <BookOpen className="h-5 w-5" aria-hidden />
+          </span>
+          <span>
+            <h2>הסבר למערכת</h2>
+            <p>מדריך פשוט, עם צילומי קיר וטלפון</p>
+          </span>
+        </Link>
         <Link href={`${base}/congregants`} className="gabbai-task-card">
           <span className="gabbai-task-icon">
             <Users className="h-5 w-5" aria-hidden />

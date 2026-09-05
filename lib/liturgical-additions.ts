@@ -8,6 +8,11 @@ function isErev(event: string) {
   return /^Erev\s/i.test(event) || /^ערב\s/.test(plainEvent(event));
 }
 
+/** Hebcal שם את קריאת השבת כ־«Parashat …» — זה לא יום החג עצמו. */
+function isParashatReadingEvent(event: string, plain: string) {
+  return /^Parashat\s/i.test(event) || /^פרשת\s/.test(plain);
+}
+
 function someEvent(events: string[], test: (event: string, plain: string) => boolean) {
   return events.some((event) => test(event, plainEvent(event)));
 }
@@ -106,13 +111,19 @@ function isNoTachanunByDate(hebrewMonth: string, hebrewDay: number, weekday: num
   return false;
 }
 
+function isRoshHashanaHoliday(event: string, plain: string) {
+  if (isParashatReadingEvent(event, plain)) return false;
+  return /Rosh Hashana/i.test(event) || /ראש השנה/.test(plain);
+}
+
 function isNoTachanunByEvent(events: string[]) {
   return someEvent(events, (event, plain) => {
+    if (isParashatReadingEvent(event, plain)) return false;
     if (isChanukahEvent(event, plain) || isPurimEvent(event, plain) || isTishaBAvEvent(event, plain)) return true;
     if (isRoshChodeshEvent(event, plain)) return true;
     if (isPesachEvent(event, plain) || isSukkotHallelDay(event, plain) || isShavuotEvent(event, plain)) return true;
     if (isYomKippurEvent(event, plain)) return true;
-    if (/Rosh Hashana/i.test(event) || /ראש השנה/.test(plain)) return true;
+    if (isRoshHashanaHoliday(event, plain)) return true;
     if (/Isru Chag/i.test(event) || /אסרו חג/.test(plain)) return true;
     if (/Yom HaAtzmaut|Yom Yerushalayim/i.test(event) || /יום העצמאות|יום ירושלים/.test(plain)) return true;
     if (/Tu BiShvat|Tu B'?Shvat|Tu B'?Av|Lag BaOmer|Pesach Sheni/i.test(event)) return true;

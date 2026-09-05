@@ -102,6 +102,7 @@ export function AliyahCongregantPicker({
                 type="button"
                 className="aliyah-picker-item"
                 role="option"
+                aria-selected={row.id === selectedId}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => {
                   onSelect(row.id);

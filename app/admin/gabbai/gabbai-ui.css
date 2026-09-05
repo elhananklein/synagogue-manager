@@ -76,6 +76,7 @@
 .gabbai-system-link {
   display: inline-flex;
   align-items: center;
+  gap: 0.28rem;
   max-width: 9.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -90,7 +91,8 @@
 }
 
 .gabbai-system-link:hover,
-.gabbai-system-link:focus-visible {
+.gabbai-system-link:focus-visible,
+.gabbai-system-link[aria-current="page"] {
   background: rgb(255 248 234 / 0.14);
   outline: none;
 }
