@@ -105,10 +105,11 @@ function fullScheduleWindow<T extends { totalMinutes: number; dayOffset: number 
   return { visible, nextLocalIdx };
 }
 
-const PRAYER_TIMES_GROUP_ORDER = ["שחרית", "מנחה", "ערבית", "אחר"] as const;
+const PRAYER_TIMES_GROUP_ORDER = ["סליחות", "שחרית", "מנחה", "ערבית", "אחר"] as const;
 type PrayerTimesGroupId = (typeof PRAYER_TIMES_GROUP_ORDER)[number];
 
 const PRAYER_TIMES_GROUP_TITLES: Record<PrayerTimesGroupId, string> = {
+  סליחות: "סליחות",
   שחרית: "שחרית",
   מנחה: "מנחה",
   ערבית: "ערבית",
@@ -117,6 +118,7 @@ const PRAYER_TIMES_GROUP_TITLES: Record<PrayerTimesGroupId, string> = {
 
 function prayerTimesGroupIdFromLabel(label: string): PrayerTimesGroupId {
   const t = label.trim();
+  if (t.includes("סליחות")) return "סליחות";
   if (t.includes("שחרית")) return "שחרית";
   if (t.includes("מנחה")) return "מנחה";
   if (t.includes("ערבית")) return "ערבית";
@@ -295,7 +297,13 @@ function AutoFit({
   );
 }
 
-/** במסך שבת של «בולט מאוד»: הפונט נגזר מגובה הרשימה חלקי מספר השורות. */
+function shabbatAgendaCols(count: number) {
+  if (count <= 3) return 1;
+  if (count <= 8) return 2;
+  return 3;
+}
+
+/** במסך שבת של «בולט מאוד»: הפונט נגזר מגובה האריח, לא ממספר כל השורות בעמודה אחת. */
 function ShabbatPrayerList({
   rowCount,
   scaleToViewport,
@@ -306,6 +314,8 @@ function ShabbatPrayerList({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const cols = shabbatAgendaCols(rowCount);
+  const gridRows = Math.max(1, Math.ceil(Math.max(1, rowCount) / cols));
 
   useLayoutEffect(() => {
     if (!scaleToViewport) return;
@@ -313,10 +323,9 @@ function ShabbatPrayerList({
     if (!el) return;
 
     const apply = () => {
-      const n = Math.max(1, rowCount);
       const h = el.clientHeight;
       if (!h) return;
-      const fontPx = Math.round(Math.min(110, Math.max(18, (h / n) * 0.46)));
+      const fontPx = Math.round(Math.min(150, Math.max(42, (h / gridRows) * 0.42)));
       el.style.setProperty("--vb-shabbat-font", `${fontPx}px`);
     };
 
@@ -329,20 +338,44 @@ function ShabbatPrayerList({
       cancelAnimationFrame(frame);
       ro.disconnect();
     };
-  }, [scaleToViewport, rowCount]);
+  }, [scaleToViewport, gridRows]);
 
   return (
     <CardContent
       ref={ref}
-      className="display-shabbat-prayers"
+      className="display-shabbat-prayers display-shabbat-agenda-grid"
+      data-cols={cols}
+      data-count={rowCount}
       style={
-        scaleToViewport
-          ? ({ "--vb-shabbat-rows": String(Math.max(1, rowCount)) } as CSSProperties)
-          : undefined
+        {
+          "--shabbat-agenda-cols": String(cols),
+          ...(scaleToViewport ? { "--vb-shabbat-rows": String(gridRows) } : {})
+        } as CSSProperties
       }
     >
       {children}
     </CardContent>
+  );
+}
+
+function ShabbatAgendaTiles({
+  rows,
+  scaleToViewport
+}: {
+  rows: Array<{ label: string; time: string }>;
+  scaleToViewport: boolean;
+}) {
+  return (
+    <Card className="display-card display-shabbat-prayers-card">
+      <ShabbatPrayerList rowCount={rows.length} scaleToViewport={scaleToViewport}>
+        {rows.map((row, index) => (
+          <div className="display-shabbat-prayer-row display-shabbat-agenda-tile" key={`${row.label}-${index}`}>
+            <span className="display-shabbat-prayer-label">{row.label}</span>
+            <span className="display-shabbat-prayer-time">{row.time}</span>
+          </div>
+        ))}
+      </ShabbatPrayerList>
+    </Card>
   );
 }
 
@@ -1439,27 +1472,21 @@ export function DisplayRotator({
                   </div>
 
                   {shabbat?.agenda?.length ? (
-                    <Card className="display-card display-shabbat-prayers-card">
-                      <ShabbatPrayerList rowCount={shabbat.agenda.length} scaleToViewport={isVeryBold}>
-                        {shabbat.agenda.map((row, agendaIndex) => (
-                          <div className="display-shabbat-prayer-row" key={`${row.content}-${agendaIndex}`}>
-                            <span className="display-shabbat-prayer-label">{row.content}</span>
-                            <span className="display-shabbat-prayer-time">{row.itemTime ?? ""}</span>
-                          </div>
-                        ))}
-                      </ShabbatPrayerList>
-                    </Card>
+                    <ShabbatAgendaTiles
+                      scaleToViewport={isVeryBold}
+                      rows={shabbat.agenda.map((row) => ({
+                        label: row.content,
+                        time: row.itemTime ?? ""
+                      }))}
+                    />
                   ) : shabbat?.prayers?.length ? (
-                    <Card className="display-card display-shabbat-prayers-card">
-                      <ShabbatPrayerList rowCount={shabbat.prayers.length} scaleToViewport={isVeryBold}>
-                        {shabbat.prayers.map((prayer, prayerIndex) => (
-                          <div className="display-shabbat-prayer-row" key={`${prayer.label}-${prayerIndex}`}>
-                            <span className="display-shabbat-prayer-label">{prayer.label}</span>
-                            <span className="display-shabbat-prayer-time">{prayer.time}</span>
-                          </div>
-                        ))}
-                      </ShabbatPrayerList>
-                    </Card>
+                    <ShabbatAgendaTiles
+                      scaleToViewport={isVeryBold}
+                      rows={shabbat.prayers.map((prayer) => ({
+                        label: prayer.label,
+                        time: prayer.time
+                      }))}
+                    />
                   ) : null}
                 </div>
               );

@@ -136,6 +136,9 @@ export function mapGabbaiSaveError(error?: string) {
   if (error === "shabbat_agenda_invalid_time") return "שעה לא תקינה בסדר השבת";
   if (error === "missing_minyan") return "לא נמצא מניין";
   if (error === "missing_synagogue_name") return "יש למלא את שם בית הכנסת";
+  if (error && /prayer_type/i.test(error) && /check|invalid/i.test(error)) {
+    return "חסרה תמיכה בסליחות במסד. הריצו ב-Supabase את הקובץ supabase/minyan-prayers-selichot-migration.sql";
+  }
   return error ?? "השמירה נכשלה. נסו שוב.";
 }
 

@@ -5,7 +5,7 @@ create table if not exists public.minyan_prayers (
   id uuid primary key default gen_random_uuid(),
   minyan_id uuid not null references public.minyanim(id) on delete cascade,
   category text not null check (category in ('weekday', 'shabbat')),
-  prayer_type text not null check (prayer_type in ('שחרית', 'מנחה', 'ערבית', 'מנחה ערב שבת', 'שחרית שבת', 'מנחה שבת', 'ערבית מוצ''ש')),
+  prayer_type text not null check (prayer_type in ('סליחות', 'שחרית', 'מנחה', 'ערבית', 'מנחה ערב שבת', 'שחרית שבת', 'מנחה שבת', 'ערבית מוצ''ש')),
   days_of_week smallint[] not null default '{}'::smallint[],
   mode text not null default 'fixed' check (mode in ('fixed', 'relative')),
   fixed_time time,

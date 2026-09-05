@@ -60,7 +60,7 @@ function ShotPair({
 function LivePair({ synagogueId }: { synagogueId: string }) {
   const [open, setOpen] = useState(false);
   const wall = `/display?synagogueId=${encodeURIComponent(synagogueId)}`;
-  const mobile = `/m/display?synagogueId=${encodeURIComponent(synagogueId)}`;
+  const mobile = `/m/display?synagogueId=${encodeURIComponent(synagogueId)}&preview=mobile`;
   return (
     <div className="guide-live">
       <button type="button" className="guide-live-btn" onClick={() => setOpen((v) => !v)}>
@@ -275,7 +275,7 @@ export function GabbaiGuide({ synagogueId }: { synagogueId: string }) {
           </div>
           <div className="guide-card">
             <h3>זמני תפילות</h3>
-            <p>רשימה גדולה של שחרית, מנחה, ערבית.</p>
+            <p>רשימה גדולה של סליחות, שחרית, מנחה, ערבית.</p>
           </div>
           <div className="guide-card">
             <h3>שבת</h3>
@@ -291,7 +291,7 @@ export function GabbaiGuide({ synagogueId }: { synagogueId: string }) {
 
       <section className="guide-section" id="prayers">
         <h2>זמני תפילה</h2>
-        <p>כאן קובעים מתי מתפללים. זה מה שהציבור רואה כ«התפילה הבאה» וברשימות.</p>
+        <p>כאן קובעים מתי מתפללים — כולל סליחות בימי חול. זה מה שהציבור רואה כ«התפילה הבאה» וברשימות.</p>
         <Where wall="כן, בכל המסכים הרלוונטיים" phone="כן, כולל סימון «הבא»" />
         <div className="guide-links">
           <Link href={`${base}/prayers`}>פתיחת זמני תפילה</Link>
@@ -394,7 +394,7 @@ export function GabbaiGuide({ synagogueId }: { synagogueId: string }) {
         </ol>
         <p>הרשמה עצמית למתפללים: מתוך מסך המתפללים מעתיקים את הקישור. בטלפון זה נפתח בטופס נוח.</p>
         <div className="guide-links">
-          <a href={`/m/display?synagogueId=${encodeURIComponent(synagogueId)}`} target="_blank" rel="noreferrer">
+          <a href={`/m/display?synagogueId=${encodeURIComponent(synagogueId)}&preview=mobile`} target="_blank" rel="noreferrer">
             פתיחת תצוגת הטלפון
           </a>
           <Link className="guide-links--ghost" href={`${base}/congregants`}>

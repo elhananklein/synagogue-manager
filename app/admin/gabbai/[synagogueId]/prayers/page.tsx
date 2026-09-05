@@ -17,7 +17,7 @@ import {
 } from "@/lib/gabbai-workspace";
 import type { PrayerType } from "@/lib/gabbai-types";
 
-const WEEKDAY_PRAYERS: PrayerType[] = ["שחרית", "מנחה", "ערבית"];
+const WEEKDAY_PRAYERS: PrayerType[] = ["סליחות", "שחרית", "מנחה", "ערבית"];
 const SHABBAT_PRAYERS: PrayerType[] = ["מנחה ערב שבת", "שחרית שבת", "מנחה שבת", "ערבית מוצ'ש"];
 
 export default function GabbaiPrayersPage({
@@ -82,7 +82,7 @@ export default function GabbaiPrayersPage({
     <>
       <h1 className="gabbai-page-title">זמני תפילה</h1>
       <p className="gabbai-page-desc">
-        כאן קובעים מתי מתפללים. אחרי שינוי — לחצו על שמירה למטה. טבלת הפרשות (אם משתמשים בה) נשמרת בלחצן שלה, בנפרד.
+        כאן קובעים מתי מתפללים — כולל סליחות בימי חול. אחרי שינוי — לחצו על שמירה למטה. טבלת הפרשות (אם משתמשים בה) נשמרת בלחצן שלה, בנפרד.
       </p>
       <GabbaiMinyanSwitch
         names={minyanim.map((m) => m.name)}

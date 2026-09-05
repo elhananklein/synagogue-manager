@@ -30,7 +30,7 @@ async function requireSynagogueAccess(synagogueId: string): Promise<NextResponse
 
 type PrayerSettingInput = {
   category: "weekday" | "shabbat";
-  prayerType: "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
+  prayerType: "סליחות" | "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
   daysOfWeek: number[];
   mode: "fixed" | "relative" | "parasha";
   fixedTime: string | null;

@@ -67,9 +67,12 @@ export function PrayerEditor({
             onChange={(e) => {
               const prayerType = e.target.value as PrayerType | "";
               const canAnchorToMincha = prayerType === "ערבית" || prayerType === "ערבית מוצ'ש";
+              const canUseParasha = prayerType === "מנחה" || prayerType === "ערבית";
               onChange({
                 ...setting,
                 prayerType,
+                mode: setting.mode === "parasha" && !canUseParasha ? "fixed" : setting.mode,
+                parashaKey: canUseParasha ? setting.parashaKey : null,
                 lockToSunday:
                   prayerType === "מנחה" || prayerType === "ערבית" ? setting.lockToSunday : false,
                 zmanAnchor:
@@ -123,7 +126,9 @@ export function PrayerEditor({
           >
             <option value="fixed">שעה קבועה</option>
             <option value="relative">לפי זריחה / שקיעה</option>
-            {showDaysOfWeek ? <option value="parasha">לפי פרשת השבוע</option> : null}
+            {showDaysOfWeek && (setting.prayerType === "מנחה" || setting.prayerType === "ערבית") ? (
+              <option value="parasha">לפי פרשת השבוע</option>
+            ) : null}
           </select>
         </label>
         {setting.mode === "fixed" ? (

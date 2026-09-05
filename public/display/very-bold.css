@@ -770,19 +770,17 @@
 
 .display.display--veryBold .display-shabbat-hero {
   flex: 0 0 auto;
-}
-
-.display.display--veryBold .display-shabbat-hero {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: clamp(0.5rem, 1.6vmin, 1rem);
+  gap: clamp(0.4rem, 1.2vmin, 0.85rem) clamp(0.7rem, 2vmin, 1.4rem);
   width: 100%;
 }
 
 .display.display--veryBold .display-shabbat-heading {
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  text-align: start;
+  min-width: 0;
 }
 
 .display.display--veryBold .display-shabbat-title {
@@ -792,39 +790,40 @@
 .display.display--veryBold .display-shabbat-parasha,
 .display.display--veryBold .display-shabbat-mevarchim {
   color: var(--vb-ink, #152238);
-  text-align: center;
+  text-align: start;
   font-weight: 800;
-  font-size: clamp(1.45rem, 4.2vmin, 3.2rem);
+  font-size: clamp(1.35rem, 3.2vmin, 2.35rem);
 }
 
 .display.display--veryBold .display-shabbat-haftarah {
-  justify-content: center;
+  justify-content: flex-start;
   color: var(--vb-ink, #152238);
 }
 
 .display.display--veryBold .display-shabbat-haftarah-name {
-  font-size: clamp(1.2rem, 3.2vmin, 2.35rem);
+  font-size: clamp(1.05rem, 2.4vmin, 1.7rem);
   font-weight: 800;
 }
 
 .display.display--veryBold .display-shabbat-haftarah-source {
   color: var(--vb-ink-soft, #2a3b58);
-  font-size: clamp(0.95rem, 2.2vmin, 1.45rem);
+  font-size: clamp(0.85rem, 1.8vmin, 1.2rem);
 }
 
 .display.display--veryBold .display-shabbat-zmanim {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(0.55rem, 1.8vmin, 1rem);
-  width: min(100%, 28rem);
-  max-width: 100%;
+  grid-template-columns: repeat(2, minmax(7.5rem, 1fr));
+  gap: clamp(0.4rem, 1.2vmin, 0.75rem);
+  width: auto;
+  min-width: 16rem;
+  max-width: 22rem;
 }
 
 .display.display--veryBold .display-shabbat-zman-card {
   overflow: hidden;
   background: var(--vb-panel, #152238);
   border: 1px solid var(--vb-gold, #b8923a);
-  border-radius: 1.1rem;
+  border-radius: 0.95rem;
   color: var(--vb-on-panel, #fff8ea);
 }
 
@@ -833,9 +832,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
+  gap: 0.1rem;
   min-height: 0;
-  padding: clamp(0.55rem, 1.8vmin, 1rem) clamp(0.45rem, 1.4vmin, 0.85rem);
+  padding: clamp(0.35rem, 1.1vmin, 0.65rem) clamp(0.4rem, 1.2vmin, 0.75rem);
   text-align: center;
 }
 
@@ -852,12 +851,12 @@
 }
 
 .display.display--veryBold .display-shabbat-zman-label {
-  font-size: clamp(0.85rem, 2.2vmin, 1.35rem);
+  font-size: clamp(0.75rem, 1.8vmin, 1.1rem);
 }
 
 .display.display--veryBold .display-shabbat-zman-time {
-  font-size: clamp(1.7rem, 4.6vmin, 2.8rem);
-  line-height: 1.15;
+  font-size: clamp(1.45rem, 3.6vmin, 2.2rem);
+  line-height: 1.1;
 }
 
 .display.display--veryBold .display-shabbat-prayers-card {
@@ -867,75 +866,98 @@
   min-height: 0;
   height: 100%;
   width: 100%;
-  background: var(--vb-soft, rgb(255 248 234 / 0.82));
-  border: 1px solid var(--vb-gold, #b8923a);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
-.display.display--veryBold .display-shabbat-prayers {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  justify-content: stretch;
-  gap: 0;
-  min-height: 0;
-  height: 100%;
-  padding: 0.15rem 1rem;
-}
-
-.display.display--veryBold .display-shabbat-prayer-row {
+.display.display--veryBold .display-shabbat-prayers,
+.display.display--veryBold .display-shabbat-agenda-grid {
   display: grid;
   flex: 1 1 0;
+  grid-template-columns: repeat(var(--shabbat-agenda-cols, 1), minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  align-content: stretch;
+  gap: clamp(0.35rem, 1.1vmin, 0.7rem);
   min-height: 0;
+  height: 100%;
+  padding: 0;
+}
+
+.display.display--veryBold .display-shabbat-prayer-row,
+.display.display--veryBold .display-shabbat-agenda-tile {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  grid-template-columns: minmax(0, 1fr) 8ch;
-  padding-block: 0;
+  justify-content: center;
+  gap: 0.12em;
+  min-height: 0;
+  min-width: 0;
+  padding: 0.28em 0.45em;
+  border: 1px solid var(--vb-gold, #b8923a);
+  border-radius: 1.1rem;
+  background: var(--vb-panel, #152238);
+  color: var(--vb-on-panel, #fff8ea);
+  overflow: hidden;
   line-height: 1.12;
-  font-size: var(--vb-shabbat-font, clamp(1.05rem, calc(36vh / var(--vb-shabbat-rows, 8)), 4.8rem));
+  font-size: var(--vb-shabbat-font, clamp(2.2rem, calc(44vh / var(--vb-shabbat-rows, 4)), 6.5rem));
 }
 
 .display.display--veryBold .display-shabbat-prayer-row + .display-shabbat-prayer-row {
-  padding-top: 0;
+  padding-top: 0.28em;
+  border-top: 1px solid var(--vb-gold, #b8923a);
 }
 
 .display.display--veryBold .display-shabbat-prayer-label,
 .display.display--veryBold .display-shabbat-prayer-time {
-  color: var(--vb-ink, #152238);
+  color: var(--vb-on-panel, #fff8ea);
   font-weight: 800;
+  text-align: center;
+  max-width: 100%;
 }
 
 .display.display--veryBold .display-shabbat-prayer-time {
-  min-width: 8ch;
-  padding-inline: 0.15em;
-  text-align: center;
+  order: -1;
+  min-width: 0;
+  padding-inline: 0;
+  flex-shrink: 0;
+  font-size: 1.42em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.display.display--veryBold .display-shabbat-prayer-time:empty {
+  display: none;
+}
+
+.display.display--veryBold .display-shabbat-prayer-label {
+  font-size: 0.52em;
+  line-height: 1.18;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 700px), (orientation: portrait) {
+  .display.display--veryBold .display-shabbat-hero {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+  .display.display--veryBold .display-shabbat-heading,
+  .display.display--veryBold .display-shabbat-parasha,
+  .display.display--veryBold .display-shabbat-mevarchim,
+  .display.display--veryBold .display-shabbat-haftarah {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .display.display--veryBold .display-shabbat-zmanim {
+    width: min(100%, 22rem);
+    max-width: 100%;
+  }
 }
 
 @media (orientation: landscape) and (min-width: 700px) {
   .display.display--veryBold .display-shabbat-inner {
     width: 100%;
-  }
-  .display.display--veryBold .display-shabbat-hero {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    grid-template-columns: none;
-  }
-  .display.display--veryBold .display-shabbat-heading,
-  .display.display--veryBold .display-shabbat-parasha,
-  .display.display--veryBold .display-shabbat-mevarchim {
-    align-items: center;
-    text-align: center;
-  }
-  .display.display--veryBold .display-shabbat-zmanim {
-    max-width: 28rem;
-  }
-  .display.display--veryBold .display-shabbat-prayer-row {
-    font-size: var(--vb-shabbat-font, clamp(0.95rem, calc(32vh / var(--vb-shabbat-rows, 8)), 4.6rem));
-  }
-}
-
-@media (orientation: landscape) and (min-width: 1280px) {
-  .display.display--veryBold .display-shabbat-prayer-row {
-    font-size: var(--vb-shabbat-font, clamp(0.95rem, calc(32vh / var(--vb-shabbat-rows, 8)), 4.6rem));
   }
 }
 

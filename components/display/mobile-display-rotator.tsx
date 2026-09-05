@@ -98,10 +98,11 @@ const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> =
   bulletin: { title: "לוח מודעות", Icon: Megaphone }
 };
 
-const PRAYER_GROUP_ORDER = ["שחרית", "מנחה", "ערבית", "אחר"] as const;
+const PRAYER_GROUP_ORDER = ["סליחות", "שחרית", "מנחה", "ערבית", "אחר"] as const;
 type PrayerGroupId = (typeof PRAYER_GROUP_ORDER)[number];
 
 const PRAYER_GROUP_TITLES: Record<PrayerGroupId, string> = {
+  סליחות: "סליחות",
   שחרית: "שחרית",
   מנחה: "מנחה",
   ערבית: "ערבית",
@@ -110,6 +111,7 @@ const PRAYER_GROUP_TITLES: Record<PrayerGroupId, string> = {
 
 function prayerGroupIdFromLabel(label: string): PrayerGroupId {
   const t = label.trim();
+  if (t.includes("סליחות")) return "סליחות";
   if (t.includes("שחרית")) return "שחרית";
   if (t.includes("מנחה")) return "מנחה";
   if (t.includes("ערבית")) return "ערבית";

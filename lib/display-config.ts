@@ -116,7 +116,15 @@ export const DEFAULT_ZMANIM_LOCATION: SynagogueZmanimLocation = {
   havdalahMode: "tzeit",
   havdalahMinutes: 72
 };
-export type PrayerType = "שחרית" | "מנחה" | "ערבית" | "מנחה ערב שבת" | "שחרית שבת" | "מנחה שבת" | "ערבית מוצ'ש";
+export type PrayerType =
+  | "סליחות"
+  | "שחרית"
+  | "מנחה"
+  | "ערבית"
+  | "מנחה ערב שבת"
+  | "שחרית שבת"
+  | "מנחה שבת"
+  | "ערבית מוצ'ש";
 
 export type PrayerSetting = {
   category: "weekday" | "shabbat";

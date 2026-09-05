@@ -132,6 +132,11 @@ export async function middleware(request: NextRequest) {
   const isDisplayPath = path === "/display" || path.startsWith("/display/");
   const isMobileDisplayPath = path === "/m/display" || path.startsWith("/m/display/");
 
+  // צילום/הטמעה של תצוגת טלפון ממחשב — נשארים ב־/m בלי לשנות עוגיה.
+  if (isMobileDisplayPath && nextUrl.searchParams.get("preview") === "mobile") {
+    return withSynagogueCookie(request, NextResponse.next());
+  }
+
   // קיר שכבר נפל ל־/m/display: מחזירים לתצוגת קיר, אלא אם זה טלפון אמיתי.
   if (isMobileDisplayPath && !isPhone && cookieMode !== "mobile") {
     const wallUrl = nextUrl.clone();

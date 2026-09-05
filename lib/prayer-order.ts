@@ -1,4 +1,4 @@
-const WEEKDAY_PRAYER_ORDER = ["שחרית", "מנחה", "ערבית"] as const;
+const WEEKDAY_PRAYER_ORDER = ["סליחות", "שחרית", "מנחה", "ערבית"] as const;
 const SHABBAT_PRAYER_ORDER = ["מנחה ערב שבת", "שחרית שבת", "מנחה שבת", "ערבית מוצ'ש"] as const;
 
 export function prayerTypeSortRank(category: "weekday" | "shabbat", prayerType: string): number {
@@ -7,7 +7,7 @@ export function prayerTypeSortRank(category: "weekday" | "shabbat", prayerType: 
   return index === -1 ? 99 : index;
 }
 
-/** סדר שמירה: שחרית → מנחה → ערבית (חול), ואז תפילות שבת לפי סדר היום. יציב בתוך אותו סוג. */
+/** סדר שמירה: סליחות → שחרית → מנחה → ערבית (חול), ואז תפילות שבת לפי סדר היום. יציב בתוך אותו סוג. */
 export function sortPrayersForSave<T extends { category: "weekday" | "shabbat"; prayerType: string }>(
   prayers: T[]
 ): T[] {

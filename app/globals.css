@@ -1808,6 +1808,30 @@ optgroup {
     white-space: nowrap;
   }
 
+  /* פריסת אריחים חדשה ללוח שבת — לא מחליפה את כללי השורות הישנים */
+  .display-shabbat-agenda-grid {
+    display: grid;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    grid-template-columns: repeat(var(--shabbat-agenda-cols, 1), minmax(0, 1fr));
+    align-content: stretch;
+    gap: clamp(0.45rem, 1.4vmin, 1rem);
+  }
+  .display-shabbat-agenda-tile {
+    min-width: 0;
+    padding: clamp(0.45rem, 1.4vmin, 0.9rem) clamp(0.55rem, 1.6vmin, 1.1rem);
+    border-radius: 0.85rem;
+    background: color-mix(in srgb, currentColor 10%, transparent);
+  }
+  .display-shabbat-agenda-grid .display-shabbat-prayer-row + .display-shabbat-prayer-row {
+    border-top: none;
+    padding-top: clamp(0.45rem, 1.4vmin, 0.9rem);
+  }
+  .display-shabbat-agenda-tile .display-shabbat-prayer-time:empty {
+    display: none;
+  }
+
   /* מסכי טלוויזיה / רוחב — כותרת מימין, זמנים משמאל, לוח רחב מתחת */
   @media (orientation: landscape) and (min-width: 700px) {
     .display-shabbat-inner {
