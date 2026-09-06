@@ -36,8 +36,8 @@ export default async function GabbaiHomePage({
     },
     {
       href: `${base}/shabbat`,
-      title: "סדר שבת",
-      desc: "מה קורה בשבת הקרובה, לפי הסדר",
+      title: "שבתות וחגים",
+      desc: "לוח זמנים לשבת הקרובה או לחג",
       Icon: Sun
     },
     {
@@ -49,13 +49,13 @@ export default async function GabbaiHomePage({
     {
       href: `${base}/settings`,
       title: "הגדרות בית הכנסת",
-      desc: "שם, מניינים והלכה יומית",
+      desc: "שם, מניינים, נוסח והלכה יומית",
       Icon: Settings
     },
     {
       href: `${base}/guide`,
       title: "הסבר למערכת",
-      desc: "מה כל הגדרה עושה — על הקיר ובטלפון, עם תמונות",
+      desc: "מה כל שינוי עושה, לפי מסכי הניהול",
       Icon: BookOpen
     }
   ];

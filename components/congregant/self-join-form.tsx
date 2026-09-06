@@ -13,19 +13,24 @@ import {
   type CongregantInput,
   type CongregantMinyanOption
 } from "@/lib/congregant-types";
+import { logoCacheVersion, synagogueIconSrc } from "@/lib/synagogue-logo";
 
 export function CongregantSelfJoinForm({
   synagogueId,
   synagogueName,
   minyanim,
   initialMinyanId,
-  embedded = false
+  embedded = false,
+  hasLogo = false,
+  logoUpdatedAt = null
 }: {
   synagogueId: string;
   synagogueName: string;
   minyanim: CongregantMinyanOption[];
   initialMinyanId?: string | null;
   embedded?: boolean;
+  hasLogo?: boolean;
+  logoUpdatedAt?: string | null;
 }) {
   const startMinyan =
     initialMinyanId && minyanim.some((item) => item.id === initialMinyanId)
@@ -44,6 +49,7 @@ export function CongregantSelfJoinForm({
     () => minyanim.find((item) => item.id === input.minyanId) ?? minyanim[0] ?? null,
     [input.minyanId, minyanim]
   );
+  const logoSrc = hasLogo ? synagogueIconSrc(synagogueId, "512", logoCacheVersion(logoUpdatedAt)) : null;
 
   function patch(next: Partial<CongregantInput>, source = birthSource) {
     setInput((prev) => {
@@ -99,7 +105,12 @@ export function CongregantSelfJoinForm({
       <div className={embedded ? "congregant-join-page congregant-join-page--embedded" : "congregant-join-page"}>
         <div className="congregant-card">
           {!embedded ? (
-            <div className="congregant-card-head">
+            <div className="congregant-card-head congregant-card-head--join">
+              {logoSrc ? (
+                <span className="congregant-join-logo">
+                  <img src={logoSrc} alt="" />
+                </span>
+              ) : null}
               <div>
                 <h2>הרשמה — {synagogueName}</h2>
                 <p>מלאו את הפרטים. הגבאי יאשר את הרישום.</p>
@@ -107,7 +118,16 @@ export function CongregantSelfJoinForm({
             </div>
           ) : null}
           <div className="congregant-card-body">
-            {embedded ? <p className="gabbai-page-desc">מלאו את הפרטים. הגבאי יאשר את הרישום.</p> : null}
+            {embedded ? (
+              <>
+                {logoSrc ? (
+                  <span className="congregant-join-logo congregant-join-logo--center">
+                    <img src={logoSrc} alt={synagogueName} />
+                  </span>
+                ) : null}
+                <p className="gabbai-page-desc">מלאו את הפרטים. הגבאי יאשר את הרישום.</p>
+              </>
+            ) : null}
             {sent ? (
               <p className="congregant-join-success">
                 הבקשה נשלחה. כשהגבאי יאשר — תופיעו ברשימת המתפללים של בית הכנסת.

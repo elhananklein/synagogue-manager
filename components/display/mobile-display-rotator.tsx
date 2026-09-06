@@ -42,6 +42,7 @@ type Snapshot = {
   hebrewDate: string;
   gregorianDate: string;
   parasha: string;
+  occasionIsChag?: boolean;
   candleLighting: string | null;
   havdalah: string | null;
   dafYomi: string;
@@ -94,7 +95,7 @@ const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> =
   dailyLearning: { title: "לימוד יומי", Icon: BookOpen },
   prayerTimes: { title: "זמני תפילות", Icon: CalendarDays },
   fullSchedule: { title: "לוח זמנים מלא", Icon: CalendarDays },
-  shabbat: { title: "שבת", Icon: Sun },
+  shabbat: { title: "שבת וחג", Icon: Sun },
   bulletin: { title: "לוח מודעות", Icon: Megaphone }
 };
 
@@ -310,19 +311,16 @@ export function MobileDisplayRotator({
   );
 
   const enabledScreens = useMemo(() => {
-    const [year, month, day] = viewDate.split("-").map(Number);
-    const jsDay = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getUTCDay();
-    const isFriOrSat = jsDay === 5 || jsDay === 6;
     return dropMobileDuplicateScreens(
       screens.filter((s) => {
         if (!s.enabled) return false;
         if (s.screenKey === "halacha") return false;
-        if (s.screenKey === "shabbat" && !isFriOrSat) return false;
+        if (s.screenKey === "shabbat" && !shabbat) return false;
         if (s.screenKey === "omer" && !snapshot.omerText) return false;
         return true;
       })
     );
-  }, [screens, snapshot.omerText, viewDate]);
+  }, [screens, snapshot.omerText, shabbat]);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -696,7 +694,7 @@ function MainScreen({
     <div className="space-y-4">
       {parasha ? (
         <div className="m-hero">
-          <p className="m-hero-kicker">פרשת השבוע</p>
+          <p className="m-hero-kicker">{snapshot.occasionIsChag ? "החג" : "פרשת השבוע"}</p>
           <p className="m-hero-title">{parasha}</p>
           <p className="m-hero-date">{snapshot.gregorianDate}</p>
         </div>
@@ -756,7 +754,7 @@ function MainInfoScreen({
     <div className="space-y-3">
       {parasha ? (
         <div className="m-hero">
-          <p className="m-hero-kicker">פרשת השבוע</p>
+          <p className="m-hero-kicker">{snapshot.occasionIsChag ? "החג" : "פרשת השבוע"}</p>
           <p className="m-hero-title">{parasha}</p>
           <p className="m-hero-date">{snapshot.hebrewDate}</p>
         </div>
@@ -971,19 +969,24 @@ function PrayerTimesScreen({
 
 function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
   if (!shabbat) {
-    return <Card className="m-center m-muted">אין נתוני שבת להצגה כעת.</Card>;
+    return <Card className="m-center m-muted">אין נתוני שבת או חג להצגה כעת.</Card>;
   }
   const hasAgenda = Boolean(shabbat.agenda?.length);
   return (
     <div className="space-y-3">
       <div className="m-hero">
-        <p className="m-hero-kicker">פרשת השבוע</p>
+        <p className="m-hero-kicker">{shabbat.isChag ? "החג" : "פרשת השבוע"}</p>
         <p className="m-hero-title">{shabbat.parasha}</p>
+        {shabbat.isChag && shabbat.isShabbatWeekend ? <p className="m-hero-date">שבת</p> : null}
         {shabbat.mevarchimText ? <p className="m-hero-date">{shabbat.mevarchimText}</p> : null}
       </div>
       <div className="grid grid-cols-2 gap-3">
-        {shabbat.candleLighting ? <InfoTile label="הדלקת נרות" value={shabbat.candleLighting} /> : null}
-        {shabbat.havdalah ? <InfoTile label="צאת השבת" value={shabbat.havdalah} /> : null}
+        {shabbat.candleLighting ? (
+          <InfoTile label={shabbat.candleLabel || "הדלקת נרות"} value={shabbat.candleLighting} />
+        ) : null}
+        {shabbat.havdalah ? (
+          <InfoTile label={shabbat.havdalahLabel || "צאת השבת"} value={shabbat.havdalah} />
+        ) : null}
       </div>
       {hasAgenda ? (
         <Card>
@@ -999,7 +1002,7 @@ function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
         </Card>
       ) : shabbat.prayers.length ? (
         <Card>
-          <h3 className="m-section-title">זמני תפילות שבת</h3>
+          <h3 className="m-section-title">{shabbat.isChag ? "זמני תפילות" : "זמני תפילות שבת"}</h3>
           <div>
             {shabbat.prayers.map((row, i) => (
               <TimeRow key={`${row.label}-${i}`} label={row.label} time={row.time} />

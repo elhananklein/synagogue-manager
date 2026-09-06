@@ -13,6 +13,7 @@ import {
   useGabbaiWorkspace,
   type HalachaSettingsModel
 } from "@/lib/gabbai-workspace";
+import { HAFTARAH_MINHAGIM, PRAYER_NUSACH_LABELS, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 
 export default function GabbaiSettingsPage({
   params
@@ -50,7 +51,7 @@ export default function GabbaiSettingsPage({
       halachaSettings,
       minyanNames: minyanim
         .filter((m) => m.id)
-        .map((m) => ({ id: m.id as string, name: m.name }))
+        .map((m) => ({ id: m.id as string, name: m.name, haftarahMinhag: m.haftarahMinhag }))
     });
     setSaving(false);
     if (!payload.ok) {
@@ -102,7 +103,7 @@ export default function GabbaiSettingsPage({
   return (
     <>
       <h1 className="gabbai-page-title">הגדרות בית הכנסת</h1>
-      <p className="gabbai-page-desc">שם בית הכנסת, לוגו, המניינים, ומאיפה מגיעה ההלכה היומית.</p>
+      <p className="gabbai-page-desc">שם בית הכנסת, לוגו, המניינים ונוסח התפילה, ומאיפה מגיעה ההלכה היומית.</p>
 
       <label className="mb-6 block">
         <span className="mb-1 block text-sm font-medium">שם בית הכנסת</span>
@@ -135,16 +136,37 @@ export default function GabbaiSettingsPage({
         </div>
         <div className="space-y-2">
           {minyanim.map((m, i) => (
-            <div key={m.id ?? `new-${i}`} className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-3">
-              <input
-                className="h-11 min-w-[8rem] flex-1 rounded-md border border-border bg-background px-3"
-                value={m.name}
-                placeholder={`מניין ${i + 1}`}
-                onChange={(e) => {
-                  setMinyanim((prev) => prev.map((row, j) => (j === i ? { ...row, name: e.target.value } : row)));
-                  setMessage(null);
-                }}
-              />
+            <div key={m.id ?? `new-${i}`} className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-white p-3">
+              <label className="min-w-[8rem] flex-1">
+                <span className="mb-1 block text-xs font-bold text-muted-foreground">שם המניין</span>
+                <input
+                  className="h-11 w-full rounded-md border border-border bg-background px-3"
+                  value={m.name}
+                  placeholder={`מניין ${i + 1}`}
+                  onChange={(e) => {
+                    setMinyanim((prev) => prev.map((row, j) => (j === i ? { ...row, name: e.target.value } : row)));
+                    setMessage(null);
+                  }}
+                />
+              </label>
+              <label className="w-full sm:w-44">
+                <span className="mb-1 block text-xs font-bold text-muted-foreground">נוסח התפילה</span>
+                <select
+                  className="h-11 w-full rounded-md border border-border bg-background px-3"
+                  value={m.haftarahMinhag}
+                  onChange={(e) => {
+                    const haftarahMinhag = e.target.value as HaftarahMinhag;
+                    setMinyanim((prev) => prev.map((row, j) => (j === i ? { ...row, haftarahMinhag } : row)));
+                    setMessage(null);
+                  }}
+                >
+                  {HAFTARAH_MINHAGIM.map((nusach) => (
+                    <option key={nusach} value={nusach}>
+                      {PRAYER_NUSACH_LABELS[nusach]}
+                    </option>
+                  ))}
+                </select>
+              </label>
               {m.id && minyanim.length > 1 ? (
                 <Button type="button" variant="outline" size="sm" onClick={() => setPendingDeleteId(m.id ?? null)}>
                   מחיקה
@@ -153,6 +175,9 @@ export default function GabbaiSettingsPage({
             </div>
           ))}
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          נוסח המניין קובע את ההפטרה במסך השבת ואת ברכת השנים על הקיר. לא משנים את זה במראה המסך.
+        </p>
       </section>
 
       <section className="mb-6">

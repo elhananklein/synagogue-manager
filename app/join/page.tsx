@@ -4,6 +4,7 @@ import { RedirectHandheldToMobile } from "@/components/mobile/redirect-handheld-
 import { CongregantSelfJoinForm } from "@/components/congregant/self-join-form";
 import { getPublicJoinContext } from "@/lib/congregant-db";
 import { parseSynagogueId } from "@/lib/synagogue-id";
+import { logoCacheVersion, synagoguePwaMetadataIcons } from "@/lib/synagogue-logo";
 import { synagogueAppName } from "@/lib/synagogue-public-title";
 import "@/app/admin/gabbai/congregant-theme.css";
 
@@ -17,7 +18,12 @@ export async function generateMetadata({
   if (!synagogueId) return { title: "הרשמה לבית הכנסת" };
   const ctx = await getPublicJoinContext(synagogueId);
   if ("error" in ctx) return { title: "הרשמה לבית הכנסת" };
-  return { title: `הרשמה — ${synagogueAppName(ctx.synagogue.name)}` };
+  return {
+    title: `הרשמה — ${synagogueAppName(ctx.synagogue.name)}`,
+    icons: ctx.synagogue.hasLogo
+      ? synagoguePwaMetadataIcons(ctx.synagogue.id, logoCacheVersion(ctx.synagogue.logoUpdatedAt))
+      : undefined
+  };
 }
 
 export default async function JoinPage({
@@ -48,6 +54,8 @@ export default async function JoinPage({
         synagogueName={synagogueAppName(ctx.synagogue.name)}
         minyanim={ctx.minyanim}
         initialMinyanId={query.minyanId ?? null}
+        hasLogo={ctx.synagogue.hasLogo}
+        logoUpdatedAt={ctx.synagogue.logoUpdatedAt}
       />
     </main>
   );

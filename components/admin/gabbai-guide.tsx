@@ -2,19 +2,31 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { gabbaiWallPreviewHref } from "@/lib/handheld";
 
 const NAV = [
   { id: "start", label: "התחלה" },
-  { id: "screens", label: "קיר וטלפון" },
-  { id: "settings", label: "הגדרות" },
-  { id: "look", label: "מראה" },
   { id: "prayers", label: "תפילות" },
   { id: "bulletin", label: "מודעות" },
-  { id: "shabbat", label: "שבת" },
+  { id: "shabbat", label: "שבת וחג" },
   { id: "people", label: "מתפללים" },
   { id: "aliyot", label: "עליות" },
-  { id: "app", label: "אפליקציה" },
-  { id: "faq", label: "שאלות" }
+  { id: "look", label: "מראה" },
+  { id: "settings", label: "הגדרות" },
+  { id: "examples", label: "דוגמאות" }
+] as const;
+
+const WALL_EXAMPLES = [
+  { src: "/guide/wall-home.png", title: "מסך ראשי", caption: "פרשה, תאריך, תפילות והתפילה הבאה." },
+  { src: "/guide/wall-info.png", title: "מידע מרכזי", caption: "אותם פרטים, מוגדלים." },
+  { src: "/guide/wall-main.png", title: "שעון", caption: "שעון גדול והתפילה הבאה." },
+  { src: "/guide/wall-omer.png", title: "ספירת העומר", caption: "מופיע רק בימי העומר, אם הדלקתם את המסך." },
+  { src: "/guide/wall-next.png", title: "הלכה יומית", caption: "סעיף היום, לפי מה שבחרתם בהגדרות." },
+  { src: "/guide/wall-learning.png", title: "לימוד יומי", caption: "הספרים שסימנתם במראה המסך." },
+  { src: "/guide/wall-prayers.png", title: "זמני תפילות", caption: "רשימת התפילות של היום." },
+  { src: "/guide/wall-schedule.png", title: "לוח זמנים מלא", caption: "תפילות וגם זמני היום, לפי הסימונים." },
+  { src: "/guide/wall-shabbat.png", title: "שבת וחגים", caption: "בשישי, בשבת וביום טוב: פרשה או שם החג, כניסה/יציאה, סדר היום." },
+  { src: "/guide/wall-bulletin.png", title: "לוח מודעות", caption: "ההודעות שפרסמתם. אם אין — המסך לא יופיע." }
 ] as const;
 
 function Where({ wall, phone, gabbai, none }: { wall?: string; phone?: string; gabbai?: string; none?: string }) {
@@ -28,31 +40,11 @@ function Where({ wall, phone, gabbai, none }: { wall?: string; phone?: string; g
   );
 }
 
-function ShotPair({
-  wallSrc,
-  mobileSrc,
-  wallCaption,
-  mobileCaption
-}: {
-  wallSrc: string;
-  mobileSrc: string;
-  wallCaption: string;
-  mobileCaption: string;
-}) {
+function Change({ field, meaning }: { field: string; meaning: string }) {
   return (
-    <div className="guide-pair">
-      <figure className="guide-shot">
-        <div className="guide-frame guide-frame--wall">
-          <img src={wallSrc} alt={wallCaption} />
-        </div>
-        <figcaption>{wallCaption}</figcaption>
-      </figure>
-      <figure className="guide-shot">
-        <div className="guide-frame guide-frame--phone">
-          <img src={mobileSrc} alt={mobileCaption} />
-        </div>
-        <figcaption>{mobileCaption}</figcaption>
-      </figure>
+    <div className="guide-change">
+      <strong>{field}</strong>
+      <p>{meaning}</p>
     </div>
   );
 }
@@ -60,6 +52,7 @@ function ShotPair({
 function LivePair({ synagogueId }: { synagogueId: string }) {
   const [open, setOpen] = useState(false);
   const wall = `/display?synagogueId=${encodeURIComponent(synagogueId)}`;
+  const wallPreview = gabbaiWallPreviewHref(synagogueId);
   const mobile = `/m/display?synagogueId=${encodeURIComponent(synagogueId)}&preview=mobile`;
   return (
     <div className="guide-live">
@@ -87,7 +80,7 @@ function LivePair({ synagogueId }: { synagogueId: string }) {
         </div>
       ) : null}
       <div className="guide-links">
-        <a href={wall} target="_blank" rel="noreferrer">
+        <a href={wallPreview} target="_blank" rel="noreferrer">
           פתיחת הקיר בחלון חדש
         </a>
         <a className="guide-links--ghost" href={mobile} target="_blank" rel="noreferrer">
@@ -121,7 +114,7 @@ export function GabbaiGuide({ synagogueId }: { synagogueId: string }) {
     <div className="guide-page">
       <h1 className="gabbai-page-title">הסבר פשוט למערכת</h1>
       <p className="guide-intro">
-        כאן כתוב מה כל כפתור עושה — בשפה פשוטה, עם תמונות. אפשר לדלג לנושא למעלה, או פשוט לגלול.
+        לפי סדר מסכי הניהול: מה כל שינוי עושה, ועל מי הוא משפיע. צילומי דוגמה של הקיר והטלפון — בתחתית הדף.
       </p>
 
       <nav className="guide-toc" aria-label="נושאי ההסבר">
@@ -133,305 +126,247 @@ export function GabbaiGuide({ synagogueId }: { synagogueId: string }) {
       </nav>
 
       <section className="guide-section" id="start">
-        <h2>איך המערכת בנויה</h2>
+        <h2>לפני שמתחילים</h2>
         <p>יש שלושה מקומות. אתם עובדים באחד, והציבור רואה בשניים האחרים.</p>
         <div className="guide-worlds">
           <div className="guide-world">
-            <strong>1. הקיר</strong>
-            <span>הטלוויזיה בבית הכנסת. המסכים מתחלפים לבד. זה מה שרואים מי שעומד בתפילה.</span>
+            <strong>הקיר</strong>
+            <span>הטלוויזיה. המסכים מתחלפים לבד, לפי מה שהדלקתם ב«מראה המסך».</span>
           </div>
           <div className="guide-world">
-            <strong>2. הטלפון</strong>
-            <span>האפליקציה של המתפלל. אותם זמנים ואותן הודעות, בגלילה נוחה בטלפון.</span>
+            <strong>הטלפון</strong>
+            <span>האפליקציה של המתפלל. אותם זמנים והודעות, בכרטיסים שגוללים.</span>
           </div>
           <div className="guide-world">
-            <strong>3. אתם — הגבאי</strong>
-            <span>כאן משנים. מה ששמרתם כאן מגיע לקיר ולטלפון. לא צריך לגעת בטלוויזיה.</span>
+            <strong>אתם</strong>
+            <span>כאן משנים. שמירה במסך הזה מעדכנת את הקיר ואת הטלפון — בלי לגעת בטלוויזיה.</span>
           </div>
         </div>
         <div className="guide-admin">
-          <strong>כלל אחד חשוב</strong>
-          <p>כל מסך נשמר לבד. שיניתם זמני תפילה? לחצו שמירה באותו מסך. שינוי ב«מראה» לא נשמר יחד עם «תפילות».</p>
+          <strong>כלל אחד</strong>
+          <p>כל מסך נשמר לבד. שיניתם תפילות? שמירה במסך התפילות. שינוי במראה לא נשמר יחד עם תפילות.</p>
         </div>
-        <p>אם יש כמה מניינים — בחרו למעלה «לאיזה מניין?» לפני שמשנים מראה, תפילות או סדר שבת. כל מניין יכול להיראות אחרת.</p>
+        <Change
+          field="לאיזה מניין?"
+          meaning="אם יש כמה מניינים — בוחרים למעלה לפני מראה, תפילות או שבתות וחגים. כל מניין נשמר בנפרד. על הקיר: ?minyan=1 לראשון, 2 לשני."
+        />
         <div className="guide-links">
           <Link href={base}>חזרה למסך הראשי</Link>
-          <a className="guide-links--ghost" href={`/display?synagogueId=${encodeURIComponent(synagogueId)}`} target="_blank" rel="noreferrer">
-            צפייה בקיר עכשיו
-          </a>
         </div>
-      </section>
-
-      <section className="guide-section" id="screens">
-        <h2>איך נראה הקיר ואיך נראה הטלפון</h2>
-        <p>אותו בית כנסת, שני מראות. בקיר זה מסך גדול שמתחלף. בטלפון גוללים למטה ורואים כרטיסים.</p>
-        <ShotPair
-          wallSrc="/guide/wall-main.png"
-          mobileSrc="/guide/mobile-display.png"
-          wallCaption="כך זה נראה על הקיר: שעון גדול, שם בית הכנסת, והתפילה הבאה."
-          mobileCaption="אותו מידע בטלפון: שעון, תפילה הבאה, והודעה למטה."
-        />
-        <ShotPair
-          wallSrc="/guide/wall-next.png"
-          mobileSrc="/guide/mobile-home.png"
-          wallCaption="עוד מסך על הקיר: הלכה יומית. המסכים מתחלפים לבד, לפי מה שהדלקתם במראה."
-          mobileCaption="בטלפון בוחרים בית כנסת ומתקינים למסך הבית. אחר כך נכנסים ישר לזמנים."
-        />
-        <h3>מה זהה ומה שונה</h3>
-        <ul>
-          <li>זמני תפילה, פרשה, הלכה, מודעות וסדר שבת — מגיעים מאותו מקום.</li>
-          <li>צבעים וסגנון של הקיר (קלאסי, בולט מאוד וכו׳) משפיעים רק על הטלוויזיה.</li>
-          <li>בטלפון אפשר לדפדף לימים אחרים. על הקיר תמיד רואים את היום הזה.</li>
-          <li>הלוגו לא מופיע על הקיר. הוא רק לאייקון של האפליקציה בטלפון.</li>
-        </ul>
-        <LivePair synagogueId={synagogueId} />
-      </section>
-
-      <section className="guide-section" id="settings">
-        <h2>הגדרות בית הכנסת</h2>
-        <p>כאן משנים דברים ששייכים לכל הבית, לא למניין אחד.</p>
-        <div className="guide-links">
-          <Link href={`${base}/settings`}>פתיחת ההגדרות</Link>
-        </div>
-
-        <h3>שם בית הכנסת</h3>
-        <Where wall="בכותרת של כל מסך" phone="בכותרת ובשם האפליקציה" />
-        <p>זה השם שרואים למעלה על הקיר ועל הטלפון. אחרי שינוי — לחצו «שמירת ההגדרות».</p>
-
-        <h3>לוגו</h3>
-        <Where phone="אייקון כשמתקינים את האפליקציה" none="לא מופיע על הקיר" />
-        <p>העלאת לוגו נשמרת מיד. מי שכבר התקין את האפליקציה צריך להסיר ולהתקין מחדש כדי לראות אייקון חדש.</p>
-
-        <h3>מניינים</h3>
-        <Where wall="השם בכותרת; אפשר לבחור מניין בכתובת" phone="בורר מניין למעלה" />
-        <p>אפשר להוסיף מניין או למחוק. מחיקה מוחקת גם את זמני התפילה של אותו מניין. מניין חדש צריך אחר כך מראה ותפילות משלו.</p>
-
-        <h3>מאיפה מגיעה ההלכה</h3>
-        <Where wall="מסך «הלכה יומית» אם הוא דלוק" phone="תמיד אפשר לפתוח «הלכה יומית» בגלילה" />
-        <ul>
-          <li>«משולחן ערוך» — הלכת היום מתעדכנת לבד.</li>
-          <li>«קיצור שולחן ערוך» או «הוזנו ידנית» — לפי מה שהזנתם, עם תקציר או מלא.</li>
-        </ul>
-        <figure className="guide-shot">
-          <div className="guide-frame guide-frame--wall">
-            <img src="/guide/wall-next.png" alt="מסך הלכה יומית על הקיר" />
-          </div>
-          <figcaption>מסך הלכה יומית על הקיר. בטלפון אותה הלכה נפתחת בלחיצה, בלי לתפוס את כל המסך.</figcaption>
-        </figure>
-        <p className="guide-note">בטלפון ההלכה לא תופסת מסך שלם. היא מתקפלת, ופותחים בלחיצה.</p>
-      </section>
-
-      <section className="guide-section" id="look">
-        <h2>מראה המסך</h2>
-        <p>כאן מחליטים איך הקיר נראה, ואילו מסכים מתחלפים. כל מניין נשמר בנפרד.</p>
-        <div className="guide-links">
-          <Link href={`${base}/look`}>פתיחת מראה המסך</Link>
-        </div>
-
-        <h3>סגנון וצבעים</h3>
-        <Where wall="כל המסך: צבעים, כותרת, שעון" none="הטלפון לא משנה צבע לפי הסגנון" />
-        <p>יש קלאסי, מודרני, מינימלי, עץ וכסף, כחול מלכותי, ובולט מאוד. ב«בולט מאוד» אפשר גם לבחור פלטת צבעים.</p>
-
-        <h3>פונט</h3>
-        <Where wall="כן" phone="כן, רק הגופן" />
-
-        <h3>מנהג הפטרה</h3>
-        <Where wall="שם ומקור ההפטרה במסך שבת" none="בטלפון אין שורת הפטרה נפרדת" />
-        <p>אשכנזי, ספרדי או חב״ד. אם לא בחרתם — אשכנזי.</p>
-
-        <h3>הודעה בתחתית המסך</h3>
-        <Where wall="פס למטה בכל המסכים" phone="הודעה בתחתית הגלילה" />
-        <p>למשל: «אין לדבר בשעת התפילה». עד 120 תווים.</p>
-        <ShotPair
-          wallSrc="/guide/wall-main.png"
-          mobileSrc="/guide/mobile-display.png"
-          wallCaption="הפס התחתון על הקיר מגיע מהשדה «הודעה בתחתית המסך»."
-          mobileCaption="אותה הודעה בטלפון, למטה אחרי הכרטיסים."
-        />
-
-        <h3>מה מוצג במסך הראשי</h3>
-        <Where wall="רשימת תפילות, או גם זריחה ושקיעה" phone="ברירת מחדל תפילות; יש מתג «לוח זמנים מלא»" />
-        <p>«רק זמני תפילות» — קצר וברור. «תפילות וגם זמני היום» — מוסיף זריחה, שקיעה וכו׳ לפי הסימונים.</p>
-
-        <h3>לימוד יומי</h3>
-        <Where wall="מסך «לימוד יומי» אם דלקתם אותו" phone="כרטיס «לימוד יומי»" />
-        <p>כאן בוחרים אילו ספרים יופיעו (דף יומי, משנה, רמב״ם…). דף יומי מופיע גם במסך הראשי תמיד.</p>
-
-        <h3>מסכים מתחלפים</h3>
-        <Where wall="הרוטטור על הטלוויזיה" phone="כרטיסים בגלילה" />
-        <p>כל שורה היא מסך: ראשי, שעון, הלכה, שבת, מודעות… «מוצג» מדליק או מכבה. «שניות» כמה זמן הוא נשאר על הקיר. החצים משנים סדר.</p>
-        <div className="guide-grid guide-grid--3">
-          <div className="guide-card">
-            <h3>מסך ראשי</h3>
-            <p>פרשה, תאריך, תפילות, התפילה הבאה.</p>
-          </div>
-          <div className="guide-card">
-            <h3>שעון</h3>
-            <p>שעון גדול + התפילה הבאה. נוח באמצע התפילה.</p>
-          </div>
-          <div className="guide-card">
-            <h3>הלכה / לימוד</h3>
-            <p>סעיפי הלכה, או רשימת ספרי היום.</p>
-          </div>
-          <div className="guide-card">
-            <h3>זמני תפילות</h3>
-            <p>רשימה גדולה של סליחות, שחרית, מנחה, ערבית.</p>
-          </div>
-          <div className="guide-card">
-            <h3>שבת</h3>
-            <p>רק בשישי ושבת: פרשה, כניסה/יציאה, סדר היום.</p>
-          </div>
-          <div className="guide-card">
-            <h3>לוח מודעות</h3>
-            <p>ההודעות שפרסמתם. אם כבית — המסך לא יופיע.</p>
-          </div>
-        </div>
-        <p className="guide-note">בטלפון אין «החלפת מסכים». אם הדלקתם מסך ראשי, חלק מהמסכים הכפולים מוסתרים כדי לא לחזור על אותו דבר.</p>
       </section>
 
       <section className="guide-section" id="prayers">
         <h2>זמני תפילה</h2>
-        <p>כאן קובעים מתי מתפללים — כולל סליחות בימי חול. זה מה שהציבור רואה כ«התפילה הבאה» וברשימות.</p>
-        <Where wall="כן, בכל המסכים הרלוונטיים" phone="כן, כולל סימון «הבא»" />
+        <p>המסך הזה קובע מתי מתפללים. זה מה שבונה את «התפילה הבאה» ואת הרשימות.</p>
+        <Where wall="התפילה הבאה, זמני תפילות, לוח זמנים, מסך שבת אם אין סדר ידני" phone="אותן רשימות, עם סימון «הבא»" />
         <div className="guide-links">
           <Link href={`${base}/prayers`}>פתיחת זמני תפילה</Link>
         </div>
-        <ShotPair
-          wallSrc="/guide/wall-main.png"
-          mobileSrc="/guide/mobile-display.png"
-          wallCaption="«התפילה הבאה» על הקיר נבנית מזמני התפילה ששמרתם."
-          mobileCaption="גם בטלפון: שם התפילה והשעה, גדול וברור."
+        <Change
+          field="הוספת תפילה / מחק"
+          meaning="מוסיפים או מסירים שורה. בלי שורה — התפילה לא תופיע באותו יום."
         />
-        <h3>איך קובעים שעה</h3>
-        <ul>
-          <li><strong>שעה קבועה</strong> — למשל שחרית 07:00 כל יום.</li>
-          <li><strong>לפי זריחה או שקיעה</strong> — «20 דקות אחרי השקיעה». הזמן עצמו מחושב לפי מיקום בית הכנסת.</li>
-          <li><strong>לפי פרשת השבוע</strong> — מנחה וערבית משתנים לפי הטבלה השנתית.</li>
-        </ul>
-        <p>אפשר לעגל לחמש דקות, ולבחור באילו ימים התפילה חלה.</p>
-        <h3>שבת</h3>
-        <p>תפילות שבת נפרדות: מנחה ערב שבת וקבלת שבת, שחרית שבת, מנחה שבת, ערבית מוצאי שבת.</p>
-        <p className="guide-note">אם מילאתם «סדר שבת», הוא מוצג במסך שבת במקום רשימת התפילות הרגילה.</p>
+        <Change
+          field="סוג התפילה"
+          meaning="בחול: סליחות, שחרית, מנחה, ערבית. בשבת: מנחה ערב שבת וקבלת שבת, שחרית שבת, מנחה שבת, ערבית מוצ״ש. הסדר על המסך לפי סדר היום."
+        />
+        <Change
+          field="ימים"
+          meaning="באילו ימים השורה חלה. שישי בבוקר יכול לכלול סליחות ושחרית; מנחה וערבית של חול מוחלפות בערב שבת כשיש תפילות שבת."
+        />
+        <Change
+          field="שעה קבועה"
+          meaning="אותה שעה כל יום מסומן. למשל שחרית 07:00."
+        />
+        <Change
+          field="לפי זריחה / שקיעה"
+          meaning="השעה זזה עם הזמן ההלכתי של המיקום. לדוגמה 20 דקות אחרי השקיעה. אפשר לעגל לחמש דקות."
+        />
+        <Change
+          field="לפי פרשת השבוע"
+          meaning="רק למנחה ולערבית של חול. השעה מגיעה מטבלת הפרשות למטה — נשמרת בלחצן נפרד."
+        />
+        <p className="guide-note">אם מילאתם לוח שבתות וחגים, המסך על הקיר מציג אותו במקום רשימת התפילות.</p>
       </section>
 
       <section className="guide-section" id="bulletin">
         <h2>לוח מודעות</h2>
-        <p>הודעת טקסט או תמונה לציבור. למשל שיעור, אזכרה, או בקשה.</p>
-        <Where wall="מסך «לוח מודעות» אם הוא דלוק במראה" phone="כרטיס «לוח מודעות»" />
+        <p>הודעה לציבור: שיעור, אזכרה, בקשה. טקסט או תמונה.</p>
+        <Where wall="מסך «לוח מודעות» — רק אם הוא דלוק במראה" phone="כרטיס «לוח מודעות» בגלילה" />
         <div className="guide-links">
           <Link href={`${base}/bulletin`}>פתיחת לוח המודעות</Link>
         </div>
-        <ul>
-          <li>בחרו טקסט או תמונה.</li>
-          <li>אפשר להגביל תאריכים: מ־ ועד.</li>
-          <li>סמנו «מוצג בלוח המודעות» רק כשרוצים שזה יופיע.</li>
-          <li>לחצו «שמירת המודעות».</li>
-        </ul>
-        <p className="guide-note">המודעות משותפות לכל המניינים. אבל המסך עצמו חייב להיות דלוק ב«מראה המסך» של אותו מניין.</p>
+        <Change field="טקסט או תמונה" meaning="מה יוצג. תמונה ממלאת את מסך המודעות על הקיר." />
+        <Change field="מתאריך / עד תאריך" meaning="מחוץ לטווח ההודעה לא מוצגת. אפשר בלי הגבלה." />
+        <Change
+          field="מוצג בלוח המודעות"
+          meaning="כיבוי = ההודעה שמורה אצלכם ולא יוצאת לציבור. אם אין אף הודעה מוצגת — מסך המודעות על הקיר לא מופיע."
+        />
+        <p className="guide-note">המודעות משותפות לכל המניינים. אבל המסך עצמו חייב להיות «מוצג» במראה של אותו מניין.</p>
       </section>
 
       <section className="guide-section" id="shabbat">
-        <h2>סדר שבת</h2>
-        <p>רשימה חופשית: מה קורה בשבת, לפי הסדר. למשל כניסת שבת, קבלת שבת, קריאת התורה, קידוש.</p>
-        <Where wall="מסך שבת בשישי ובשבת" phone="כרטיס שבת בשישי ובשבת" />
+        <h2>שבתות וחגים</h2>
+        <p>רשימה חופשית: מה קורה בשבת או בחג, לפי הסדר.</p>
+        <Where
+          wall="מסך שבת וחגים — בשישי, בשבת וביום טוב"
+          phone="כרטיס שבת וחגים — בשישי, בשבת וביום טוב"
+        />
         <div className="guide-links">
-          <Link href={`${base}/shabbat`}>פתיחת סדר שבת</Link>
+          <Link href={`${base}/shabbat`}>פתיחת לוח שבתות וחגים</Link>
         </div>
-        <ul>
-          <li>כל שורה: שעה (לא חובה) + מה קורה.</li>
-          <li>«מוצג בתצוגה» — אפשר להכין שורה בלי להראות אותה עדיין.</li>
-          <li>אם אין סדר ידני, המסך יראה את זמני תפילות השבת.</li>
-        </ul>
-        <p>מנהג ההפטרה (במראה המסך) משפיע על שם ההפטרה במסך השבת שעל הקיר.</p>
+        <Change field="שעה" meaning="לא חובה. אם יש שעה היא מוצגת ליד התוכן, גדולה על הקיר." />
+        <Change field="מה קורה" meaning="הטקסט שהציבור רואה. למשל קבלת שבת, קריאת התורה, קידוש." />
+        <Change field="מוצג בתצוגה" meaning="אפשר להכין שורה בלי להראות אותה עדיין." />
+        <Change
+          field="בלי סדר ידני"
+          meaning="אם הרשימה ריקה, המסך מציג את זמני התפילות ששמרתם במסך התפילות."
+        />
+        <p>שם ההפטרה ונוסח ברכת השנים על הקיר מגיעים מנוסח התפילה של המניין, בהגדרות בית הכנסת.</p>
       </section>
 
       <section className="guide-section" id="people">
         <h2>מתפללים</h2>
-        <p>כרטיס לכל אדם: שם, אב ואם, כהן/לוי/ישראל, תאריך לידה, טלפון, מניין.</p>
-        <Where gabbai="רשימה, ייבוא, ואישור נרשמים" none="לא מוצג על הקיר ולא במסך הזמנים בטלפון" />
+        <p>כרטיס לכל אדם בבית הכנסת. לא מוצג על הטלוויזיה.</p>
+        <Where gabbai="רשימה, כרטיס, ייבוא, ואישור נרשמים" none="לא על הקיר ולא במסך הזמנים בטלפון" />
         <div className="guide-links">
           <Link href={`${base}/congregants`}>פתיחת המתפללים</Link>
         </div>
-        <ul>
-          <li>אפשר להוסיף אחד־אחד, או לייבא מאקסל.</li>
-          <li>«קישור למתפללים שימלאו בעצמם» — שולחים קישור, הם ממלאים, ואתם מאשרים.</li>
-          <li>נרשם לבד נשאר «ממתין» עד שתאשרו. רק אז הוא ברשימה הרגילה.</li>
-        </ul>
-        <p>הטלפון חובה בהרשמה עצמית. אצל הגבאי אפשר בלי טלפון.</p>
-        <p className="guide-note--mute guide-note">זה לא משפיע על הטלוויזיה. זה בשביל עליות, ובעתיד תזכורות.</p>
+        <Change field="הוספה / עריכה" meaning="שם, גבר/אשה, אב ואם, כהן/לוי/ישראל, תאריך לידה, טלפון, מניין, האם מקבל עלייה." />
+        <Change
+          field="יארצייט"
+          meaning="סגור כברירת מחדל. «הוספת יארצייט» פותח שורה: קרבה (שבעה קרובים, או סבא/סבתא), שם הנפטר אם רוצים, ותאריך לועזי או עברי. גם בטופס שהמתפלל ממלא בעצמו."
+        />
+        <Change
+          field="בן משפחה"
+          meaning="מקשרים מתפלל רשום כבן, בת, בעל או אשה. אפשר גם לפתוח כרטיס חדש ולקשר מיד."
+        />
+        <Change field="ייבוא מאקסל" meaning="הרבה כרטיסים בבת אחת. בודקים אחרי הייבוא שכל שורה נקלטה." />
+        <Change
+          field="קישור למילוי עצמי"
+          meaning="שולחים למתפלל. הוא ממלא בטלפון, ונכנס כ«ממתין» עד שתאשרו. בלי אישור הוא לא ברשימה הרגילה ולא בעליות."
+        />
+        <p className="guide-note guide-note--mute">זה בשביל עליות, ובעתיד תזכורות. לא משפיע על הקיר.</p>
       </section>
 
       <section className="guide-section" id="aliyot">
         <h2>עליות</h2>
-        <p>אחרי שבת או בחג — מסמנים מי עלה לתורה. לפי מניין ותאריך.</p>
-        <Where gabbai="גיליון עליות" none="לא מוצג על הקיר ולא בטלפון של הציבור" />
+        <p>אחרי שבת או חג — מסמנים מי עלה לתורה. לפי מניין, ופרשה או חג (עם השנה).</p>
+        <Where gabbai="גיליון עליות" none="לא על הקיר ולא בטלפון של הציבור" />
         <div className="guide-links">
           <Link href={`${base}/aliyot`}>פתיחת העליות</Link>
         </div>
-        <ul>
-          <li>המערכת פותחת את השבת האחרונה. אפשר לעבור שבוע אחורה או קדימה.</li>
-          <li>מחפשים את העולה לפי שם או טלפון.</li>
-          <li>אם הוא לא ברשימה — «העולה לא ברשימה». נפתח חלון, מוסיפים מתפלל, וחוזרים ישר לאותה עלייה.</li>
-          <li>אם אין כהן — בוחרים ישראל בכהן. נרשם שעלה במקומו.</li>
-        </ul>
-        <p>אפשר להוסיף עליות נוספות («הוספת עלייה»). לא לשכוח «שמירת העליות».</p>
-      </section>
-
-      <section className="guide-section" id="app">
-        <h2>האפליקציה בטלפון</h2>
-        <p>מתפלל פותח קישור, בוחר בית כנסת, ומסך הבית נשמר. בפעם הבאה הוא מגיע ישר לזמנים.</p>
-        <ShotPair
-          wallSrc="/guide/wall-main.png"
-          mobileSrc="/guide/mobile-home.png"
-          wallCaption="הקיר תמיד פתוח על הטלוויזיה — בלי התקנה."
-          mobileCaption="בטלפון אפשר להתקין למסך הבית. הלוגו שלכם יהיה האייקון."
+        <Change
+          field="פרשה / חג"
+          meaning="הרישום לפי שם הפרשה או החג והשנה, למשל «נצבים-וילך תשפ״ו». התאריך הלועזי כתוב מתחת. החצים מעבירים לפרשה או לחג הקודם והבא."
         />
-        <h3>איך שולחים למתפלל</h3>
-        <ol>
-          <li>שלחו קישור לבית הכנסת, או את כתובת האתר עם שם בית הכנסת.</li>
-          <li>בטלפון יופיע «התקינו את האפליקציה».</li>
-          <li>באייפון: שיתוף → «הוסף למסך הבית».</li>
-        </ol>
-        <p>הרשמה עצמית למתפללים: מתוך מסך המתפללים מעתיקים את הקישור. בטלפון זה נפתח בטופס נוח.</p>
-        <div className="guide-links">
-          <a href={`/m/display?synagogueId=${encodeURIComponent(synagogueId)}&preview=mobile`} target="_blank" rel="noreferrer">
-            פתיחת תצוגת הטלפון
-          </a>
-          <Link className="guide-links--ghost" href={`${base}/congregants`}>
-            קישור הרשמה למתפללים
-          </Link>
-        </div>
+        <Change field="בחירת עולה" meaning="חיפוש לפי שם או טלפון מתוך המתפללים של אותו מניין." />
+        <Change
+          field="העולה לא ברשימה"
+          meaning="נפתח חלון להוספת מתפלל בלי לעזוב את הדף, ואז חוזרים לאותה עלייה."
+        />
+        <Change field="אין כהן" meaning="בוחרים ישראל בכהן. נרשם שעלה במקומו." />
+        <Change field="הוספת עלייה" meaning="עלייה נוספת מעבר לרשימת ברירת המחדל. לא לשכוח «שמירת העליות»." />
       </section>
 
-      <section className="guide-section" id="faq">
-        <h2>שאלות שחוזרות</h2>
-        <div className="guide-grid">
-          <div className="guide-card">
-            <h3>שיניתי ולא רואה על הקיר</h3>
-            <p>בדקו ששמרתם באותו מסך. הקיר מתעדכן לבד תוך זמן קצר — בלי לרענן את הטלוויזיה.</p>
-          </div>
-          <div className="guide-card">
-            <h3>יש כמה מניינים</h3>
-            <p>בחרו מניין לפני מראה / תפילות / שבת. על הקיר: <code>?minyan=1</code> למניין הראשון, 2 לשני.</p>
-          </div>
-          <div className="guide-card">
-            <h3>מסך שבת לא מופיע</h3>
-            <p>הוא מוצג רק בשישי ובשבת. באמצע השבוע הוא מוסתר בכוונה.</p>
-          </div>
-          <div className="guide-card">
-            <h3>הלכה לא על הקיר</h3>
-            <p>ב«מראה המסך» המסך «הלכה יומית» צריך להיות מסומן «מוצג».</p>
-          </div>
-          <div className="guide-card">
-            <h3>זמני זריחה לא נכונים</h3>
-            <p>המיקום והדלקת הנרות נקבעים אצל מנהל המערכת, לא אצל הגבאי.</p>
-          </div>
-          <div className="guide-card">
-            <h3>עליות ומתפללים על המסך?</h3>
-            <p>לא. זה רק אצלכם, לניהול. הציבור רואה זמנים, הלכה ומודעות.</p>
-          </div>
+      <section className="guide-section" id="look">
+        <h2>מראה המסך</h2>
+        <p>איך הקיר נראה, ואילו מסכים מתחלפים. לכל מניין בנפרד.</p>
+        <Where wall="הכל כאן משפיע על הטלוויזיה" phone="רק הפונט, ורשימת התפילות/הזמנים" />
+        <div className="guide-links">
+          <Link href={`${base}/look`}>פתיחת מראה המסך</Link>
         </div>
-        <p className="guide-note guide-note--ok">אם משהו לא ברור — גללו לנושא למעלה, או פתחו את המסך עצמו מהכפתורים בכל פרק.</p>
+        <Change
+          field="סגנון"
+          meaning="קלאסי, מודרני, מינימלי, עץ וכסף, כחול מלכותי, בולט מאוד. משנה פריסה וצבעים על הקיר בלבד. הטלפון לא מחליף סגנון."
+        />
+        <Change field="צבעים" meaning="רק ב«בולט מאוד»: דיו ושנהב, כחול וזהב, או בורדו. רק על הקיר." />
+        <Change field="פונט" meaning="הגופן על הקיר וגם בטלפון." />
+        <Change
+          field="הודעה בתחתית המסך"
+          meaning="פס קטן בכל מסכי הקיר, ובתחתית הגלילה בטלפון. למשל «אין לדבר בשעת התפילה». עד 120 תווים."
+        />
+        <Change
+          field="מה מוצג במסך הראשי"
+          meaning="«רק זמני תפילות» — רשימה קצרה. «תפילות וגם זמני היום» — מוסיף זריחה, שקיעה וכו׳ לפי הסימונים למטה. בטלפון יש מתג דומה."
+        />
+        <Change
+          field="לימוד יומי — אילו ספרים"
+          meaning="מה יופיע במסך «לימוד יומי» על הקיר ובכרטיס בטלפון. דף יומי מופיע גם במסך הראשי תמיד."
+        />
+        <Change
+          field="מסכים מתחלפים"
+          meaning="כל שורה = מסך על הקיר. «מוצג» מדליק או מכבה. «שניות» כמה זמן הוא נשאר. החצים משנים סדר. בטלפון אין החלפה — הכול בגלילה, ומסכים כפולים מוסתרים אם יש מסך ראשי."
+        />
+        <Change
+          field="צפייה במסך"
+          meaning="במראה המסך או ב«עוד». פותח את תצוגת הקיר כמו בטלוויזיה — גם אם אתם בטלפון. לא פותח את אפליקציית המתפלל, ולא משנה אותה. בנוחות סובבו לרוחב. «חזרה לניהול» מחזיר לכאן."
+        />
+        <p className="guide-note">מסך שבת מוצג רק בשישי ובשבת, גם אם הוא דלוק. מסך עומר — רק בימי העומר.</p>
+      </section>
+
+      <section className="guide-section" id="settings">
+        <h2>הגדרות בית הכנסת</h2>
+        <p>שם הבית, והגדרות לכל מניין: שם ונוסח התפילה.</p>
+        <div className="guide-links">
+          <Link href={`${base}/settings`}>פתיחת ההגדרות</Link>
+        </div>
+        <Change
+          field="שם בית הכנסת"
+          meaning="הכותרת על הקיר, בטלפון, ובשם האפליקציה כשמתקינים. אחרי שינוי — «שמירת ההגדרות»."
+        />
+        <Change
+          field="לוגו"
+          meaning="נשמר מיד. לא מופיע על הקיר. זה האייקון כשמתקינים את האפליקציה בטלפון. מי שכבר התקין צריך להסיר ולהתקין מחדש."
+        />
+        <Change
+          field="מניינים — שם / הוספה / מחיקה"
+          meaning="השם בכותרת הקיר ובבורר בטלפון. מחיקה מוחקת גם את זמני התפילה של אותו מניין. מניין חדש צריך אחר כך מראה ותפילות משלו."
+        />
+        <Change
+          field="נוסח התפילה"
+          meaning="לכל מניין: אשכנזי / ספרדי / חב״ד. מכאן נגזרים שם ההפטרה במסך השבת, ונוסח ברכת השנים על הקיר: ספרדי — «ברכנו» בקיץ ו«ברך עלינו» בחורף; אשכנזי וחב״ד — «ותן ברכה» / «ותן טל ומטר לברכה». אם לא בחרתם — אשכנזי."
+        />
+        <Change
+          field="מאיפה מגיעה ההלכה"
+          meaning="«משולחן ערוך» — הלכת היום מתעדכנת לבד. «קיצור» או «הוזנו ידנית» — לפי מה שהזנתם, מתאריך ההתחלה, בתקציר או במלא. על הקיר רק אם מסך ההלכה דלוק במראה. בטלפון תמיד אפשר לפתוח בהלכה מתקפלת."
+        />
+      </section>
+
+      <section className="guide-section" id="examples">
+        <h2>דוגמאות: איך זה נראה לציבור</h2>
+        <p>צילומים מבית כנסת לבדיקות. אצלכם הצבעים והסדר לפי מה ששמרתם במראה.</p>
+        <LivePair synagogueId={synagogueId} />
+
+        <h3>מסכי הקיר, לפי הסדר במערכת</h3>
+        <div className="guide-wall-gallery">
+          {WALL_EXAMPLES.map((item) => (
+            <figure key={item.src} className="guide-shot">
+              <div className="guide-frame guide-frame--wall">
+                <img
+                  src={`${item.src}?v=2`}
+                  alt={item.title}
+                  onError={(e) => {
+                    e.currentTarget.closest("figure")?.setAttribute("hidden", "");
+                  }}
+                />
+              </div>
+              <figcaption>
+                <strong>{item.title}</strong>
+                {item.caption}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+
+        <h3>הטלפון — מהרואים אחרי שנכנסים לבית הכנסת, עד הסוף</h3>
+        <p>אין החלפת מסכים. גוללים למטה: כותרת, תפילה הבאה, כרטיסים, הלכה, לימוד, והודעה בתחתית.</p>
+        <figure className="guide-shot guide-shot--phone-full">
+          <div className="guide-frame guide-frame--phone">
+            <img src="/guide/mobile-full.png?v=2" alt="תצוגת הטלפון במלואה, כולל גלילה למטה" />
+          </div>
+          <figcaption>צילום מלא של מסך הטלפון, מהכותרת עד הקישורים למטה.</figcaption>
+        </figure>
       </section>
     </div>
   );

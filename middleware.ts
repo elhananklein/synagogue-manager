@@ -137,6 +137,11 @@ export async function middleware(request: NextRequest) {
     return withSynagogueCookie(request, NextResponse.next());
   }
 
+  // גבאי שרוצה לראות קיר מהטלפון — נשארים ב־/display בלי לשנות עוגיה.
+  if (isDisplayPath && nextUrl.searchParams.get("preview") === "wall") {
+    return withSynagogueCookie(request, NextResponse.next());
+  }
+
   // קיר שכבר נפל ל־/m/display: מחזירים לתצוגת קיר, אלא אם זה טלפון אמיתי.
   if (isMobileDisplayPath && !isPhone && cookieMode !== "mobile") {
     const wallUrl = nextUrl.clone();

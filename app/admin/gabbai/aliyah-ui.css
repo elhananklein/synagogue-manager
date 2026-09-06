@@ -18,6 +18,30 @@
   min-width: 9rem;
 }
 
+.aliyah-occasion-field {
+  flex: 1 1 16rem;
+  min-width: 14rem;
+}
+
+.aliyah-occasion-field select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--c-border);
+  background: var(--c-input, #fff);
+  color: var(--c-ink);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.aliyah-date-under {
+  margin: -0.25rem 0 0;
+  color: var(--c-ink);
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
 .aliyah-week-btn {
   min-height: 2.75rem;
   padding: 0 0.85rem;

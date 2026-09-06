@@ -18,7 +18,7 @@ export default async function AliyotPage({
     <>
       <h1 className="gabbai-page-title">עליות</h1>
       <p className="gabbai-page-desc">
-        סמנו מי עלה לתורה בשבת או בחג. אם העולה לא ברשימת המתפללים, מוסיפים אותו מכאן וממשיכים ישר לעלייה.
+        סמנו מי עלה לתורה בשבת או בחג, לפי הפרשה או שם החג. אם העולה לא ברשימת המתפללים, מוסיפים אותו מכאן וממשיכים ישר לעלייה.
       </p>
       <AliyahSheetEditor
         synagogueId={synagogueId}

@@ -27,6 +27,7 @@ export function CongregantQuickAddDialog({
   minyanim,
   minyanId,
   nameQuery,
+  initialGender,
   onClose,
   onCreated
 }: {
@@ -34,6 +35,7 @@ export function CongregantQuickAddDialog({
   minyanim: CongregantMinyanOption[];
   minyanId: string | null;
   nameQuery: string;
+  initialGender?: CongregantInput["gender"];
   onClose: () => void;
   onCreated: (row: CongregantRecord) => void;
 }) {
@@ -42,6 +44,7 @@ export function CongregantQuickAddDialog({
     ...emptyCongregantInput(minyanId),
     firstName: guessed.firstName,
     lastName: guessed.lastName,
+    gender: initialGender ?? "male",
     receivesAliyah: true,
     isActive: true,
     registrationStatus: "approved"

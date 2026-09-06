@@ -1,0 +1,77 @@
+/* תצוגת קיר לגבאי בטלפון — שמות חדשים בלבד, בלי לגעת בעיצוב הקיר. */
+
+.wall-preview {
+  min-height: 100dvh;
+  background: #111;
+}
+
+.wall-preview-back {
+  position: fixed;
+  z-index: 80;
+  top: max(0.45rem, env(safe-area-inset-top));
+  inset-inline-start: max(0.45rem, env(safe-area-inset-left));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.1rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: rgb(17 17 17 / 0.72);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.wall-preview-back:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.wall-preview-hint {
+  position: fixed;
+  z-index: 80;
+  bottom: max(0.45rem, env(safe-area-inset-bottom));
+  inset-inline-end: max(0.45rem, env(safe-area-inset-right));
+  max-width: 14rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.55rem;
+  background: rgb(17 17 17 / 0.72);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.wall-preview-stage {
+  min-height: 100dvh;
+}
+
+.wall-preview-iframe {
+  display: block;
+  width: 100%;
+  height: 100dvh;
+  border: 0;
+  background: #111;
+}
+
+@media (orientation: portrait) and (max-width: 699.98px) {
+  .wall-preview-stage {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100dvh;
+    height: 100dvw;
+    transform: rotate(90deg) translateY(-100%);
+    transform-origin: top left;
+  }
+
+  .wall-preview-iframe {
+    width: 100%;
+    height: 100%;
+  }
+
+  .wall-preview-hint {
+    display: none;
+  }
+}

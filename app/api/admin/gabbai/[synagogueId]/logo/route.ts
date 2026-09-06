@@ -2,13 +2,17 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { canManageSynagogue, getAdminContext } from "@/lib/auth";
 import { parseSynagogueId } from "@/lib/synagogue-id";
-import { deleteSynagoguePwaIcons, synagogueLogoPublicUrl, writeSynagoguePwaIcons } from "@/lib/synagogue-logo-files";
+import {
+  deleteSynagoguePwaIcons,
+  sniffImageMime,
+  synagogueLogoPublicUrl,
+  writeSynagoguePwaIcons
+} from "@/lib/synagogue-logo-files";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_BYTES = 8 * 1024 * 1024;
 
 async function requireLogoAccess(synagogueId: string) {
   const ctx = await getAdminContext();
@@ -40,16 +44,22 @@ export async function POST(request: Request, context: { params: Promise<{ synago
   if (!(file instanceof File)) {
     return NextResponse.json({ ok: false, error: "missing_file" }, { status: 400 });
   }
-  if (!ALLOWED.has(file.type)) {
-    return NextResponse.json({ ok: false, error: "invalid_file_type" }, { status: 400 });
-  }
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ ok: false, error: "file_too_large" }, { status: 400 });
   }
+  const buffer = Buffer.from(await file.arrayBuffer());
+  if (!sniffImageMime(buffer, file.type)) {
+    return NextResponse.json({ ok: false, error: "invalid_file_type" }, { status: 400 });
+  }
 
   try {
-    await writeSynagoguePwaIcons(synagogueId, Buffer.from(await file.arrayBuffer()));
-  } catch {
+    await writeSynagoguePwaIcons(synagogueId, buffer);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("logo upload failed", message);
+    if (/bucket|storage|row-level|security|not found/i.test(message)) {
+      return NextResponse.json({ ok: false, error: "logo_storage_failed" }, { status: 500 });
+    }
     return NextResponse.json({ ok: false, error: "logo_process_failed" }, { status: 500 });
   }
 

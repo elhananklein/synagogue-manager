@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BookOpen, Monitor, ScrollText, Settings, Tv, Users } from "lucide-react";
+import { gabbaiWallPreviewHref } from "@/lib/handheld";
 
 export default async function GabbaiMorePage({
   params
@@ -47,16 +48,16 @@ export default async function GabbaiMorePage({
           </span>
           <span>
             <h2>הגדרות בית הכנסת</h2>
-            <p>שם, מניינים והלכה יומית</p>
+            <p>שם, מניינים, נוסח והלכה יומית</p>
           </span>
         </Link>
-        <a href={`/display?synagogueId=${encodeURIComponent(synagogueId)}`} className="gabbai-task-card">
+        <a href={gabbaiWallPreviewHref(synagogueId)} className="gabbai-task-card">
           <span className="gabbai-task-icon">
             <Tv className="h-5 w-5" aria-hidden />
           </span>
           <span>
             <h2>צפייה במסך</h2>
-            <p>לראות איך התצוגה נראית עכשיו</p>
+            <p>תצוגת הקיר כמו בטלוויזיה — גם מהטלפון</p>
           </span>
         </a>
         <Link href={`${base}/guide`} className="gabbai-task-card">

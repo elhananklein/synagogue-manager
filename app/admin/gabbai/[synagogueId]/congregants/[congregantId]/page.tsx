@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { CongregantForm } from "@/components/admin/congregant-form";
-import { getCongregant, listSynagogueMinyanOptions } from "@/lib/congregant-db";
+import { getCongregant, listCongregants, listSynagogueMinyanOptions } from "@/lib/congregant-db";
 import { mapCongregantApiError } from "@/lib/congregant-errors";
 
 export default async function EditCongregantPage({
@@ -9,9 +9,10 @@ export default async function EditCongregantPage({
   params: Promise<{ synagogueId: string; congregantId: string }>;
 }) {
   const { synagogueId, congregantId } = await params;
-  const [found, minyanim] = await Promise.all([
+  const [found, minyanim, listed] = await Promise.all([
     getCongregant(synagogueId, congregantId),
-    listSynagogueMinyanOptions(synagogueId)
+    listSynagogueMinyanOptions(synagogueId),
+    listCongregants(synagogueId)
   ]);
 
   if (!found.row) {
@@ -29,6 +30,7 @@ export default async function EditCongregantPage({
         minyanim={minyanim}
         initial={found.row}
         congregantId={congregantId}
+        familyPeople={(listed.rows ?? []).filter((row) => row.id !== congregantId)}
       />
     </>
   );

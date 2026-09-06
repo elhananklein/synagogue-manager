@@ -1,5 +1,5 @@
 /* Service worker — נדרש ב-Android Chrome ליצירת WebAPK (אפליקציה) ולא רק קיצור דרך. */
-const CACHE = "synagogue-shell-v6";
+const CACHE = "synagogue-shell-v8";
 const OFFLINE_URLS = ["/admin/login", "/icons/admin-icon-192.png", "/icons/admin-icon-512.png"];
 const DISPLAY_LAST = "/__display-last";
 const DISPLAY_NAV_TIMEOUT_MS = 12000;
@@ -64,9 +64,14 @@ function isDisplayHtmlGet(request) {
   return accept.includes("text/html");
 }
 
+function isPublicJoinPath(url) {
+  return url.pathname === "/join" || url.pathname.startsWith("/join/") || url.pathname === "/m/join" || url.pathname.startsWith("/m/join");
+}
+
 function shouldBypass(request) {
   const url = new URL(request.url);
   if (url.pathname.startsWith("/api/")) return true;
+  if (isPublicJoinPath(url)) return true;
   const accept = request.headers.get("Accept") || "";
   return accept.includes("text/x-component");
 }
@@ -107,8 +112,11 @@ self.addEventListener("fetch", (event) => {
             if (cached) return cached;
             return Response.error();
           }
-          const cached = await caches.match("/admin/login");
-          return cached || Response.error();
+          if (url.pathname.startsWith("/admin")) {
+            const cached = await caches.match("/admin/login");
+            return cached || Response.error();
+          }
+          return Response.error();
         }
       })()
     );

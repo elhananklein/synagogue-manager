@@ -1,13 +1,24 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import {
+  applyYahrzeitConversion,
+  CONGREGANT_GENDER_LABELS,
+  CONGREGANT_GENDERS,
   CONGREGANT_TRIBE_LABELS,
   CONGREGANT_TRIBES,
   congregantPrayerName,
+  emptyYahrzeit,
+  isYahrzeitStarted,
+  YAHRZEIT_RELATION_LABELS,
+  YAHRZEIT_RELATIONS,
+  yahrzeitDiedAfterSunsetLabel,
   type BirthDateSource,
   type CongregantInput,
-  type CongregantMinyanOption
+  type CongregantMinyanOption,
+  type CongregantYahrzeit,
+  type YahrzeitRelation
 } from "@/lib/congregant-types";
 import { hebrewMonthsForYear, isHebrewLeapYear } from "@/lib/hebrew-civil-date";
 
@@ -33,6 +44,7 @@ export function CongregantFields({
   const prayerName = congregantPrayerName(input);
   const hebrewYear = input.hebrewBirthYear > 0 ? String(input.hebrewBirthYear) : "";
   const self = variant === "self";
+  const bornLabel = input.gender === "female" ? "נולדה אחרי השקיעה" : "נולד אחרי השקיעה";
 
   return (
     <>
@@ -103,7 +115,20 @@ export function CongregantFields({
         </label>
       </div>
 
-      <div className="congregant-grid congregant-grid--2" style={{ marginTop: "0.75rem" }}>
+      <div className="congregant-grid congregant-grid--3" style={{ marginTop: "0.75rem" }}>
+        <label className="congregant-field">
+          <span>גבר / אשה</span>
+          <select
+            value={input.gender}
+            onChange={(e) => onPatch({ gender: e.target.value as CongregantInput["gender"] })}
+          >
+            {CONGREGANT_GENDERS.map((gender) => (
+              <option key={gender} value={gender}>
+                {CONGREGANT_GENDER_LABELS[gender]}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="congregant-field">
           <span>כהן / לוי / ישראל</span>
           <select
@@ -233,8 +258,10 @@ export function CongregantFields({
           checked={input.bornAfterSunset}
           onChange={(e) => onPatch({ bornAfterSunset: e.target.checked })}
         />
-        נולד אחרי השקיעה
+        {bornLabel}
       </label>
+
+      <YahrzeitSection input={input} onPatch={onPatch} />
 
       {self ? (
         <label className="congregant-check" style={{ marginTop: "0.35rem" }}>
@@ -249,3 +276,166 @@ export function CongregantFields({
     </>
   );
 }
+
+function YahrzeitSection({
+  input,
+  onPatch
+}: {
+  input: CongregantInput;
+  onPatch: (next: Partial<CongregantInput>) => void;
+}) {
+  function addYahrzeit() {
+    const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `new-${Date.now()}`;
+    onPatch({ yahrzeits: [...(input.yahrzeits ?? []), { ...emptyYahrzeit("father"), id }] });
+  }
+
+  return (
+    <div className="congregant-yahrzeit">
+      <p className="mb-1 text-sm font-bold" style={{ color: "var(--c-muted)" }}>
+        יארצייט
+      </p>
+      <p className="mb-2 text-xs" style={{ color: "var(--c-muted)" }}>
+        אופציונלי. שבעה קרובים, או סבא וסבתא.
+      </p>
+      {(input.yahrzeits ?? []).map((item, index) => (
+        <YahrzeitCard
+          key={item.id || `yahrzeit-${index}`}
+          item={item}
+          onChange={(next) =>
+            onPatch({
+              yahrzeits: (input.yahrzeits ?? []).map((row, rowIndex) => (rowIndex === index ? next : row))
+            })
+          }
+          onRemove={() => onPatch({ yahrzeits: (input.yahrzeits ?? []).filter((_, rowIndex) => rowIndex !== index) })}
+        />
+      ))}
+      <button type="button" className="congregant-yahrzeit-add" onClick={addYahrzeit}>
+        <Plus className="h-3.5 w-3.5" aria-hidden />
+        הוספת יארצייט
+      </button>
+    </div>
+  );
+}
+
+function YahrzeitCard({
+  item,
+  onChange,
+  onRemove
+}: {
+  item: CongregantYahrzeit;
+  onChange: (next: CongregantYahrzeit) => void;
+  onRemove: () => void;
+}) {
+  const [source, setSource] = useState<BirthDateSource>(item.gregorianDate ? "gregorian" : "hebrew");
+  const started = isYahrzeitStarted(item);
+  const months = hebrewMonthsForYear(item.hebrewYear || null);
+
+  function patchDate(next: Partial<CongregantYahrzeit>, nextSource: BirthDateSource) {
+    setSource(nextSource);
+    onChange(applyYahrzeitConversion({ ...item, ...next }, nextSource).next);
+  }
+
+  return (
+    <div className="congregant-yahrzeit-card">
+      <div className="congregant-yahrzeit-card-head">
+        <label className="congregant-field" style={{ margin: 0, flex: 1 }}>
+          <span>קרבה</span>
+          <select
+            value={item.relation}
+            onChange={(e) => onChange({ ...item, relation: e.target.value as YahrzeitRelation })}
+          >
+            {YAHRZEIT_RELATIONS.map((relation) => (
+              <option key={relation} value={relation}>
+                {YAHRZEIT_RELATION_LABELS[relation]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" className="congregant-yahrzeit-remove" onClick={onRemove}>
+          הסרה
+        </button>
+      </div>
+      <label className="congregant-field">
+        <span>שם הנפטר — לא חובה</span>
+        <input
+          value={item.personName}
+          onChange={(e) => onChange({ ...item, personName: e.target.value })}
+          autoCapitalize="words"
+        />
+      </label>
+      <div className="congregant-source" role="group" aria-label="תאריך יארצייט">
+        <button type="button" aria-pressed={source === "gregorian"} onClick={() => patchDate({}, "gregorian")}>
+          ממלאים לועזי
+        </button>
+        <button type="button" aria-pressed={source === "hebrew"} onClick={() => patchDate({}, "hebrew")}>
+          ממלאים עברי
+        </button>
+      </div>
+      <div className="congregant-grid congregant-grid--2" style={{ marginTop: "0.75rem" }}>
+        <label className="congregant-field">
+          <span>תאריך לועזי</span>
+          <input
+            type="date"
+            value={item.gregorianDate}
+            readOnly={source !== "gregorian"}
+            onChange={(e) => patchDate({ gregorianDate: e.target.value }, "gregorian")}
+          />
+        </label>
+        <div className="congregant-grid congregant-grid--3">
+          <label className="congregant-field">
+            <span>יום עברי</span>
+            <input
+              type="number"
+              min={1}
+              max={30}
+              inputMode="numeric"
+              readOnly={source !== "hebrew"}
+              value={started ? item.hebrewDay || "" : ""}
+              onChange={(e) => patchDate({ hebrewDay: Number(e.target.value) || 0 }, "hebrew")}
+            />
+          </label>
+          <label className="congregant-field">
+            <span>חודש עברי</span>
+            <select
+              disabled={source !== "hebrew"}
+              value={item.hebrewMonth || ""}
+              onChange={(e) => patchDate({ hebrewMonth: Number(e.target.value) }, "hebrew")}
+            >
+              {months.map((month) => (
+                <option key={month.month} value={month.month}>
+                  {month.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="congregant-field">
+            <span>שנה עברית</span>
+            <input
+              type="number"
+              min={5000}
+              max={6000}
+              inputMode="numeric"
+              readOnly={source !== "hebrew"}
+              value={item.hebrewYear > 0 ? String(item.hebrewYear) : ""}
+              onChange={(e) => {
+                const year = Number(e.target.value) || 0;
+                const leap = year ? isHebrewLeapYear(year) : true;
+                const month = !leap && item.hebrewMonth === 13 ? 12 : item.hebrewMonth;
+                patchDate({ hebrewYear: year, hebrewMonth: month }, "hebrew");
+              }}
+            />
+          </label>
+        </div>
+      </div>
+      <label className="congregant-check" style={{ marginTop: "0.65rem" }}>
+        <input
+          type="checkbox"
+          checked={item.afterSunset}
+          onChange={(e) => patchDate({ afterSunset: e.target.checked }, source)}
+        />
+        {yahrzeitDiedAfterSunsetLabel(item.relation)}
+      </label>
+    </div>
+  );
+}
+

@@ -1,5 +1,5 @@
-import { getHolidaysOnDate, getSedra, HDate, ParshaEvent, flags } from "@hebcal/core";
-import { formatHebrewDate, gregorianToHebrew, isIsoDate, parseIsoDate } from "@/lib/hebrew-civil-date";
+import { getHolidaysOnDate, getSedra, gematriya, HDate, ParshaEvent, flags } from "@hebcal/core";
+import { gregorianToHebrew, hebrewMonthLabel, isIsoDate, parseIsoDate } from "@/lib/hebrew-civil-date";
 import type { AliyahDayKind, AliyahSlotDef, AliyahSlotState } from "@/lib/aliyah-types";
 
 function weekdayLabel(isoDate: string) {
@@ -159,19 +159,84 @@ export function isAliyahSlotKey(key: string) {
 
 export function hebrewDateLabelForIso(isoDate: string) {
   const hebrew = gregorianToHebrew(isoDate, false);
-  return hebrew ? formatHebrewDate(hebrew) : "";
+  if (!hebrew) return "";
+  return `${gematriya(hebrew.day)} ${hebrewMonthLabel(hebrew.month, hebrew.year)} ${gematriya(hebrew.year)}`;
+}
+
+function stripHebrewNiqqud(text: string) {
+  // בלי מקף עברי (U+05BE) — אחרת נצבים־וילך הופך למילה אחת
+  return text.replace(/[\u0591-\u05BD\u05BF-\u05C7]/g, "");
+}
+
+export function hebrewYearGematria(isoDate: string): string {
+  const hd = hdateFromIso(isoDate);
+  if (!hd) return "";
+  return gematriya(hd.getFullYear());
+}
+
+/** שם הרישום: «נצבים-וילך תשפ״ו» או «ראש השנה תשפ״ז». */
+export function aliyahOccasionTitle(isoDate: string): string {
+  const kind = aliyahDayKind(isoDate);
+  const name = stripHebrewNiqqud(parashaOrChagLabel(isoDate, kind))
+    .replace(/^פרשת\s+/, "")
+    .replace(/\s+\d{3,4}\s*$/g, "")
+    .replace(/־/g, "-")
+    .trim();
+  const year = hebrewYearGematria(isoDate);
+  if (!name) return year;
+  if (!year) return name;
+  return `${name} ${year}`;
+}
+
+export function formatAliyahCivilDate(isoDate: string): string {
+  if (!isIsoDate(isoDate)) return isoDate;
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Intl.DateTimeFormat("he-IL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC"
+  })
+    .format(new Date(Date.UTC(year, month - 1, day, 12, 0, 0)))
+    .replace(/יום שבת/g, "שבת");
+}
+
+export type AliyahOccasionOption = { iso: string; label: string };
+
+export function listAliyahOccasionOptions(centerIso: string, padDays = 480): AliyahOccasionOption[] {
+  if (!isIsoDate(centerIso)) return [];
+  const start = addDaysIso(centerIso, -padDays);
+  const end = addDaysIso(centerIso, padDays);
+  const out: AliyahOccasionOption[] = [];
+  for (let iso = start; iso <= end; iso = addDaysIso(iso, 1)) {
+    if (aliyahDayKind(iso) === "other") continue;
+    out.push({ iso, label: aliyahOccasionTitle(iso) });
+  }
+  return out;
+}
+
+export function withCurrentAliyahOccasion(options: AliyahOccasionOption[], isoDate: string): AliyahOccasionOption[] {
+  if (!isIsoDate(isoDate) || options.some((item) => item.iso === isoDate)) return options;
+  return [...options, { iso: isoDate, label: aliyahOccasionTitle(isoDate) || isoDate }].sort((a, b) =>
+    a.iso.localeCompare(b.iso)
+  );
 }
 
 export function parashaOrChagLabel(isoDate: string, kind: AliyahDayKind) {
   const hd = hdateFromIso(isoDate);
   if (!hd) return "";
   const events = getHolidaysOnDate(hd, true) ?? [];
-  const chagTitle =
+  const chagTitle = (
     events.find((ev) => {
       const eventFlags = ev.getFlags();
       if (eventFlags & flags.EREV) return false;
       return Boolean(eventFlags & flags.CHAG);
-    })?.render("he") ?? "";
+    })?.render("he") ?? ""
+  )
+    .replace(/[\u0591-\u05C7]/g, "")
+    .replace(/\s+\d{3,4}\s*$/g, "")
+    .trim();
   if (kind !== "shabbat" && chagTitle) return chagTitle;
   try {
     const lookup = getSedra(hd.getFullYear(), true).lookup(hd);
@@ -189,7 +254,7 @@ export function aliyahDayMeta(isoDate: string) {
     isKriahDay: kind !== "other",
     weekday: weekdayLabel(isoDate),
     hebrewDate: hebrewDateLabelForIso(isoDate),
-    parashaLabel: parashaOrChagLabel(isoDate, kind),
+    parashaLabel: aliyahOccasionTitle(isoDate),
     slots: slotsForAliyahDay(kind).map(emptySlotState)
   };
 }

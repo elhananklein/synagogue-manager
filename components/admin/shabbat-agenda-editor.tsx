@@ -28,7 +28,7 @@ export function ShabbatAgendaEditor({
 }: {
   items: ShabbatAgendaItemModel[];
   onChange: (items: ShabbatAgendaItemModel[]) => void;
-  /** למשל «פרשת ראה» — להקשר בלבד */
+  /** למשל «פרשת ראה» או «ראש השנה» — להקשר בלבד */
   parashaHint?: string | null;
   className?: string;
 }) {
@@ -58,13 +58,13 @@ export function ShabbatAgendaEditor({
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle>לוח זמנים לשבת</CardTitle>
+        <CardTitle>לוח זמנים לשבתות וחגים</CardTitle>
         <p className="text-sm text-muted-foreground">
-          סדר היום לשבת הקרובה
+          סדר היום לשבת או לחג הקרוב
           {parashaHint ? (
             <>
               {" "}
-              (<span className="font-medium text-foreground">פרשת {parashaHint}</span>)
+              (<span className="font-medium text-foreground">{parashaHint}</span>)
             </>
           ) : null}
           . לכל שורה אפשר לכתוב מה קורה, וגם שעה אם רוצים.
@@ -73,7 +73,7 @@ export function ShabbatAgendaEditor({
       <CardContent className="space-y-4">
         {items.length === 0 ? (
           <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
-            עדיין אין פריטים. הוסיפו את סדר היום לשבת.
+            עדיין אין פריטים. הוסיפו את סדר היום לשבת או לחג.
           </p>
         ) : null}
 

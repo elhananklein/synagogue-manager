@@ -41,19 +41,20 @@ export default function GabbaiShabbatPage({
       setError(mapGabbaiSaveError(payload.error));
       return;
     }
-    setMessage("סדר השבת נשמר");
+    setMessage("לוח הזמנים נשמר");
     await reload();
   }
 
-  if (isLoading) return <GabbaiLoadingPanel title="טוען את סדר השבת…" />;
+  if (isLoading) return <GabbaiLoadingPanel title="טוען את לוח השבתות והחגים…" />;
   if (loadError) return <p className="gabbai-err">{loadError}</p>;
   if (!minyan) return <p className="gabbai-hint">אין מניין. הוסיפו מניין בהגדרות בית הכנסת.</p>;
 
   return (
     <>
-      <h1 className="gabbai-page-title">סדר שבת</h1>
+      <h1 className="gabbai-page-title">שבתות וחגים</h1>
       <p className="gabbai-page-desc">
-        רשימת מה שקורה בשבת הקרובה, לפי הסדר. לדוגמה: כניסת שבת, קבלת שבת, קריאת התורה, קידוש.
+        לוח זמנים לשבת הקרובה או לחג — לפי הסדר. לדוגמה: כניסת שבת, קבלת שבת, קריאת התורה, קידוש.
+        כששבת היא חג (ראש השנה, יום כיפור, פסח) יוצג שם החג במקום פרשת השבוע.
       </p>
       <GabbaiMinyanSwitch
         names={minyanim.map((m) => m.name)}
@@ -70,7 +71,7 @@ export default function GabbaiShabbatPage({
           setMessage(null);
         }}
       />
-      <GabbaiSaveBar label="שמירת סדר השבת" saving={saving} message={message} error={error} onSave={() => void save()} />
+      <GabbaiSaveBar label="שמירת לוח הזמנים" saving={saving} message={message} error={error} onSave={() => void save()} />
     </>
   );
 }

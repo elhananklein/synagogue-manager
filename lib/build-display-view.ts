@@ -11,6 +11,7 @@ import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule, settingsNeedSund
 import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
 import { filterDailyLearningByKeys } from "@/lib/daily-learning-catalog";
 import { hebrewWeekdayLong, resolveViewIsoDate } from "@/lib/view-date";
+import { isChagOnDate, isOccasionScreenDay, resolveOccasionLabel } from "@/lib/sacred-occasion";
 
 export type DisplayViewParams = {
   synagogueId?: string | string[];
@@ -41,8 +42,14 @@ export type DisplayPrayerSlot = { label: string; time: string; details: string }
 
 export type DisplayShabbat = {
   parasha: string;
+  /** יום טוב (גם כשחל בשבת) */
+  isChag: boolean;
+  /** שישי/שבת של אותו מועד */
+  isShabbatWeekend: boolean;
   candleLighting: string | null;
   havdalah: string | null;
+  candleLabel: string;
+  havdalahLabel: string;
   prayers: Array<{ label: string; time: string }>;
   /** שבת מברכין לשבת המוצגת (אם רלוונטי) */
   mevarchimText: string | null;
@@ -128,6 +135,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   // נשלף קודם את הגדרות בית הכנסת כדי לקבל את המיקום, ואז נחשב את הזמנים לפיו.
   const displayConfig = await getDisplayConfig(synagogueId, minyanSelector);
   const location = displayConfig.location;
+  const snapshotOptions = { location, haftarahMinhag: displayConfig.haftarahMinhag };
 
   const todaySundayIso = addDaysIsoDate(todayIsoDate, -jsWeekdayFromIsoDate(todayIsoDate));
   const tomorrowSundayIso = addDaysIsoDate(tomorrowIsoDate, -jsWeekdayFromIsoDate(tomorrowIsoDate));
@@ -143,12 +151,12 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const extraSundayPromise =
     extraSundayIsos.length === 0
       ? Promise.resolve([] as DisplaySnapshot[])
-      : Promise.all(extraSundayIsos.map((iso) => getDisplaySnapshot(iso, { omitDailyLearning: true, location })));
+      : Promise.all(extraSundayIsos.map((iso) => getDisplaySnapshot(iso, { omitDailyLearning: true, ...snapshotOptions })));
 
   const [[snapshot, tomorrowSnapshot, publicData, bulletinItems, shabbatAgendaItems], sundaySnaps] = await Promise.all([
     Promise.all([
-      getDisplaySnapshot(todayIsoDate, { location }),
-      getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, location }),
+      getDisplaySnapshot(todayIsoDate, snapshotOptions),
+      getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, ...snapshotOptions }),
       getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
       getPublishedBulletinItems(synagogueId),
       getPublishedShabbatAgendaItems(displayConfig.minyanId)
@@ -239,7 +247,10 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const daysUntilSaturday = (6 - todayJsDay + 7) % 7;
   const saturdayIso = addDaysIsoDate(todayIsoDate, daysUntilSaturday);
   const fridayIso = addDaysIsoDate(saturdayIso, -1);
-  const leyningItem = await fetchHebcalLeyningForDate(saturdayIso);
+  const todayIsWeekdayChag = isChagOnDate(todayIsoDate) && todayJsDay !== 5 && todayJsDay !== 6;
+  const occasionIso = todayIsWeekdayChag ? todayIsoDate : saturdayIso;
+  const occasionScreenActive = isOccasionScreenDay(todayIsoDate);
+  const leyningItem = await fetchHebcalLeyningForDate(occasionIso);
   const haftarah = resolveHaftarahDisplay(leyningItem, displayConfig.haftarahMinhag);
   displaySnapshot.haftarah = haftarah;
 
@@ -250,8 +261,8 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
 
   if (shabbatScreenEnabled) {
     [fridaySnapshot, saturdaySnapshot] = await Promise.all([
-      getDisplaySnapshot(fridayIso, { omitDailyLearning: true, location }),
-      getDisplaySnapshot(saturdayIso, { omitDailyLearning: true, location })
+      getDisplaySnapshot(fridayIso, { omitDailyLearning: true, ...snapshotOptions }),
+      getDisplaySnapshot(saturdayIso, { omitDailyLearning: true, ...snapshotOptions })
     ]);
     saturdayEvents = saturdaySnapshot.sourceEvents;
   } else if (todayJsDay === 6) {
@@ -270,16 +281,30 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     weekMevarchimText && (todayJsDay === 5 || todayJsDay === 6) ? weekMevarchimText : null;
 
   let shabbat: DisplayShabbat | null = null;
-  if (shabbatScreenEnabled && fridaySnapshot && saturdaySnapshot) {
+  if (shabbatScreenEnabled && occasionScreenActive) {
+    const occasionLabel =
+      resolveOccasionLabel(occasionIso) ||
+      (todayIsWeekdayChag ? displaySnapshot.parasha : saturdaySnapshot?.parasha) ||
+      displaySnapshot.parasha;
+    const isChag = isChagOnDate(occasionIso);
+    const isShabbatWeekend = todayJsDay === 5 || todayJsDay === 6;
     shabbat = {
-      parasha: snapshot.parasha,
-      candleLighting: snapshot.candleLighting,
-      havdalah: snapshot.havdalah,
-      prayers: buildShabbatPrayerSchedule(
-        displayConfig.prayerSettings,
-        fridaySnapshot.zmanimSourceTimes,
-        saturdaySnapshot.zmanimSourceTimes
-      ),
+      parasha: occasionLabel,
+      isChag,
+      isShabbatWeekend,
+      candleLighting: todayIsWeekdayChag ? null : displaySnapshot.candleLighting,
+      havdalah: todayIsWeekdayChag ? null : displaySnapshot.havdalah,
+      candleLabel: isChag && !isShabbatWeekend ? "כניסת החג" : "כניסת שבת",
+      havdalahLabel: isChag && !isShabbatWeekend ? "צאת החג" : "צאת שבת",
+      prayers: todayIsWeekdayChag
+        ? prayerSchedule.map((row) => ({ label: row.label, time: row.time }))
+        : fridaySnapshot && saturdaySnapshot
+          ? buildShabbatPrayerSchedule(
+              displayConfig.prayerSettings,
+              fridaySnapshot.zmanimSourceTimes,
+              saturdaySnapshot.zmanimSourceTimes
+            )
+          : [],
       mevarchimText: weekMevarchimText,
       agenda: shabbatAgendaItems.map((item) => ({
         itemTime: item.itemTime,

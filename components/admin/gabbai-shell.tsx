@@ -9,7 +9,7 @@ const NAV = [
   { href: "", label: "ראשי", Icon: Home },
   { href: "/prayers", label: "תפילות", Icon: CalendarDays },
   { href: "/bulletin", label: "מודעות", Icon: Megaphone },
-  { href: "/shabbat", label: "שבת", Icon: Sun },
+  { href: "/shabbat", label: "שבת וחג", Icon: Sun },
   { href: "/more", label: "עוד", Icon: Settings }
 ] as const;
 

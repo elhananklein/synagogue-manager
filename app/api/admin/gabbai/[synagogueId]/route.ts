@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getAllBulletinItemsForAdmin, saveBulletinItems, type BulletinItemInput } from "@/lib/bulletin-board";
 import { getShabbatAgendaItemsByMinyanIds, saveShabbatAgendaItems, type ShabbatAgendaItemInput } from "@/lib/shabbat-agenda";
 import { getDisplaySnapshot, toIsoDateJerusalem } from "@/lib/hebcal";
+import { applyOccasionDisplayLabel, weeklyOccasionIso } from "@/lib/sacred-occasion";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
 import { sanitizeDailyLearningKeys } from "@/lib/daily-learning-catalog";
@@ -217,7 +218,9 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
   let currentParasha: string | null = null;
   try {
     const snap = await getDisplaySnapshot(toIsoDateJerusalem(), { omitDailyLearning: true });
-    currentParasha = snap.parasha && snap.parasha !== "לא נמצא" ? snap.parasha : null;
+    currentParasha =
+      applyOccasionDisplayLabel(snap.parasha, weeklyOccasionIso(toIsoDateJerusalem())) ||
+      (snap.parasha && snap.parasha !== "לא נמצא" ? snap.parasha : null);
   } catch {
     currentParasha = null;
   }
@@ -256,7 +259,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     minyanim?: MinyanInput[];
     minyanId?: string;
     minyanName?: string;
-    minyanNames?: Array<{ id: string; name: string }>;
+    minyanNames?: Array<{ id: string; name: string; haftarahMinhag?: string | null }>;
     prayerSettings?: PrayerSettingInput[];
     screens?: ScreenInput[];
     displayStyle?: DisplayStyle;
@@ -364,8 +367,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
         schedule_times_list: payload.scheduleTimesListMode === "prayers_only" ? "prayers_only" : "all",
         schedule_zmanim_keys: sanitizeScheduleZmanimKeys(payload.scheduleZmanimKeys),
         daily_learning_keys: sanitizeDailyLearningKeys(payload.dailyLearningKeys),
-        display_footer_text: payload.footerText?.trim() ? payload.footerText.trim() : null,
-        haftarah_minhag: resolveHaftarahMinhag(payload.haftarahMinhag)
+        display_footer_text: payload.footerText?.trim() ? payload.footerText.trim() : null
       })
       .eq("id", minyanId)
       .eq("synagogue_id", synagogueId);
@@ -418,7 +420,10 @@ export async function POST(request: Request, context: { params: Promise<{ synago
       if (!row.id || !row.name?.trim()) continue;
       const { error } = await supabase
         .from("minyanim")
-        .update({ name: row.name.trim() })
+        .update({
+          name: row.name.trim(),
+          haftarah_minhag: resolveHaftarahMinhag(row.haftarahMinhag)
+        })
         .eq("id", row.id)
         .eq("synagogue_id", synagogueId);
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });

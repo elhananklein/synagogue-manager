@@ -35,10 +35,34 @@ export function isPhoneBrowser() {
   return isPhoneUserAgent(navigator.userAgent);
 }
 
+/** תצוגת קיר חד־פעמית לגבאי — בלי לשנות את תצוגת המובייל של הציבור. */
+export function wantsWallPreview(search?: string | URLSearchParams | null) {
+  const params =
+    search instanceof URLSearchParams
+      ? search
+      : new URLSearchParams(
+          search
+            ? search.startsWith("?")
+              ? search.slice(1)
+              : search
+            : typeof window === "undefined"
+              ? ""
+              : window.location.search
+        );
+  return params.get("preview") === "wall";
+}
+
+export function gabbaiWallPreviewHref(synagogueId: string, minyan?: number | string | null) {
+  const query = new URLSearchParams({ synagogueId, preview: "wall" });
+  const minyanValue = minyan == null ? "" : String(minyan).trim();
+  if (minyanValue) query.set("minyan", minyanValue);
+  return `/display?${query.toString()}`;
+}
+
 export function wantsDesktopWallOverride() {
   if (typeof window === "undefined") return false;
   const params = new URLSearchParams(window.location.search);
-  if (params.get("view") === "full") return true;
+  if (params.get("view") === "full" || params.get("preview") === "wall") return true;
   return document.cookie.split("; ").some((part) => part === "viewMode=full");
 }
 

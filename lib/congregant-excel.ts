@@ -4,8 +4,10 @@ import {
   emptyCongregantInput,
   isCongregantTribe,
   normalizePhone,
+  parseCongregantGender,
   parseCongregantTribe,
   validateCongregantInput,
+  yahrzeitFromLegacyDate,
   type CongregantInput,
   type CongregantMinyanOption
 } from "@/lib/congregant-types";
@@ -18,6 +20,7 @@ export const CONGREGANT_EXCEL_COLUMNS = [
   { key: "nickname", header: "כינוי" },
   { key: "fatherName", header: "שם האב" },
   { key: "motherName", header: "שם האם" },
+  { key: "gender", header: "גבר / אשה" },
   { key: "tribe", header: "כהן / לוי / ישראל" },
   { key: "minyanName", header: "מניין" },
   { key: "phone", header: "טלפון" },
@@ -27,6 +30,14 @@ export const CONGREGANT_EXCEL_COLUMNS = [
   { key: "hebrewBirthMonth", header: "חודש לידה עברי" },
   { key: "hebrewBirthYear", header: "שנת לידה עברית" },
   { key: "bornAfterSunset", header: "נולד אחרי השקיעה" },
+  { key: "fatherDiedGregorianDate", header: "פטירת האב לועזי" },
+  { key: "fatherDiedHebrewDay", header: "פטירת האב יום" },
+  { key: "fatherDiedHebrewMonth", header: "פטירת האב חודש" },
+  { key: "fatherDiedHebrewYear", header: "פטירת האב שנה" },
+  { key: "motherDiedGregorianDate", header: "פטירת האם לועזי" },
+  { key: "motherDiedHebrewDay", header: "פטירת האם יום" },
+  { key: "motherDiedHebrewMonth", header: "פטירת האם חודש" },
+  { key: "motherDiedHebrewYear", header: "פטירת האם שנה" },
   { key: "isActive", header: "פעיל" },
   { key: "receivesAliyah", header: "עולה לתורה" },
   { key: "notes", header: "הערות" }
@@ -127,6 +138,7 @@ export function buildCongregantTemplateWorkbook(minyanim: CongregantMinyanOption
     "",
     "יעקב",
     "רחל",
+    "גבר",
     "כהן",
     sampleMinyan,
     "0501234567",
@@ -136,6 +148,14 @@ export function buildCongregantTemplateWorkbook(minyanim: CongregantMinyanOption
     "",
     "",
     "לא",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
     "כן",
     "כן",
     ""
@@ -146,7 +166,9 @@ export function buildCongregantTemplateWorkbook(minyanim: CongregantMinyanOption
     ["הוראות למילוי קובץ המתפללים"],
     ["אפשר למלא תאריך לועזי או תאריך עברי (יום + חודש + שנה). השני יחושב אוטומטית."],
     ["שנת לידה חובה תמיד."],
+    ["גבר / אשה: גבר או אשה. אם ריק — גבר."],
     ["כהן / לוי / ישראל: כהן, לוי או ישראל."],
+    ["תאריכי פטירת אב/אם אופציונליים — נקלטים כיארצייט. לועזי או עברי. יארצייטים נוספים ממלאים בכרטיס."],
     ["נולד אחרי השקיעה / פעיל / עולה לתורה: כן או לא."],
     ["מניין: השם כמו במערכת. אם יש מניין אחד בלבד אפשר להשאיר ריק."],
     ["טלפון ייחודי בבית הכנסת. מייל ייחודי אם מולא."],
@@ -215,6 +237,9 @@ export function parseCongregantSpreadsheet(
       return;
     }
     const hebrewMonthRaw = read("hebrewBirthMonth");
+    const gender = parseCongregantGender(cellText(read("gender"))) ?? "male";
+    const fatherDiedMonthRaw = read("fatherDiedHebrewMonth");
+    const motherDiedMonthRaw = read("motherDiedHebrewMonth");
     const input: CongregantInput = {
       ...emptyCongregantInput(minyan?.id ?? null),
       firstName: cellText(read("firstName")),
@@ -223,12 +248,33 @@ export function parseCongregantSpreadsheet(
       nickname: cellText(read("nickname")),
       fatherName: cellText(read("fatherName")),
       motherName: cellText(read("motherName")),
+      gender,
       tribe,
       gregorianBirthDate: parseGregorianCell(read("gregorianBirthDate")),
       hebrewBirthDay: parseDayCell(read("hebrewBirthDay")),
       hebrewBirthMonth: parseHebrewMonth(typeof hebrewMonthRaw === "number" ? hebrewMonthRaw : cellText(hebrewMonthRaw)) ?? 0,
       hebrewBirthYear: parseYearCell(read("hebrewBirthYear")),
       bornAfterSunset: parseBooleanCell(read("bornAfterSunset"), false),
+      yahrzeits: [
+        yahrzeitFromLegacyDate(
+          "father",
+          parseGregorianCell(read("fatherDiedGregorianDate")),
+          parseDayCell(read("fatherDiedHebrewDay")),
+          parseHebrewMonth(typeof fatherDiedMonthRaw === "number" ? fatherDiedMonthRaw : cellText(fatherDiedMonthRaw)) ?? 0,
+          parseYearCell(read("fatherDiedHebrewYear")),
+          false,
+          cellText(read("fatherName"))
+        ),
+        yahrzeitFromLegacyDate(
+          "mother",
+          parseGregorianCell(read("motherDiedGregorianDate")),
+          parseDayCell(read("motherDiedHebrewDay")),
+          parseHebrewMonth(typeof motherDiedMonthRaw === "number" ? motherDiedMonthRaw : cellText(motherDiedMonthRaw)) ?? 0,
+          parseYearCell(read("motherDiedHebrewYear")),
+          false,
+          cellText(read("motherName"))
+        )
+      ].filter((item): item is NonNullable<typeof item> => Boolean(item)),
       phone: cellText(read("phone")),
       email: cellText(read("email")),
       isActive: parseBooleanCell(read("isActive"), true),

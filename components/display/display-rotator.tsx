@@ -47,6 +47,7 @@ type Snapshot = {
   hebrewDate: string;
   gregorianDate: string;
   parasha: string;
+  occasionIsChag?: boolean;
   candleLighting: string | null;
   havdalah: string | null;
   dafYomi: string;
@@ -413,7 +414,8 @@ export function DisplayRotator({
   scheduleTimesListMode: scheduleTimesListModeProp = "all",
   shabbat: shabbatProp = null,
   shabbatMevarchimText: shabbatMevarchimTextProp = null,
-  bulletinItems: bulletinItemsProp = []
+  bulletinItems: bulletinItemsProp = [],
+  disableFullscreen = false
 }: {
   style: DisplayStyle;
   palette?: DisplayPalette;
@@ -442,14 +444,20 @@ export function DisplayRotator({
   /** נתוני מסך שבת: פרשה, כניסה/יציאה, וזמני תפילות שבת (כולל מנחה ערב שבת) */
   shabbat?: {
     parasha: string;
+    isChag?: boolean;
+    isShabbatWeekend?: boolean;
     candleLighting: string | null;
     havdalah: string | null;
+    candleLabel?: string;
+    havdalahLabel?: string;
     prayers: Array<{ label: string; time: string }>;
     mevarchimText?: string | null;
     agenda?: Array<{ itemTime: string | null; content: string }>;
     haftarah?: { name: string | null; source: string } | null;
   } | null;
   bulletinItems?: BulletinItem[];
+  /** תצוגת קיר לגבאי — בלי מסך מלא אוטומטי */
+  disableFullscreen?: boolean;
 }) {
   const [live, setLive] = useState(() => ({
     synagogueId: synagogueIdProp,
@@ -496,16 +504,13 @@ export function DisplayRotator({
   useHalachicDayLiveRefresh(snapshot.halachicDayRollIso, refreshLive);
 
   const enabledScreens = useMemo(() => {
-    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
-    const jsDay = now.getDay();
-    const isFriOrSat = jsDay === 5 || jsDay === 6;
     return screens.filter((s) => {
       if (!s.enabled) return false;
-      if (s.screenKey === "shabbat" && !isFriOrSat) return false;
+      if (s.screenKey === "shabbat" && !shabbat) return false;
       if (s.screenKey === "omer" && !snapshot.omerText) return false;
       return true;
     });
-  }, [screens, snapshot.omerText, style]);
+  }, [screens, snapshot.omerText, shabbat, style]);
   const [index, setIndex] = useState(0);
   const [halachaSeifIndex, setHalachaSeifIndex] = useState(0);
   const timesScrollRef = useRef<HTMLDivElement | null>(null);
@@ -578,6 +583,7 @@ export function DisplayRotator({
   }, [screenCount]);
 
   useEffect(() => {
+    if (disableFullscreen) return;
     // כניסה אוטומטית למסך מלא. דפדפנים חוסמים מסך מלא ללא מחווה — מנסים בטעינה
     // (קיוסק/הרשאה), אחרי reload, ובכל לחיצה אם עדיין לא במסך מלא. לחיצה שנייה מוציאה.
     type FsElement = HTMLElement & {
@@ -681,7 +687,7 @@ export function DisplayRotator({
       document.removeEventListener("visibilitychange", onWakeVisible);
       void wakeLock?.release?.();
     };
-  }, []);
+  }, [disableFullscreen]);
 
   const currentScreen = enabledScreens.length ? enabledScreens[index % enabledScreens.length].screenKey : null;
   const isWoodSilverRevolution = style === "woodSilver" && ENABLE_WOOD_SILVER_REVOLUTION_LAYOUT;
@@ -1430,8 +1436,24 @@ export function DisplayRotator({
                 <div className="display-shabbat-inner">
                   <div className="display-shabbat-hero">
                     <div className="display-shabbat-heading">
-                      <p className="display-shabbat-title">{isVeryBold ? "שבת" : "שבת קודש"}</p>
-                      <p className="display-shabbat-parasha">{shabbat?.parasha ?? snapshot.parasha}</p>
+                      {(() => {
+                        const occasion = shabbat?.parasha || snapshot.parasha;
+                        const isChag = Boolean(shabbat?.isChag);
+                        const title = isChag ? occasion || (isVeryBold ? "חג" : "יום טוב") : isVeryBold ? "שבת" : "שבת קודש";
+                        const subtitle = isChag
+                          ? shabbat?.isShabbatWeekend
+                            ? "שבת"
+                            : ""
+                          : occasion;
+                        return (
+                          <>
+                            <p className="display-shabbat-title">{title}</p>
+                            {subtitle && subtitle !== title ? (
+                              <p className="display-shabbat-parasha">{subtitle}</p>
+                            ) : null}
+                          </>
+                        );
+                      })()}
                       {(() => {
                         const haftarah = shabbat?.haftarah ?? snapshot.haftarah;
                         if (!haftarah?.name && !haftarah?.source) return null;
@@ -1451,24 +1473,31 @@ export function DisplayRotator({
                       ) : null}
                     </div>
 
+                    {(() => {
+                      const candle = shabbat ? shabbat.candleLighting : snapshot.candleLighting;
+                      const havdalah = shabbat ? shabbat.havdalah : snapshot.havdalah;
+                      if (!candle && !havdalah) return null;
+                      return (
                     <div className="display-shabbat-zmanim">
                       <Card className="display-card display-shabbat-zman-card">
                         <CardContent className="display-shabbat-zman-content">
-                          <span className="display-shabbat-zman-label">כניסת שבת</span>
+                          <span className="display-shabbat-zman-label">{shabbat?.candleLabel ?? "כניסת שבת"}</span>
                           <span className="display-shabbat-zman-time display-accent">
-                            {shabbat?.candleLighting ?? snapshot.candleLighting ?? "—"}
+                            {candle ?? "—"}
                           </span>
                         </CardContent>
                       </Card>
                       <Card className="display-card display-shabbat-zman-card">
                         <CardContent className="display-shabbat-zman-content">
-                          <span className="display-shabbat-zman-label">צאת שבת</span>
+                          <span className="display-shabbat-zman-label">{shabbat?.havdalahLabel ?? "צאת שבת"}</span>
                           <span className="display-shabbat-zman-time display-accent">
-                            {shabbat?.havdalah ?? snapshot.havdalah ?? "—"}
+                            {havdalah ?? "—"}
                           </span>
                         </CardContent>
                       </Card>
                     </div>
+                      );
+                    })()}
                   </div>
 
                   {shabbat?.agenda?.length ? (

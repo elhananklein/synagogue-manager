@@ -7,6 +7,14 @@ export function mapCongregantApiError(error?: string) {
   if (error === "missing_registration_status") {
     return "חסרה עמודת סטטוס הרשמה. הריצו ב-Supabase את הקובץ supabase/congregants-registration-status-migration.sql";
   }
+  if (error === "missing_family_yahrzeit") {
+    return "חסרים שדות משפחה ויארצייט. הריצו ב-Supabase את הקובץ supabase/congregants-family-yahrzeit-migration.sql";
+  }
+  if (error === "missing_yahrzeits_table") {
+    return "חסרה טבלת יארצייטים. הריצו ב-Supabase את הקובץ supabase/congregant-yahrzeits-migration.sql";
+  }
+  if (error === "family_member_not_found") return "בן המשפחה שנבחר לא נמצא בבית הכנסת";
+  if (error === "family_gender_mismatch") return "סוג הקרבה לא תואם את המגדר של בן המשפחה";
   if (error === "synagogue_not_found") return "בית הכנסת לא נמצא";
   if (error === "invalid_id") return "מזהה בית כנסת לא תקין";
   if (error === "missing_file") return "לא נבחר קובץ";

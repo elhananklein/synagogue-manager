@@ -121,6 +121,38 @@
   border-bottom: 3px solid var(--c-gold);
 }
 
+.congregant-card-head--join {
+  justify-content: flex-start;
+  gap: 1rem;
+  padding: 1.15rem 1.2rem;
+}
+
+.congregant-join-logo {
+  display: flex;
+  height: 5.75rem;
+  width: 5.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgb(15 23 42 / 0.18);
+}
+
+.congregant-join-logo img {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+
+.congregant-join-logo--center {
+  display: flex;
+  width: 7.5rem;
+  height: 7.5rem;
+  margin: 0 auto 1rem;
+}
+
 .congregant-card-head h2,
 .congregant-card-head p {
   margin: 0;
@@ -129,6 +161,10 @@
 .congregant-card-head h2 {
   font-size: 1.05rem;
   font-weight: 800;
+}
+
+.congregant-card-head--join h2 {
+  font-size: 1.2rem;
 }
 
 .congregant-card-head p {
@@ -224,6 +260,50 @@
   color: var(--c-on-accent);
   background: var(--c-accent);
   border-color: var(--c-accent);
+}
+
+.congregant-yahrzeit {
+  margin-top: 1.1rem;
+}
+
+.congregant-yahrzeit-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  border: 1px dashed var(--c-border);
+  background: transparent;
+  color: var(--c-ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.congregant-yahrzeit-card {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--c-border);
+  border-radius: 0.75rem;
+}
+
+.congregant-yahrzeit-card-head {
+  display: flex;
+  align-items: end;
+  gap: 0.55rem;
+  margin-bottom: 0.55rem;
+}
+
+.congregant-yahrzeit-remove {
+  min-height: 2.4rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--c-border);
+  background: transparent;
+  color: var(--c-ink);
+  font: inherit;
+  font-weight: 700;
 }
 
 .congregant-prayer-name {

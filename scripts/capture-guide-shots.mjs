@@ -19,45 +19,36 @@ const iphoneUa =
 const hideChrome =
   "nextjs-portal,[data-nextjs-toast],#__next-build-watcher,.m-pwa{display:none!important}";
 
-const shots = [
-  {
-    name: "wall-main",
-    url: `${base}/display?synagogueId=${synagogueId}&minyan=1`,
-    width: 1920,
-    height: 1080,
-    mobile: false,
-    waitFor: ".display-header",
-    waitMs: 4000
-  },
-  {
-    name: "wall-next",
-    url: `${base}/display?synagogueId=${synagogueId}&minyan=1`,
-    width: 1920,
-    height: 1080,
-    mobile: false,
-    waitFor: ".display-header",
-    waitMs: 4000,
-    advanceScreens: 1
-  },
-  {
-    name: "mobile-display",
-    url: `${base}/m/display?synagogueId=${synagogueId}&minyan=1&preview=mobile`,
-    width: 390,
-    height: 844,
-    mobile: true,
-    waitFor: ".m-shell",
-    waitMs: 5000
-  },
-  {
-    name: "mobile-home",
-    url: `${base}/m?pick=1`,
-    width: 390,
-    height: 844,
-    mobile: true,
-    waitFor: ".m-shell",
-    waitMs: 3000
-  }
+const wallUrl = `${base}/display?synagogueId=${synagogueId}&minyan=1`;
+const mobileUrl = `${base}/m/display?synagogueId=${synagogueId}&minyan=1&preview=mobile`;
+
+const wallShots = [
+  { name: "wall-home", seek: ".display-main-grid" },
+  { name: "wall-info", seek: ".display-info-card" },
+  { name: "wall-main", seek: ".display-datetime-screen" },
+  { name: "wall-omer", seek: ".display-omer-line", optional: true },
+  { name: "wall-next", seek: ".display-halacha-title" },
+  { name: "wall-learning", seek: ".display-daily-learning-title" },
+  { name: "wall-prayers", seek: ".display-prayer-times-card" },
+  { name: "wall-schedule", seek: ".display-full-schedule-card" },
+  { name: "wall-bulletin", seek: ".display-bulletin-screen" },
+  { name: "wall-shabbat", seek: ".display-shabbat-screen", friday: true }
 ];
+
+async function seekWallScreen(page, selector) {
+  for (let i = 0; i < 16; i++) {
+    if (await page.$(selector)) return true;
+    const clicked = await page.evaluate(() => {
+      const next = document.querySelector(".display-nav-edge--next");
+      if (!next) return false;
+      next.click();
+      return true;
+    });
+    if (!clicked) return false;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return Boolean(await page.$(selector));
+}
 
 const browser = await puppeteer.launch({
   executablePath: edge,
@@ -66,51 +57,61 @@ const browser = await puppeteer.launch({
 });
 
 try {
-  for (const shot of shots) {
+  for (const shot of wallShots) {
     const page = await browser.newPage();
-    if (shot.mobile) {
-      await page.setUserAgent(iphoneUa);
-      await page.setViewport({
-        width: shot.width,
-        height: shot.height,
-        deviceScaleFactor: 2,
-        isMobile: true,
-        hasTouch: true
+    if (shot.friday) {
+      await page.evaluateOnNewDocument(() => {
+        const frozen = new Date("2026-09-11T12:00:00+03:00").getTime();
+        const RealDate = Date;
+        function FakeDate(...args) {
+          if (args.length === 0) return new RealDate(frozen);
+          return new RealDate(...args);
+        }
+        FakeDate.now = () => frozen;
+        FakeDate.parse = RealDate.parse;
+        FakeDate.UTC = RealDate.UTC;
+        FakeDate.prototype = RealDate.prototype;
+        Date = FakeDate;
       });
-    } else {
-      await page.setViewport({ width: shot.width, height: shot.height, deviceScaleFactor: 1 });
     }
-    await page.goto(shot.url, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
+    const url = shot.friday ? `${wallUrl}&date=2026-09-11` : wallUrl;
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
     await page.addStyleTag({ content: hideChrome });
-    await page.waitForSelector(shot.waitFor, { timeout: 90000 });
-    if (shot.mobile) {
-      const path = new URL(page.url()).pathname;
-      if (!path.startsWith("/m")) {
-        throw new Error(`${shot.name}: expected /m URL, got ${page.url()}`);
+    await page.waitForSelector(".display-header", { timeout: 90000 });
+    const found = await seekWallScreen(page, shot.seek);
+    if (!found) {
+      if (shot.optional) {
+        console.log("skip", shot.name);
+        await page.close();
+        continue;
       }
-      const hasWall = await page.$(".display-header");
-      if (hasWall) {
-        throw new Error(`${shot.name}: wall chrome appeared on a mobile shot`);
-      }
+      throw new Error(`did not reach ${shot.seek} for ${shot.name}`);
     }
-    if (shot.advanceScreens) {
-      for (let i = 0; i < shot.advanceScreens; i++) {
-        await page.keyboard.press("ArrowLeft");
-        await new Promise((r) => setTimeout(r, 400));
-      }
-    }
-    if (shot.mobile && shot.name === "mobile-display") {
-      await page.evaluate(() => {
-        const next = document.querySelector(".m-viewport .m-section:nth-of-type(2)");
-        next?.scrollIntoView({ block: "start" });
-      });
-    }
-    await new Promise((r) => setTimeout(r, shot.waitMs));
+    await new Promise((r) => setTimeout(r, 1800));
     const file = join(outDir, `${shot.name}.png`);
     await page.screenshot({ path: file, fullPage: false, type: "png" });
-    console.log("wrote", file, page.url());
+    console.log("wrote", file);
     await page.close();
   }
+
+  const mobile = await browser.newPage();
+  await mobile.setUserAgent(iphoneUa);
+  await mobile.setViewport({
+    width: 390,
+    height: 844,
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true
+  });
+  await mobile.goto(mobileUrl, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await mobile.addStyleTag({ content: hideChrome });
+  await mobile.waitForSelector(".m-shell", { timeout: 90000 });
+  await new Promise((r) => setTimeout(r, 2500));
+  const mobileFile = join(outDir, "mobile-full.png");
+  await mobile.screenshot({ path: mobileFile, fullPage: true, type: "png" });
+  console.log("wrote", mobileFile);
+  await mobile.close();
 } finally {
   await browser.close();
 }

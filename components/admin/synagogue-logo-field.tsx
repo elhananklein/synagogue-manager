@@ -7,9 +7,15 @@ import { logoCacheVersion, synagogueIconSrc } from "@/lib/synagogue-logo";
 
 function mapLogoError(error?: string) {
   if (error === "invalid_file_type") return "יש להעלות קובץ PNG, JPG או WebP.";
-  if (error === "file_too_large") return "הקובץ גדול מדי (עד 5MB).";
-  if (error === "logo_process_failed") return "לא הצלחנו לעבד את התמונה. נסו קובץ אחר.";
-  if (error === "logo_column_missing") return "חסר עדכון במסד הנתונים (עמודת לוגו). הריצו את המיגרציה synagogue-logo-migration.sql.";
+  if (error === "file_too_large") return "הקובץ גדול מדי (עד 8MB).";
+  if (error === "logo_process_failed") return "לא הצלחנו לעבד את התמונה. נסו קובץ PNG או JPG אחר.";
+  if (error === "logo_storage_failed") {
+    return "לא הצלחנו לשמור את הלוגו. ב-Supabase צריך דלי בשם synagogue-logos (Storage), או הרשאת service role.";
+  }
+  if (error === "logo_column_missing") {
+    return "חסר עדכון במסד הנתונים (עמודת לוגו). הריצו את המיגרציה synagogue-logo-migration.sql.";
+  }
+  if (error === "unauthorized") return "יש להתחבר מחדש ואז להעלות שוב.";
   return error ?? "ההעלאה נכשלה. נסו שוב.";
 }
 
@@ -40,14 +46,14 @@ export function SynagogueLogoField({
         method: "POST",
         body
       });
-      const payload = (await response.json()) as {
+      const payload = (await response.json().catch(() => null)) as {
         ok: boolean;
         error?: string;
         logoUrl?: string | null;
         logoUpdatedAt?: string | null;
-      };
-      if (!payload.ok) {
-        setError(mapLogoError(payload.error));
+      } | null;
+      if (!payload?.ok) {
+        setError(mapLogoError(payload?.error ?? (response.status === 401 ? "unauthorized" : undefined)));
         return;
       }
       onChanged({
@@ -119,7 +125,7 @@ export function SynagogueLogoField({
               </Button>
             ) : null}
           </div>
-          <p className="text-xs text-muted-foreground">PNG, JPG או WebP, עד 5MB. עדיף תמונה מרובעת.</p>
+          <p className="text-xs text-muted-foreground">PNG, JPG או WebP, עד 8MB. עדיף תמונה מרובעת.</p>
         </div>
       </div>
       {error ? <p className="gabbai-err mt-2">{error}</p> : null}

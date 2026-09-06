@@ -9,7 +9,12 @@ import { GabbaiMinyanSwitch } from "@/components/admin/gabbai-minyan-switch";
 import { GabbaiSaveBar } from "@/components/admin/gabbai-save-bar";
 import { Button } from "@/components/ui/button";
 import { mapAliyahApiError } from "@/lib/aliyah-errors";
-import { addDaysIso, nextExtraAliyahSlot } from "@/lib/aliyah-slots";
+import {
+  formatAliyahCivilDate,
+  listAliyahOccasionOptions,
+  nextExtraAliyahSlot,
+  withCurrentAliyahOccasion
+} from "@/lib/aliyah-slots";
 import { ALIYAH_DAY_KIND_LABELS, toAliyahCongregantOption, type AliyahCongregantOption, type AliyahSheet, type AliyahSlotState } from "@/lib/aliyah-types";
 import { CONGREGANT_TRIBE_LABELS, type CongregantMinyanOption, type CongregantRecord } from "@/lib/congregant-types";
 
@@ -86,6 +91,12 @@ export function AliyahSheetEditor({
       cancelled = true;
     };
   }, [synagogueId, minyan?.id, serviceDate]);
+
+  const occasionBase = useMemo(() => listAliyahOccasionOptions(initialDate), [initialDate]);
+  const occasionOptions = useMemo(
+    () => withCurrentAliyahOccasion(occasionBase, serviceDate),
+    [occasionBase, serviceDate]
+  );
 
   const byId = useMemo(() => new Map(congregants.map((row) => [row.id, row])), [congregants]);
   const usedIds = useMemo(
@@ -186,46 +197,54 @@ export function AliyahSheetEditor({
       />
       <div className="aliyah-toolbar">
         <div className="aliyah-date-row">
-          <label className="congregant-field">
-            <span>תאריך הקריאה</span>
-            <input
-              type="date"
+          <label className="congregant-field aliyah-occasion-field">
+            <span>פרשה / חג</span>
+            <select
               value={serviceDate}
               onChange={(event) => {
                 if (!confirmLeave()) return;
                 setServiceDate(event.target.value);
               }}
-            />
+            >
+              {occasionOptions.map((option) => (
+                <option key={option.iso} value={option.iso}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
           <button
             type="button"
             className="aliyah-week-btn"
+            disabled={occasionOptions.findIndex((item) => item.iso === serviceDate) <= 0}
             onClick={() => {
-              if (!confirmLeave()) return;
-              setServiceDate(addDaysIso(serviceDate, -7));
+              const index = occasionOptions.findIndex((item) => item.iso === serviceDate);
+              if (index <= 0 || !confirmLeave()) return;
+              setServiceDate(occasionOptions[index - 1]!.iso);
             }}
           >
-            שבוע קודם
+            הקודם
           </button>
           <button
             type="button"
             className="aliyah-week-btn"
+            disabled={
+              occasionOptions.findIndex((item) => item.iso === serviceDate) >= occasionOptions.length - 1
+            }
             onClick={() => {
-              if (!confirmLeave()) return;
-              setServiceDate(addDaysIso(serviceDate, 7));
+              const index = occasionOptions.findIndex((item) => item.iso === serviceDate);
+              if (index < 0 || index >= occasionOptions.length - 1 || !confirmLeave()) return;
+              setServiceDate(occasionOptions[index + 1]!.iso);
             }}
           >
-            שבוע הבא
+            הבא
           </button>
         </div>
+        <p className="aliyah-date-under">{formatAliyahCivilDate(serviceDate)}</p>
         {sheet ? (
           <p className="aliyah-meta">
-            <strong>
-              {sheet.weekday}
-              {sheet.hebrewDate ? ` · ${sheet.hebrewDate}` : ""}
-            </strong>
-            {sheet.parashaLabel ? ` · ${sheet.parashaLabel}` : ""}
-            {` · ${ALIYAH_DAY_KIND_LABELS[sheet.kind]}`}
+            {sheet.hebrewDate ? `${sheet.hebrewDate} · ` : ""}
+            {ALIYAH_DAY_KIND_LABELS[sheet.kind]}
             {!sheet.isKriahDay ? " — זה לא יום קריאה רגיל של שבת או חג, אפשר בכל זאת לרשום." : " · שחרית"}
           </p>
         ) : null}

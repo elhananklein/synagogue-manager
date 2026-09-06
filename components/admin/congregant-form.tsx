@@ -5,25 +5,29 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CongregantThemeFrame } from "@/components/admin/congregant-theme-frame";
+import { CongregantFamilyFields, toFamilyOptions } from "@/components/admin/congregant-family-fields";
 import { CongregantFields } from "@/components/congregant/congregant-fields";
 import { mapCongregantApiError } from "@/lib/congregant-errors";
 import {
   applyBirthConversion,
   type BirthDateSource,
   type CongregantInput,
-  type CongregantMinyanOption
+  type CongregantMinyanOption,
+  type CongregantRecord
 } from "@/lib/congregant-types";
 
 export function CongregantForm({
   synagogueId,
   minyanim,
   initial,
-  congregantId
+  congregantId,
+  familyPeople = []
 }: {
   synagogueId: string;
   minyanim: CongregantMinyanOption[];
   initial: CongregantInput;
   congregantId?: string;
+  familyPeople?: CongregantRecord[];
 }) {
   const router = useRouter();
   const [input, setInput] = useState<CongregantInput>(initial);
@@ -34,6 +38,7 @@ export function CongregantForm({
   const [deleting, setDeleting] = useState(false);
   const [approving, setApproving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [people, setPeople] = useState(familyPeople);
 
   const selectedMinyan = minyanim.find((item) => item.id === input.minyanId) ?? minyanim[0] ?? null;
   const listHref = `/admin/gabbai/${encodeURIComponent(synagogueId)}/congregants`;
@@ -162,6 +167,17 @@ export function CongregantForm({
             variant="gabbai"
             onPatch={patch}
             onBirthSource={changeBirthSource}
+          />
+
+          <CongregantFamilyFields
+            synagogueId={synagogueId}
+            minyanim={minyanim}
+            minyanId={input.minyanId}
+            excludeId={congregantId}
+            people={toFamilyOptions(people)}
+            value={input.familyMembers}
+            onChange={(familyMembers) => patch({ familyMembers })}
+            onPersonAdded={(row) => setPeople((prev) => (prev.some((item) => item.id === row.id) ? prev : [...prev, row]))}
           />
 
           <div className="congregant-grid congregant-grid--2" style={{ marginTop: "0.75rem" }}>

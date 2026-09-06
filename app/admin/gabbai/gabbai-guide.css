@@ -153,10 +153,38 @@
   color: #6b4e3e;
 }
 
-.guide-pair {
+.guide-change {
+  margin: 0.7rem 0;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.8rem;
+  background: #f6f0e8;
+}
+
+.guide-change strong {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.95rem;
+}
+
+.guide-change p {
+  margin: 0;
+}
+
+.guide-wall-gallery {
   display: grid;
-  gap: 0.75rem;
-  margin: 0.75rem 0 0.35rem;
+  gap: 1rem;
+  margin: 0.85rem 0 1.4rem;
+}
+
+.guide-wall-gallery figcaption strong {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: #3a1520;
+}
+
+.guide-shot--phone-full {
+  max-width: 22rem;
+  margin: 0.85rem auto 0;
 }
 
 .guide-shot {
@@ -372,6 +400,10 @@
   .guide-grid {
     grid-template-columns: 1.4fr 0.8fr;
     align-items: start;
+  }
+
+  .guide-wall-gallery {
+    grid-template-columns: 1fr 1fr;
   }
 
   .guide-grid--3 {

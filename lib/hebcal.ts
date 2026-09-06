@@ -2,6 +2,8 @@ import { DAILY_LEARNING_CATALOG } from "@/lib/daily-learning-catalog";
 import type { HebcalLeyningItem } from "@/lib/haftarah";
 import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
 import { resolveLiturgicalTiles } from "@/lib/liturgical-additions";
+import { applyOccasionDisplayLabel, isChagOnDate, weeklyOccasionIso } from "@/lib/sacred-occasion";
+import { birkatHashanimLabel, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, resolveScheduleZmanimKeys, zmanLabelForKey } from "@/lib/zmanim-catalog";
 import type { SynagogueZmanimLocation } from "@/lib/display-config";
 
@@ -40,7 +42,10 @@ export type DailyLearningLine = {
 export type DisplaySnapshot = {
   hebrewDate: string;
   gregorianDate: string;
+  /** פרשת השבת הקרובה, או שם החג כשאין קריאה שבועית */
   parasha: string;
+  /** השבת הקרובה היא יום טוב (ראש השנה, יום כיפור, רגל וכו') */
+  occasionIsChag: boolean;
   candleLighting: string | null;
   havdalah: string | null;
   dafYomi: string;
@@ -51,6 +56,7 @@ export type DisplaySnapshot = {
   /** צאת הכוכבים ליום האזרחי של הזמנים — לרענון כשהיום העברי מתקדם (לא חצות). */
   halachicDayRollIso: string | null;
   rainText: string;
+  /** ברכת השנים: אשכנז «ותן ברכה» / ספרד «ברכנו» או «ברך עלינו» */
   blessingText: string;
   omerText: string | null;
   /** מלל מקוצר לאריחי התצוגה, למשל «שלושה עשר יום לעומר». */
@@ -72,6 +78,8 @@ export type DisplaySnapshotOptions = {
   omitDailyLearning?: boolean;
   /** מיקום ומנהג לחישוב זמנים; ריק => ירושלים (תאימות לאחור) */
   location?: SynagogueZmanimLocation;
+  /** נוסח המניין — מניע הפטרה וברכת השנים */
+  haftarahMinhag?: HaftarahMinhag;
 };
 
 /** בונה מקטע geo לכתובות Hebcal — נקודה מדויקת אם יש קואורדינטות, אחרת ירושלים. */
@@ -606,7 +614,14 @@ export async function getDisplaySnapshot(
     : [];
 
   const parashaItem = shabbat.items?.find((item) => item.category === "parashat");
-  const parasha = parashaItem ? parashaDisplayKeyFromHebcalParashatItem(parashaItem) : "לא נמצא";
+  const weeklyParasha = parashaItem ? parashaDisplayKeyFromHebcalParashatItem(parashaItem) : "";
+  const holidayItem = (shabbat.items ?? []).find((item) => item.category === "holiday" && item.hebrew?.trim());
+  const todayIsChag = isChagOnDate(halachicIso);
+  const occasionIso = todayIsChag ? halachicIso : weeklyOccasionIso(halachicIso);
+  const parasha =
+    (todayIsChag ? applyOccasionDisplayLabel(null, occasionIso) : applyOccasionDisplayLabel(weeklyParasha, occasionIso)) ||
+    holidayItem?.hebrew?.trim() ||
+    "";
   const candleItem = shabbat.items?.find((item) => item.category === "candles");
   const havdalahItem = shabbat.items?.find((item) => item.category === "havdalah");
 
@@ -651,6 +666,7 @@ export async function getDisplaySnapshot(
       .format(now)
       .replace(/יום שבת/g, "שבת"),
     parasha,
+    occasionIsChag: todayIsChag || isChagOnDate(occasionIso),
     candleLighting,
     havdalah,
     dafYomi,
@@ -659,7 +675,7 @@ export async function getDisplaySnapshot(
     zmanimSourceTimes: zmanim.times ?? {},
     halachicDayRollIso: zmanim.times?.tzeit85deg ?? null,
     rainText: winter ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
-    blessingText: winter ? "ותן טל ומטר לברכה" : "ותן ברכה",
+    blessingText: birkatHashanimLabel(winter, options?.haftarahMinhag),
     omerText,
     omerShortText,
     amidahAdditionText: resolveAmidahAdditionText(events),
@@ -671,7 +687,9 @@ export async function getDisplaySnapshot(
     }),
     shabbatMevarchimText: resolveShabbatMevarchimText(events),
     sourceEvents: events,
-    parashaCatalogKey: parashaCatalogLookupKey(events, parasha)
+    parashaCatalogKey: todayIsChag
+      ? parashaCatalogLookupKey(events, "לא נמצא")
+      : parashaCatalogLookupKey(events, weeklyParasha || "לא נמצא")
   };
 }
 

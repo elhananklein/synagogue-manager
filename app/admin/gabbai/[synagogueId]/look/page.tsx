@@ -20,7 +20,6 @@ import {
   type DisplayPalette,
   type DisplayStyle
 } from "@/lib/display-theme";
-import { HAFTARAH_MINHAGIM, HAFTARAH_MINHAG_LABELS, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 import { ZMANIM_CATALOG } from "@/lib/zmanim-catalog";
 import {
   DAILY_LEARNING_CATALOG,
@@ -28,6 +27,7 @@ import {
 } from "@/lib/daily-learning-catalog";
 import type { ScreenKey, ScreenSetting } from "@/lib/gabbai-types";
 import { mapGabbaiSaveError, saveGabbaiSection, useGabbaiWorkspace, type GabbaiMinyan } from "@/lib/gabbai-workspace";
+import { gabbaiWallPreviewHref } from "@/lib/handheld";
 
 const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "main", label: "מסך ראשי" },
@@ -38,7 +38,7 @@ const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "dailyLearning", label: "לימוד יומי" },
   { key: "prayerTimes", label: "זמני תפילות" },
   { key: "fullSchedule", label: "לוח זמנים מלא" },
-  { key: "shabbat", label: "שבת" },
+  { key: "shabbat", label: "שבת וחגים" },
   { key: "bulletin", label: "לוח מודעות" }
 ];
 
@@ -98,7 +98,6 @@ export default function GabbaiLookPage({
       displayStyle: minyan.displayStyle,
       displayPalette: minyan.displayPalette,
       displayFont: minyan.displayFont,
-      haftarahMinhag: minyan.haftarahMinhag,
       scheduleTimesListMode: minyan.scheduleTimesListMode,
       scheduleZmanimKeys: minyan.scheduleZmanimKeys,
       dailyLearningKeys: minyan.dailyLearningKeys,
@@ -131,7 +130,7 @@ export default function GabbaiLookPage({
       <div className="mb-4">
         <a
           className="inline-flex h-11 items-center rounded-md border border-border bg-background px-3 text-sm font-semibold"
-          href={`/display?synagogueId=${encodeURIComponent(synagogueId)}&minyan=${minyanIndex + 1}`}
+          href={gabbaiWallPreviewHref(synagogueId, minyanIndex + 1)}
         >
           צפייה במסך
         </a>
@@ -190,20 +189,6 @@ export default function GabbaiLookPage({
             </select>
           </label>
         ) : null}
-        <label>
-          <span className="mb-1 block text-sm font-medium">מנהג הפטרה</span>
-          <select
-            className="h-11 w-full rounded-md border border-border bg-background px-3"
-            value={minyan.haftarahMinhag}
-            onChange={(e) => update({ haftarahMinhag: e.target.value as HaftarahMinhag })}
-          >
-            {HAFTARAH_MINHAGIM.map((minhag) => (
-              <option key={minhag} value={minhag}>
-                {HAFTARAH_MINHAG_LABELS[minhag]}
-              </option>
-            ))}
-          </select>
-        </label>
         <label className="sm:col-span-2">
           <span className="mb-1 block text-sm font-medium">הודעה בתחתית המסך</span>
           <input
