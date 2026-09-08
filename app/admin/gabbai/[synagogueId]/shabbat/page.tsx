@@ -14,7 +14,7 @@ export default function GabbaiShabbatPage({
   params: Promise<{ synagogueId: string }>;
 }) {
   const { synagogueId } = use(params);
-  const { minyanim, setMinyanim, shabbatParashaHint, isLoading, error: loadError, reload } =
+  const { minyanim, setMinyanim, shabbatParashaHint, occasionDays, isLoading, error: loadError, reload } =
     useGabbaiWorkspace(synagogueId);
   const [minyanIndex, setMinyanIndex] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -53,8 +53,8 @@ export default function GabbaiShabbatPage({
     <>
       <h1 className="gabbai-page-title">שבתות וחגים</h1>
       <p className="gabbai-page-desc">
-        לוח זמנים לשבת הקרובה או לחג — לפי הסדר. לדוגמה: כניסת שבת, קבלת שבת, קריאת התורה, קידוש.
-        כששבת היא חג (ראש השנה, יום כיפור, פסח) יוצג שם החג במקום פרשת השבוע.
+        לוח זמנים לימי שבתון ברצף — עד שלושה ימים (למשל ראש השנה חמישי–שישי ואז שבת). ערב היום הראשון מתנהג כמו ערב
+        שבת: המסך מציג את יום א׳. כששבת היא חג יוצג שם החג במקום פרשת השבוע.
       </p>
       <GabbaiMinyanSwitch
         names={minyanim.map((m) => m.name)}
@@ -64,6 +64,7 @@ export default function GabbaiShabbatPage({
       <ShabbatAgendaEditor
         items={minyan.shabbatAgendaItems}
         parashaHint={shabbatParashaHint}
+        occasionDays={occasionDays}
         onChange={(items) => {
           setMinyanim((prev) =>
             prev.map((m, i) => (i === minyanIndex ? { ...m, shabbatAgendaItems: items } : m))

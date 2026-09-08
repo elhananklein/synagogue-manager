@@ -11,7 +11,7 @@ import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule, settingsNeedSund
 import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
 import { filterDailyLearningByKeys } from "@/lib/daily-learning-catalog";
 import { hebrewWeekdayLong, resolveViewIsoDate } from "@/lib/view-date";
-import { isChagOnDate, isOccasionScreenDay, resolveOccasionLabel } from "@/lib/sacred-occasion";
+import { isChagOnDate, isOccasionScreenDay, preferredOccasionDayIndex, resolveOccasionCluster, resolveOccasionLabel } from "@/lib/sacred-occasion";
 
 export type DisplayViewParams = {
   synagogueId?: string | string[];
@@ -40,6 +40,16 @@ export type DisplayTimeSection = {
 
 export type DisplayPrayerSlot = { label: string; time: string; details: string; prayerType?: string };
 
+export type DisplayShabbatAgendaDay = {
+  day: 1 | 2 | 3;
+  iso: string;
+  title: string;
+  weekdayChag: boolean;
+  isSaturday: boolean;
+  isLastDay: boolean;
+  items: Array<{ itemTime: string | null; content: string }>;
+};
+
 export type DisplayShabbat = {
   parasha: string;
   /** יום טוב (גם כשחל בשבת) */
@@ -53,8 +63,12 @@ export type DisplayShabbat = {
   prayers: Array<{ label: string; time: string }>;
   /** שבת מברכין לשבת המוצגת (אם רלוונטי) */
   mevarchimText: string | null;
-  /** לוח זמנים ידני של הגבאי (שעה אופציונלית + תוכן) */
+  /** לוח ידני שטוח (כל הימים לפי הסדר) — תאימות ולוח מלא */
   agenda: Array<{ itemTime: string | null; content: string }>;
+  /** ימי שבתון עם תוכן; ערב יום 1 אינו יום נפרד */
+  agendaDays: DisplayShabbatAgendaDay[];
+  erevIso: string;
+  preferredDay: 1 | 2 | 3;
   haftarah: HaftarahDisplay | null;
 };
 
@@ -247,10 +261,16 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const daysUntilSaturday = (6 - todayJsDay + 7) % 7;
   const saturdayIso = addDaysIsoDate(todayIsoDate, daysUntilSaturday);
   const fridayIso = addDaysIsoDate(saturdayIso, -1);
+  const cluster = resolveOccasionCluster(todayIsoDate);
   const todayIsWeekdayChag = isChagOnDate(todayIsoDate) && todayJsDay !== 5 && todayJsDay !== 6;
-  const occasionIso = todayIsWeekdayChag ? todayIsoDate : saturdayIso;
+  const titleIso =
+    cluster.days.find((day) => isChagOnDate(day.iso))?.iso ??
+    cluster.days.find((day) => day.isSaturday)?.iso ??
+    saturdayIso;
+  const occasionIso = todayIsWeekdayChag ? todayIsoDate : titleIso;
   const occasionScreenActive = isOccasionScreenDay(todayIsoDate);
-  const leyningItem = await fetchHebcalLeyningForDate(occasionIso);
+  const leyningIso = cluster.days.find((day) => day.isSaturday)?.iso ?? occasionIso;
+  const leyningItem = await fetchHebcalLeyningForDate(leyningIso);
   const haftarah = resolveHaftarahDisplay(leyningItem, displayConfig.haftarahMinhag);
   displaySnapshot.haftarah = haftarah;
 
@@ -258,25 +278,43 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   let saturdayEvents: string[] = [];
   let fridaySnapshot: DisplaySnapshot | null = null;
   let saturdaySnapshot: DisplaySnapshot | null = null;
+  let erevSnapshot: DisplaySnapshot | null = null;
+  let lastDaySnapshot: DisplaySnapshot | null = null;
+
+  const lastClusterIso = cluster.days[cluster.days.length - 1]?.iso ?? saturdayIso;
 
   if (shabbatScreenEnabled) {
-    [fridaySnapshot, saturdaySnapshot] = await Promise.all([
+    const extraIsos = [cluster.erevIso, lastClusterIso].filter(
+      (iso) => iso !== fridayIso && iso !== saturdayIso && iso !== todayIsoDate && iso !== tomorrowIsoDate
+    );
+    const uniqueExtra = [...new Set(extraIsos)];
+    const [friSnap, satSnap, extraSnaps] = await Promise.all([
       getDisplaySnapshot(fridayIso, { omitDailyLearning: true, ...snapshotOptions }),
-      getDisplaySnapshot(saturdayIso, { omitDailyLearning: true, ...snapshotOptions })
+      getDisplaySnapshot(saturdayIso, { omitDailyLearning: true, ...snapshotOptions }),
+      Promise.all(uniqueExtra.map((iso) => getDisplaySnapshot(iso, { omitDailyLearning: true, ...snapshotOptions })))
     ]);
+    fridaySnapshot = friSnap;
+    saturdaySnapshot = satSnap;
     saturdayEvents = saturdaySnapshot.sourceEvents;
+    const extraByIso = new Map(uniqueExtra.map((iso, index) => [iso, extraSnaps[index] ?? null]));
+    const snapFor = (iso: string): DisplaySnapshot | null => {
+      if (iso === todayIsoDate) return snapshot;
+      if (iso === tomorrowIsoDate) return tomorrowSnapshot;
+      if (iso === fridayIso) return fridaySnapshot;
+      if (iso === saturdayIso) return saturdaySnapshot;
+      return extraByIso.get(iso) ?? null;
+    };
+    erevSnapshot = snapFor(cluster.erevIso);
+    lastDaySnapshot = snapFor(lastClusterIso);
   } else if (todayJsDay === 6) {
     saturdayEvents = snapshot.sourceEvents;
   } else if (todayJsDay === 5) {
     saturdayEvents = tomorrowSnapshot.sourceEvents;
   } else {
-    // באמצע השבוע — אם מסך שבת כבוי עדיין נרצה לדעת לשבת הקרובה רק אם נציג בראשי בשישי/שבת;
-    // אין צורך בקריאה נוספת באמצע השבוע.
     saturdayEvents = [];
   }
 
   const weekMevarchimText = resolveShabbatMevarchimText(saturdayEvents);
-  // במסך הראשי: מציגים בשישי ובשבת של אותה שבת מברכין.
   const shabbatMevarchimText =
     weekMevarchimText && (todayJsDay === 5 || todayJsDay === 6) ? weekMevarchimText : null;
 
@@ -286,16 +324,36 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       resolveOccasionLabel(occasionIso) ||
       (todayIsWeekdayChag ? displaySnapshot.parasha : saturdaySnapshot?.parasha) ||
       displaySnapshot.parasha;
-    const isChag = isChagOnDate(occasionIso);
-    const isShabbatWeekend = todayJsDay === 5 || todayJsDay === 6;
+    const isChag = cluster.days.some((day) => isChagOnDate(day.iso)) || isChagOnDate(occasionIso);
+    const isShabbatWeekend = todayJsDay === 5 || todayJsDay === 6 || cluster.days.some((day) => day.isSaturday);
+    const firstDayIsChag = cluster.days[0] ? isChagOnDate(cluster.days[0].iso) : isChag;
+    const lastDayIsSaturday = Boolean(cluster.days[cluster.days.length - 1]?.isSaturday);
+    const publishedAgenda = shabbatAgendaItems.filter((item) => item.content.trim());
+    const maxFilled = Math.max(0, ...publishedAgenda.map((item) => item.occasionDay));
+    const maxDay = Math.min(3, Math.max(cluster.days.length, maxFilled));
+    const agendaDays: DisplayShabbatAgendaDay[] = [];
+    for (let day = 1; day <= maxDay; day += 1) {
+      const meta = cluster.days[day - 1];
+      const dayItems = publishedAgenda.filter((item) => item.occasionDay === day);
+      if (!dayItems.length) continue;
+      agendaDays.push({
+        day: day as 1 | 2 | 3,
+        iso: meta?.iso ?? "",
+        title: meta?.title ?? "",
+        weekdayChag: meta?.weekdayChag ?? false,
+        isSaturday: meta?.isSaturday ?? false,
+        isLastDay: meta ? meta.isLastDay : day === maxFilled,
+        items: dayItems.map((item) => ({ itemTime: item.itemTime, content: item.content }))
+      });
+    }
     shabbat = {
       parasha: occasionLabel,
       isChag,
       isShabbatWeekend,
-      candleLighting: todayIsWeekdayChag ? null : displaySnapshot.candleLighting,
-      havdalah: todayIsWeekdayChag ? null : displaySnapshot.havdalah,
-      candleLabel: isChag && !isShabbatWeekend ? "כניסת החג" : "כניסת שבת",
-      havdalahLabel: isChag && !isShabbatWeekend ? "צאת החג" : "צאת שבת",
+      candleLighting: (erevSnapshot ?? fridaySnapshot ?? displaySnapshot).candleLighting,
+      havdalah: (lastDaySnapshot ?? saturdaySnapshot ?? displaySnapshot).havdalah,
+      candleLabel: firstDayIsChag ? "כניסת החג" : "כניסת שבת",
+      havdalahLabel: lastDayIsSaturday ? "צאת שבת" : "צאת החג",
       prayers: todayIsWeekdayChag
         ? prayerSchedule.map((row) => ({ label: row.label, time: row.time }))
         : fridaySnapshot && saturdaySnapshot
@@ -306,10 +364,13 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
             )
           : [],
       mevarchimText: weekMevarchimText,
-      agenda: shabbatAgendaItems.map((item) => ({
+      agenda: publishedAgenda.map((item) => ({
         itemTime: item.itemTime,
         content: item.content
       })),
+      agendaDays,
+      erevIso: cluster.erevIso,
+      preferredDay: preferredOccasionDayIndex(todayIsoDate, cluster),
       haftarah
     };
   }

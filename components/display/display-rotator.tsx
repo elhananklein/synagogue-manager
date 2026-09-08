@@ -276,13 +276,17 @@ function AutoFit({
 function ShabbatPeriodBoard({
   rows,
   weekdayChag,
+  isLastDay,
+  isSaturday,
   scaleToViewport
 }: {
   rows: ShabbatScheduleRow[];
   weekdayChag: boolean;
+  isLastDay?: boolean;
+  isSaturday?: boolean;
   scaleToViewport: boolean;
 }) {
-  const columns = groupShabbatScheduleByPeriod(rows, { weekdayChag });
+  const columns = groupShabbatScheduleByPeriod(rows, { weekdayChag, isLastDay, isSaturday });
   const ref = useRef<HTMLDivElement>(null);
   const maxRows = Math.max(1, ...columns.map((column) => column.rows.length));
 
@@ -312,7 +316,7 @@ function ShabbatPeriodBoard({
       cancelAnimationFrame(frame);
       ro.disconnect();
     };
-  }, [scaleToViewport, maxRows, columns.length]);
+  }, [scaleToViewport, maxRows, columns.length, weekdayChag, isLastDay, isSaturday]);
 
   if (!columns.length) return null;
 
@@ -341,6 +345,79 @@ function ShabbatPeriodBoard({
           </div>
         </section>
       ))}
+    </div>
+  );
+}
+
+type WallShabbatAgendaDay = {
+  day: 1 | 2 | 3;
+  iso: string;
+  title: string;
+  weekdayChag: boolean;
+  isSaturday: boolean;
+  isLastDay: boolean;
+  items: Array<{ itemTime: string | null; content: string }>;
+};
+
+function ShabbatAgendaBoards({
+  days,
+  preferredDay,
+  fallbackRows,
+  fallbackWeekdayChag,
+  isVeryBold
+}: {
+  days: WallShabbatAgendaDay[];
+  preferredDay: 1 | 2 | 3;
+  fallbackRows: ShabbatScheduleRow[];
+  fallbackWeekdayChag: boolean;
+  isVeryBold: boolean;
+}) {
+  const filled = days.filter((day) => day.items.length);
+  const filledKey = filled.map((day) => day.day).join(",");
+  const preferredIndex = Math.max(
+    0,
+    filled.findIndex((day) => day.day === preferredDay)
+  );
+  const [index, setIndex] = useState(preferredIndex);
+
+  useEffect(() => {
+    setIndex(preferredIndex);
+  }, [preferredIndex, filledKey]);
+
+  useEffect(() => {
+    if (filled.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setIndex((current) => (current + 1) % filled.length);
+    }, 8000);
+    return () => window.clearInterval(timer);
+  }, [filled.length]);
+
+  if (!filled.length) {
+    return (
+      <ShabbatPeriodBoard
+        scaleToViewport={isVeryBold}
+        weekdayChag={fallbackWeekdayChag}
+        isLastDay
+        isSaturday={!fallbackWeekdayChag}
+        rows={fallbackRows}
+      />
+    );
+  }
+
+  const active = filled[Math.min(index, filled.length - 1)]!;
+  return (
+    <div className="display-shabbat-agenda-days">
+      {active.title ? <p className="display-shabbat-day-title">{active.title}</p> : null}
+      <ShabbatPeriodBoard
+        scaleToViewport={isVeryBold}
+        weekdayChag={active.weekdayChag}
+        isLastDay={active.isLastDay}
+        isSaturday={active.isSaturday}
+        rows={active.items.map((row) => ({
+          label: row.content,
+          time: row.itemTime ?? ""
+        }))}
+      />
     </div>
   );
 }
@@ -380,6 +457,7 @@ export function DisplayRotator({
   shabbat: shabbatProp = null,
   shabbatMevarchimText: shabbatMevarchimTextProp = null,
   bulletinItems: bulletinItemsProp = [],
+  viewDate: viewDateProp,
   disableFullscreen = false
 }: {
   style: DisplayStyle;
@@ -418,9 +496,13 @@ export function DisplayRotator({
     prayers: Array<{ label: string; time: string }>;
     mevarchimText?: string | null;
     agenda?: Array<{ itemTime: string | null; content: string }>;
+    agendaDays?: WallShabbatAgendaDay[];
+    erevIso?: string;
+    preferredDay?: 1 | 2 | 3;
     haftarah?: { name: string | null; source: string } | null;
   } | null;
   bulletinItems?: BulletinItem[];
+  viewDate?: string;
   /** תצוגת קיר לגבאי — בלי מסך מלא אוטומטי */
   disableFullscreen?: boolean;
 }) {
@@ -439,7 +521,8 @@ export function DisplayRotator({
     scheduleTimesListMode: scheduleTimesListModeProp,
     shabbat: shabbatProp,
     shabbatMevarchimText: shabbatMevarchimTextProp,
-    bulletinItems: bulletinItemsProp
+    bulletinItems: bulletinItemsProp,
+    viewDate: viewDateProp
   }));
   const {
     synagogueId,
@@ -456,7 +539,8 @@ export function DisplayRotator({
     scheduleTimesListMode,
     shabbat,
     shabbatMevarchimText,
-    bulletinItems
+    bulletinItems,
+    viewDate
   } = live;
 
   const refreshLive = useDisplayLiveRefresh((view) => {
@@ -1450,23 +1534,32 @@ export function DisplayRotator({
                     })()}
                   </div>
 
-                  {shabbat?.agenda?.length ? (
-                    <ShabbatPeriodBoard
-                      scaleToViewport={isVeryBold}
-                      weekdayChag={Boolean(shabbat.isChag && !shabbat.isShabbatWeekend)}
-                      rows={shabbat.agenda.map((row) => ({
-                        label: row.content,
-                        time: row.itemTime ?? ""
-                      }))}
-                    />
-                  ) : shabbat?.prayers?.length ? (
-                    <ShabbatPeriodBoard
-                      scaleToViewport={isVeryBold}
-                      weekdayChag={Boolean(shabbat.isChag && !shabbat.isShabbatWeekend)}
-                      rows={shabbat.prayers.map((prayer) => ({
-                        label: prayer.label,
-                        time: prayer.time
-                      }))}
+                  {shabbat &&
+                  (shabbat.agendaDays?.some((day) => day.items.length) ||
+                    shabbat.agenda?.length ||
+                    shabbat.prayers?.length) ? (
+                    <ShabbatAgendaBoards
+                      isVeryBold={isVeryBold}
+                      preferredDay={
+                        viewDate && shabbat.erevIso && viewDate === shabbat.erevIso
+                          ? 1
+                          : shabbat.agendaDays?.find((day) => day.iso === viewDate)?.day ??
+                            shabbat.preferredDay ??
+                            1
+                      }
+                      days={shabbat.agendaDays ?? []}
+                      fallbackWeekdayChag={Boolean(shabbat.isChag && !shabbat.isShabbatWeekend)}
+                      fallbackRows={
+                        shabbat.agenda?.length
+                          ? shabbat.agenda.map((row) => ({
+                              label: row.content,
+                              time: row.itemTime ?? ""
+                            }))
+                          : (shabbat.prayers ?? []).map((prayer) => ({
+                              label: prayer.label,
+                              time: prayer.time
+                            }))
+                      }
                     />
                   ) : null}
                 </div>

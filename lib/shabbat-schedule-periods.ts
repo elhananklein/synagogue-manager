@@ -64,7 +64,26 @@ export function shabbatPeriodFromRow(row: ShabbatScheduleRow): ShabbatPeriodId {
   return "morning";
 }
 
-function periodTitle(id: ShabbatPeriodId, weekdayChag: boolean) {
+export type ShabbatPeriodTitleOptions = {
+  weekdayChag?: boolean;
+  isLastDay?: boolean;
+  isSaturday?: boolean;
+};
+
+export function shabbatAfternoonColumnTitle(options?: { isLastDay?: boolean; isSaturday?: boolean }) {
+  if (options?.isLastDay === false) return "מנחה עד סוף היום";
+  if (options?.isSaturday === false) return "מנחה עד מוצאי החג";
+  return "מנחה עד מוצ״ש";
+}
+
+function periodTitle(id: ShabbatPeriodId, options?: ShabbatPeriodTitleOptions) {
+  const weekdayChag = Boolean(options?.weekdayChag);
+  if (id === "afternoon") {
+    return shabbatAfternoonColumnTitle({
+      isLastDay: options?.isLastDay,
+      isSaturday: options?.isSaturday ?? !weekdayChag
+    });
+  }
   const def = PERIOD_DEFS.find((item) => item.id === id);
   if (!def) return "";
   return weekdayChag ? def.chagTitle : def.title;
@@ -86,9 +105,9 @@ function assignPeriod(row: ShabbatScheduleRow, seenAfternoon: boolean): ShabbatP
 
 export function groupShabbatScheduleByPeriod(
   rows: ShabbatScheduleRow[],
-  options?: { weekdayChag?: boolean }
+  options?: ShabbatPeriodTitleOptions
 ): ShabbatPeriodColumn[] {
-  const weekdayChag = Boolean(options?.weekdayChag);
+  const titleOptions = options ?? {};
   const buckets: Record<ShabbatPeriodId, ShabbatScheduleRow[]> = {
     erev: [],
     morning: [],
@@ -98,7 +117,7 @@ export function groupShabbatScheduleByPeriod(
   let seenAfternoon = false;
   let previousPeriod: ShabbatPeriodId | null = null;
   for (const row of rows) {
-    const period =
+    const period: ShabbatPeriodId =
       parseClockMinutes(row.time) == null && previousPeriod
         ? previousPeriod
         : assignPeriod(row, seenAfternoon);
@@ -109,7 +128,7 @@ export function groupShabbatScheduleByPeriod(
 
   return PERIOD_DEFS.map((def) => ({
     id: def.id,
-    title: periodTitle(def.id, weekdayChag),
+    title: periodTitle(def.id, titleOptions),
     rows: buckets[def.id]
   })).filter((column) => column.rows.length > 0);
 }

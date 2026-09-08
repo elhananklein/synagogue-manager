@@ -683,7 +683,8 @@ export async function getDisplaySnapshot(
       events,
       hebrewMonth: converter.hm,
       hebrewDay: converter.hd,
-      weekday: new Date(Date.UTC(converter.gy, converter.gm - 1, converter.gd, 12, 0, 0)).getUTCDay()
+      weekday: new Date(Date.UTC(converter.gy, converter.gm - 1, converter.gd, 12, 0, 0)).getUTCDay(),
+      isChag: todayIsChag
     }),
     shabbatMevarchimText: resolveShabbatMevarchimText(events),
     sourceEvents: events,

@@ -11,18 +11,6 @@ export default async function GabbaiHomePage({
 
   const tasks = [
     {
-      href: `${base}/congregants`,
-      title: "מתפללים",
-      desc: "לרשום מתפלל, לערוך כרטיס, או לייבא מאקסל",
-      Icon: Users
-    },
-    {
-      href: `${base}/aliyot`,
-      title: "עליות",
-      desc: "לסמן מי עלה לתורה בשבת ובחג",
-      Icon: ScrollText
-    },
-    {
       href: `${base}/prayers`,
       title: "זמני תפילה",
       desc: "לשנות סליחות, שחרית, מנחה או ערבית — לחול ולשבת",
@@ -51,6 +39,18 @@ export default async function GabbaiHomePage({
       title: "הגדרות בית הכנסת",
       desc: "שם, מניינים, נוסח והלכה יומית",
       Icon: Settings
+    },
+    {
+      href: `${base}/congregants`,
+      title: "מתפללים",
+      desc: "לרשום מתפלל, לערוך כרטיס, או לייבא מאקסל",
+      Icon: Users
+    },
+    {
+      href: `${base}/aliyot`,
+      title: "עליות",
+      desc: "לסמן מי עלה לתורה בשבת ובחג",
+      Icon: ScrollText
     },
     {
       href: `${base}/guide`,

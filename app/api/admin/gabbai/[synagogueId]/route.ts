@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { getAllBulletinItemsForAdmin, saveBulletinItems, type BulletinItemInput } from "@/lib/bulletin-board";
 import { getShabbatAgendaItemsByMinyanIds, saveShabbatAgendaItems, type ShabbatAgendaItemInput } from "@/lib/shabbat-agenda";
 import { getDisplaySnapshot, toIsoDateJerusalem } from "@/lib/hebcal";
-import { applyOccasionDisplayLabel, weeklyOccasionIso } from "@/lib/sacred-occasion";
+import { applyOccasionDisplayLabel, resolveOccasionCluster, weeklyOccasionIso } from "@/lib/sacred-occasion";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { sanitizeScheduleZmanimKeys } from "@/lib/zmanim-catalog";
 import { sanitizeDailyLearningKeys } from "@/lib/daily-learning-catalog";
@@ -216,13 +216,17 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     parashaCatalog: minyan.id ? (catalogByMinyan[minyan.id] ?? []) : []
   }));
   let currentParasha: string | null = null;
+  let occasionDays: ReturnType<typeof resolveOccasionCluster>["days"] = [];
   try {
-    const snap = await getDisplaySnapshot(toIsoDateJerusalem(), { omitDailyLearning: true });
+    const todayIso = toIsoDateJerusalem();
+    const snap = await getDisplaySnapshot(todayIso, { omitDailyLearning: true });
     currentParasha =
-      applyOccasionDisplayLabel(snap.parasha, weeklyOccasionIso(toIsoDateJerusalem())) ||
+      applyOccasionDisplayLabel(snap.parasha, weeklyOccasionIso(todayIso)) ||
       (snap.parasha && snap.parasha !== "לא נמצא" ? snap.parasha : null);
+    occasionDays = resolveOccasionCluster(todayIso).days;
   } catch {
     currentParasha = null;
+    occasionDays = [];
   }
 
   return NextResponse.json({
@@ -237,7 +241,8 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
       minyanim: minyanimWithAgenda,
       halachaSettings,
       bulletinItems,
-      currentParasha
+      currentParasha,
+      occasionDays
     }
   });
 }

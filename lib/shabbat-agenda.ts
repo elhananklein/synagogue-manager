@@ -1,3 +1,4 @@
+import { normalizeOccasionDay, type OccasionDayIndex } from "@/lib/sacred-occasion";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
 
 export type ShabbatAgendaItem = {
@@ -7,6 +8,7 @@ export type ShabbatAgendaItem = {
   itemTime: string | null;
   content: string;
   published: boolean;
+  occasionDay: OccasionDayIndex;
 };
 
 export type ShabbatAgendaItemInput = {
@@ -15,6 +17,7 @@ export type ShabbatAgendaItemInput = {
   itemTime?: string | null;
   content: string;
   published?: boolean;
+  occasionDay?: number | null;
 };
 
 type DbRow = {
@@ -24,6 +27,7 @@ type DbRow = {
   item_time: string | null;
   content: string;
   published: boolean;
+  occasion_day?: number | null;
 };
 
 const TIME_RE = /^\d{2}:\d{2}$/;
@@ -45,9 +49,12 @@ function mapRow(row: DbRow): ShabbatAgendaItem {
     sortOrder: row.sort_order,
     itemTime: normalizeItemTime(row.item_time),
     content: row.content ?? "",
-    published: row.published !== false
+    published: row.published !== false,
+    occasionDay: normalizeOccasionDay(row.occasion_day)
   };
 }
+
+const AGENDA_SELECT = "id, sort_order, item_time, content, published, occasion_day";
 
 export async function getPublishedShabbatAgendaItems(
   minyanId: string | null | undefined
@@ -57,13 +64,25 @@ export async function getPublishedShabbatAgendaItems(
   const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) return [];
 
-  const res = await supabase
+  const withDay = await supabase
     .from("minyan_shabbat_agenda_items")
-    .select("id, sort_order, item_time, content, published")
+    .select(AGENDA_SELECT)
     .eq("minyan_id", minyanId)
     .eq("published", true)
+    .order("occasion_day", { ascending: true })
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
+
+  const res =
+    withDay.error && /occasion_day/i.test(withDay.error.message)
+      ? await supabase
+          .from("minyan_shabbat_agenda_items")
+          .select("id, sort_order, item_time, content, published")
+          .eq("minyan_id", minyanId)
+          .eq("published", true)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true })
+      : withDay;
 
   if (res.error || !res.data?.length) return [];
   return (res.data as DbRow[])
@@ -82,12 +101,23 @@ export async function getShabbatAgendaItemsByMinyanIds(
   const supabase = getSupabaseAdminClient();
   if (!supabase) return result;
 
-  const res = await supabase
+  const withDay = await supabase
     .from("minyan_shabbat_agenda_items")
-    .select("id, minyan_id, sort_order, item_time, content, published")
+    .select("id, minyan_id, sort_order, item_time, content, published, occasion_day")
     .in("minyan_id", minyanIds)
+    .order("occasion_day", { ascending: true })
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
+
+  const res =
+    withDay.error && /occasion_day/i.test(withDay.error.message)
+      ? await supabase
+          .from("minyan_shabbat_agenda_items")
+          .select("id, minyan_id, sort_order, item_time, content, published")
+          .in("minyan_id", minyanIds)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true })
+      : withDay;
 
   if (res.error || !res.data) return result;
 
@@ -107,13 +137,15 @@ export async function saveShabbatAgendaItems(
   const supabase = getSupabaseAdminClient();
   if (!supabase) return { ok: false, error: "missing_service_role_key" };
 
-  for (const item of items) {
-    if (!item.content?.trim()) {
-      return { ok: false, error: "shabbat_agenda_requires_content" };
-    }
+  const prepared = items.filter((item) => item.content?.trim());
+  for (const item of prepared) {
     const time = normalizeItemTime(item.itemTime);
     if (item.itemTime != null && String(item.itemTime).trim() && !time) {
       return { ok: false, error: "shabbat_agenda_invalid_time" };
+    }
+    const day = Number(item.occasionDay ?? 1);
+    if (day !== 1 && day !== 2 && day !== 3) {
+      return { ok: false, error: "shabbat_agenda_invalid_day" };
     }
   }
 
@@ -123,14 +155,21 @@ export async function saveShabbatAgendaItems(
     .eq("minyan_id", minyanId);
   if (deleteError) return { ok: false, error: deleteError.message };
 
-  if (!items.length) return { ok: true };
+  if (!prepared.length) return { ok: true };
 
-  const rows = items.map((item, index) => ({
+  const sorted = [...prepared].sort((a, b) => {
+    const day = normalizeOccasionDay(a.occasionDay) - normalizeOccasionDay(b.occasionDay);
+    if (day) return day;
+    return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+  });
+
+  const rows = sorted.map((item, index) => ({
     minyan_id: minyanId,
     sort_order: item.sortOrder ?? index + 1,
     item_time: normalizeItemTime(item.itemTime),
     content: item.content.trim(),
-    published: item.published !== false
+    published: item.published !== false,
+    occasion_day: normalizeOccasionDay(item.occasionDay)
   }));
 
   const { error: insertError } = await supabase.from("minyan_shabbat_agenda_items").insert(rows);

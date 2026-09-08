@@ -15,24 +15,6 @@ export default async function GabbaiMorePage({
       <h1 className="gabbai-lead">עוד פעולות</h1>
       <p className="gabbai-hint">הגדרות שמשנים לעיתים רחוקות יותר.</p>
       <div className="gabbai-task-grid">
-        <Link href={`${base}/congregants`} className="gabbai-task-card">
-          <span className="gabbai-task-icon">
-            <Users className="h-5 w-5" aria-hidden />
-          </span>
-          <span>
-            <h2>מתפללים</h2>
-            <p>כרטיס מתפלל, מניין, וייבוא מאקסל</p>
-          </span>
-        </Link>
-        <Link href={`${base}/aliyot`} className="gabbai-task-card">
-          <span className="gabbai-task-icon">
-            <ScrollText className="h-5 w-5" aria-hidden />
-          </span>
-          <span>
-            <h2>עליות</h2>
-            <p>מי עלה לתורה בשבת ובחג</p>
-          </span>
-        </Link>
         <Link href={`${base}/look`} className="gabbai-task-card">
           <span className="gabbai-task-icon">
             <Monitor className="h-5 w-5" aria-hidden />
@@ -60,6 +42,24 @@ export default async function GabbaiMorePage({
             <p>תצוגת הקיר כמו בטלוויזיה — גם מהטלפון</p>
           </span>
         </a>
+        <Link href={`${base}/congregants`} className="gabbai-task-card">
+          <span className="gabbai-task-icon">
+            <Users className="h-5 w-5" aria-hidden />
+          </span>
+          <span>
+            <h2>מתפללים</h2>
+            <p>כרטיס מתפלל, מניין, וייבוא מאקסל</p>
+          </span>
+        </Link>
+        <Link href={`${base}/aliyot`} className="gabbai-task-card">
+          <span className="gabbai-task-icon">
+            <ScrollText className="h-5 w-5" aria-hidden />
+          </span>
+          <span>
+            <h2>עליות</h2>
+            <p>מי עלה לתורה בשבת ובחג</p>
+          </span>
+        </Link>
         <Link href={`${base}/guide`} className="gabbai-task-card">
           <span className="gabbai-task-icon">
             <BookOpen className="h-5 w-5" aria-hidden />

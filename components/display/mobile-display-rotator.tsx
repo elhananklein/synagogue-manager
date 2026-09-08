@@ -928,13 +928,31 @@ function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
   if (!shabbat) {
     return <Card className="m-center m-muted">אין נתוני שבת או חג להצגה כעת.</Card>;
   }
-  const hasAgenda = Boolean(shabbat.agenda?.length);
-  const scheduleRows = hasAgenda
+  const agendaDays = (shabbat.agendaDays ?? []).filter((day) => day.items.length);
+  const fallbackRows = shabbat.agenda?.length
     ? shabbat.agenda.map((row) => ({ label: row.content, time: row.itemTime ?? "" }))
-    : shabbat.prayers.map((row) => ({ label: row.label, time: row.time }));
-  const periods = groupShabbatScheduleByPeriod(scheduleRows, {
-    weekdayChag: Boolean(shabbat.isChag && !shabbat.isShabbatWeekend)
-  });
+    : (shabbat.prayers ?? []).map((row) => ({ label: row.label, time: row.time }));
+  const dayBoards = agendaDays.length
+    ? agendaDays.map((day) => ({
+        key: `day-${day.day}`,
+        title: day.title,
+        weekdayChag: day.weekdayChag,
+        isLastDay: day.isLastDay,
+        isSaturday: day.isSaturday,
+        rows: day.items.map((item) => ({ label: item.content, time: item.itemTime ?? "" }))
+      }))
+    : fallbackRows.length
+      ? [
+          {
+            key: "single",
+            title: "",
+            weekdayChag: Boolean(shabbat.isChag && !shabbat.isShabbatWeekend),
+            isLastDay: true,
+            isSaturday: Boolean(shabbat.isShabbatWeekend && !shabbat.isChag) || Boolean(shabbat.isShabbatWeekend),
+            rows: fallbackRows
+          }
+        ]
+      : [];
   return (
     <div className="space-y-3">
       <div className="m-hero">
@@ -951,16 +969,28 @@ function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
           <InfoTile label={shabbat.havdalahLabel || "צאת השבת"} value={shabbat.havdalah} />
         ) : null}
       </div>
-      {periods.map((column) => (
-        <Card key={column.id}>
-          <h3 className="m-section-title">{column.title}</h3>
-          <div>
-            {column.rows.map((row, i) => (
-              <TimeRow key={`${column.id}-${row.label}-${i}`} label={row.label} time={row.time} />
+      {dayBoards.map((board) => {
+        const periods = groupShabbatScheduleByPeriod(board.rows, {
+          weekdayChag: board.weekdayChag,
+          isLastDay: board.isLastDay,
+          isSaturday: board.isSaturday
+        });
+        return (
+          <div key={board.key} className="space-y-2">
+            {board.title ? <h3 className="m-section-title">{board.title}</h3> : null}
+            {periods.map((column) => (
+              <Card key={`${board.key}-${column.id}`}>
+                <h3 className="m-section-title">{column.title}</h3>
+                <div>
+                  {column.rows.map((row, i) => (
+                    <TimeRow key={`${column.id}-${row.label}-${i}`} label={row.label} time={row.time} />
+                  ))}
+                </div>
+              </Card>
             ))}
           </div>
-        </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }

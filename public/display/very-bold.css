@@ -873,6 +873,22 @@
   line-height: 1.05;
 }
 
+.display.display--veryBold .display-shabbat-day-title {
+  margin: 0 0 0.28em;
+  color: var(--vb-ink, #152238);
+  font-size: 0.72em;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.display.display--veryBold .display-shabbat-agenda-days {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+
 .display.display--veryBold .display-shabbat-periods {
   display: grid;
   grid-template-columns: repeat(var(--shabbat-period-cols, 3), minmax(0, 1fr));

@@ -16,6 +16,7 @@ import type { HalachaSourceKey } from "@/lib/halacha-source";
 import type { ParashaPrayerCatalogRow } from "@/lib/parasha-prayer-catalog";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS } from "@/lib/zmanim-catalog";
 import { DEFAULT_DAILY_LEARNING_KEYS, resolveDailyLearningKeys } from "@/lib/daily-learning-catalog";
+import type { OccasionAgendaDayMeta } from "@/lib/sacred-occasion";
 import type { PrayerSetting, PrayerType, ScheduleTimesListMode, ScreenSetting } from "@/lib/gabbai-types";
 
 export type HalachaSettingsModel = {
@@ -134,6 +135,10 @@ export function mapGabbaiSaveError(error?: string) {
   if (error === "bulletin_until_before_from") return "תאריך «עד» חייב להיות ביום ההתחלה או אחריו";
   if (error === "shabbat_agenda_requires_content") return "יש למלא תוכן בכל שורה בסדר השבת";
   if (error === "shabbat_agenda_invalid_time") return "שעה לא תקינה בסדר השבת";
+  if (error === "shabbat_agenda_invalid_day") return "יום לא תקין בלוח השבת";
+  if (error && /occasion_day/i.test(error)) {
+    return "חסרה תמיכה בימי שבתון במסד. הריצו ב-Supabase את הקובץ supabase/shabbat-agenda-occasion-day-migration.sql";
+  }
   if (error === "missing_minyan") return "לא נמצא מניין";
   if (error === "missing_synagogue_name") return "יש למלא את שם בית הכנסת";
   if (error && /prayer_type/i.test(error) && /check|invalid/i.test(error)) {
@@ -163,6 +168,7 @@ export function useGabbaiWorkspace(synagogueId: string) {
   });
   const [bulletinItems, setBulletinItems] = useState<BulletinItemModel[]>([]);
   const [shabbatParashaHint, setShabbatParashaHint] = useState<string | null>(null);
+  const [occasionDays, setOccasionDays] = useState<OccasionAgendaDayMeta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -181,6 +187,7 @@ export function useGabbaiWorkspace(synagogueId: string) {
           halachaSettings: HalachaSettingsModel;
           bulletinItems?: Parameters<typeof mapBulletinFromApi>[0];
           currentParasha?: string | null;
+          occasionDays?: OccasionAgendaDayMeta[];
         };
       };
       if (!payload.ok || !payload.data) {
@@ -216,6 +223,7 @@ export function useGabbaiWorkspace(synagogueId: string) {
       setBulletinItems(mapBulletinFromApi(payload.data.bulletinItems ?? []));
       const parasha = payload.data.currentParasha?.trim();
       setShabbatParashaHint(parasha && parasha !== "לא נמצא" ? parasha : null);
+      setOccasionDays(Array.isArray(payload.data.occasionDays) ? payload.data.occasionDays : []);
     } catch {
       setError("לא הצלחנו לטעון את ההגדרות. נסו לרענן.");
     } finally {
@@ -241,6 +249,7 @@ export function useGabbaiWorkspace(synagogueId: string) {
     bulletinItems,
     setBulletinItems,
     shabbatParashaHint,
+    occasionDays,
     isLoading,
     error,
     reload: load

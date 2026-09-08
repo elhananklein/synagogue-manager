@@ -91,8 +91,7 @@ function isAseretYemeiTeshuva(hebrewMonth: string, hebrewDay: number) {
   return hebrewMonth === "Tishrei" && hebrewDay >= 1 && hebrewDay <= 10;
 }
 
-function isNoTachanunByDate(hebrewMonth: string, hebrewDay: number, weekday: number) {
-  if (weekday === 6) return true;
+function isNoTachanunByDate(hebrewMonth: string, hebrewDay: number) {
   if (hebrewMonth === "Nisan") return true;
   if (hebrewMonth === "Sivan" && hebrewDay <= 12) return true;
   if ((hebrewMonth === "Iyyar" || hebrewMonth === "Iyar") && (hebrewDay === 14 || hebrewDay === 18)) return true;
@@ -146,8 +145,10 @@ export function resolveLiturgicalTiles(opts: {
   hebrewMonth: string;
   hebrewDay: number;
   weekday: number;
+  /** יום טוב — אז «אין תחנון» מובן מאליו ולא מוצג */
+  isChag?: boolean;
 }): string[] {
-  const { events, hebrewMonth, hebrewDay, weekday } = opts;
+  const { events, hebrewMonth, hebrewDay, weekday, isChag = false } = opts;
   const tiles: string[] = [];
 
   if (someEvent(events, isChanukahEvent) || someEvent(events, isPurimEvent)) {
@@ -164,7 +165,8 @@ export function resolveLiturgicalTiles(opts: {
     tiles.push("המלך המשפט");
     tiles.push("עשרת ימי תשובה");
   }
-  if (isNoTachanunByDate(hebrewMonth, hebrewDay, weekday) || isNoTachanunByEvent(events)) {
+  const weekdayChol = weekday !== 6 && !isChag;
+  if (weekdayChol && (isNoTachanunByDate(hebrewMonth, hebrewDay) || isNoTachanunByEvent(events))) {
     tiles.push("אין תחנון");
   }
   const hallel = resolveHallel(events);
