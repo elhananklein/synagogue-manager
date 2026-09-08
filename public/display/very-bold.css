@@ -812,11 +812,11 @@
 
 .display.display--veryBold .display-shabbat-zmanim {
   display: grid;
-  grid-template-columns: repeat(2, minmax(7.5rem, 1fr));
-  gap: clamp(0.4rem, 1.2vmin, 0.75rem);
+  grid-template-columns: repeat(2, minmax(8.5rem, 1fr));
+  gap: clamp(0.5rem, 1.4vmin, 0.9rem);
   width: auto;
-  min-width: 16rem;
-  max-width: 22rem;
+  min-width: 20rem;
+  max-width: 30rem;
 }
 
 .display.display--veryBold .display-shabbat-zman-card {
@@ -832,10 +832,24 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
+  gap: 0.2rem;
   min-height: 0;
-  padding: clamp(0.35rem, 1.1vmin, 0.65rem) clamp(0.4rem, 1.2vmin, 0.75rem);
+  padding: clamp(0.5rem, 1.4vmin, 0.85rem) clamp(0.55rem, 1.5vmin, 1rem);
   text-align: center;
+}
+
+.display.display--veryBold .display-shabbat-zman-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+}
+
+.display.display--veryBold .display-shabbat-zman-icon {
+  width: clamp(1.35rem, 3vmin, 2.05rem);
+  height: clamp(1.35rem, 3vmin, 2.05rem);
+  flex-shrink: 0;
+  color: var(--vb-gold, #b8923a);
 }
 
 .display.display--veryBold .display-shabbat-zman-label,
@@ -851,12 +865,132 @@
 }
 
 .display.display--veryBold .display-shabbat-zman-label {
-  font-size: clamp(0.75rem, 1.8vmin, 1.1rem);
+  font-size: clamp(0.9rem, 2.1vmin, 1.35rem);
 }
 
 .display.display--veryBold .display-shabbat-zman-time {
-  font-size: clamp(1.45rem, 3.6vmin, 2.2rem);
-  line-height: 1.1;
+  font-size: clamp(2.25rem, 5.6vmin, 3.7rem);
+  line-height: 1.05;
+}
+
+.display.display--veryBold .display-shabbat-periods {
+  display: grid;
+  grid-template-columns: repeat(var(--shabbat-period-cols, 3), minmax(0, 1fr));
+  align-items: stretch;
+  column-gap: clamp(1.35rem, 3vmin, 2.2rem);
+  overflow: visible;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  font-size: var(--vb-shabbat-period-font, clamp(2.1rem, calc(34vh / var(--vb-shabbat-period-rows, 3)), 5.4rem));
+}
+
+.display.display--veryBold .display-shabbat-period {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--vb-ink, #152238);
+}
+
+.display.display--veryBold .display-shabbat-period + .display-shabbat-period::before,
+.display.display--veryBold .display-shabbat-period + .display-shabbat-period::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.display.display--veryBold .display-shabbat-period + .display-shabbat-period::before {
+  inset-block: 6%;
+  inset-inline-start: calc(clamp(0.65rem, 1.5vmin, 1.1rem) * -1);
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgb(184 146 58 / 0.35) 18%,
+    var(--vb-gold, #b8923a) 50%,
+    rgb(184 146 58 / 0.35) 82%,
+    transparent 100%
+  );
+}
+
+.display.display--veryBold .display-shabbat-period + .display-shabbat-period::after {
+  top: 50%;
+  inset-inline-start: calc(clamp(0.65rem, 1.5vmin, 1.1rem) * -1 - 4px);
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--vb-gold, #b8923a);
+  box-shadow: 0 0 0 3px var(--vb-bg, #f3ead8);
+  transform: translateY(-50%);
+}
+
+.display.display--veryBold .display-shabbat-period-title {
+  flex: 0 0 auto;
+  margin: 0 0 0.28em;
+  color: var(--vb-ink, #152238);
+  font-size: 0.78em;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.display.display--veryBold .display-shabbat-period-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.38em;
+  min-height: 0;
+}
+
+.display.display--veryBold .display-shabbat-period-item {
+  display: flex;
+  flex: 0 0 var(--vb-shabbat-tile-h, 7.5rem);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12em;
+  width: 100%;
+  height: var(--vb-shabbat-tile-h, 7.5rem);
+  max-height: var(--vb-shabbat-tile-h, 7.5rem);
+  min-width: 0;
+  min-height: 0;
+  padding: 0.28em 0.45em;
+  border: 1px solid var(--vb-gold, #b8923a);
+  border-radius: 1.1rem;
+  background: var(--vb-panel, #152238);
+  color: var(--vb-on-panel, #fff8ea);
+  overflow: hidden;
+  line-height: 1.15;
+}
+
+.display.display--veryBold .display-shabbat-period-label {
+  max-width: 100%;
+  color: var(--vb-on-panel, #fff8ea);
+  font-size: 0.56em;
+  font-weight: 800;
+  line-height: 1.28;
+  text-align: center;
+  overflow-wrap: anywhere;
+  padding-block: 0.08em;
+}
+
+.display.display--veryBold .display-shabbat-period-time {
+  order: -1;
+  color: var(--vb-on-panel, #fff8ea);
+  font-size: 1.28em;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  white-space: nowrap;
 }
 
 .display.display--veryBold .display-shabbat-prayers-card {
@@ -899,8 +1033,8 @@
   background: var(--vb-panel, #152238);
   color: var(--vb-on-panel, #fff8ea);
   overflow: hidden;
-  line-height: 1.12;
-  font-size: var(--vb-shabbat-font, clamp(2.2rem, calc(44vh / var(--vb-shabbat-rows, 4)), 6.5rem));
+  line-height: 1.15;
+  font-size: var(--vb-shabbat-font, clamp(1.7rem, calc(32vh / var(--vb-shabbat-rows, 4)), 5rem));
 }
 
 .display.display--veryBold .display-shabbat-prayer-row + .display-shabbat-prayer-row {
@@ -921,9 +1055,9 @@
   min-width: 0;
   padding-inline: 0;
   flex-shrink: 0;
-  font-size: 1.42em;
+  font-size: 1.28em;
   font-variant-numeric: tabular-nums;
-  line-height: 1;
+  line-height: 1.05;
 }
 
 .display.display--veryBold .display-shabbat-prayer-time:empty {
@@ -931,9 +1065,10 @@
 }
 
 .display.display--veryBold .display-shabbat-prayer-label {
-  font-size: 0.52em;
-  line-height: 1.18;
-  overflow-wrap: break-word;
+  font-size: 0.48em;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+  padding-block: 0.08em;
 }
 
 @media (max-width: 700px), (orientation: portrait) {
@@ -952,6 +1087,30 @@
   .display.display--veryBold .display-shabbat-zmanim {
     width: min(100%, 22rem);
     max-width: 100%;
+  }
+  .display.display--veryBold .display-shabbat-periods {
+    grid-template-columns: 1fr;
+    row-gap: clamp(0.85rem, 2.2vmin, 1.3rem);
+  }
+  .display.display--veryBold .display-shabbat-period + .display-shabbat-period::before {
+    inset-inline: 16%;
+    inset-block: auto;
+    inset-block-start: calc(clamp(0.42rem, 1.1vmin, 0.65rem) * -1);
+    width: auto;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(184 146 58 / 0.35),
+      var(--vb-gold, #b8923a),
+      rgb(184 146 58 / 0.35),
+      transparent
+    );
+  }
+  .display.display--veryBold .display-shabbat-period + .display-shabbat-period::after {
+    top: calc(clamp(0.42rem, 1.1vmin, 0.65rem) * -1 - 4px);
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
   }
 }
 

@@ -51,11 +51,13 @@ export function LiveClock({
 
   if (splitSeconds && showSeconds) {
     return (
-      <p className={cn("display-clock-text", className)} suppressHydrationWarning>
+      <p className={cn("display-clock-text", className)}>
         <span className="display-clock-hm">
-          {padClock(synced.hour)}:{padClock(synced.minute)}
+          {synced ? `${padClock(synced.hour)}:${padClock(synced.minute)}` : "--:--"}
         </span>
-        <span className="display-clock-seconds">:{padClock(synced.second)}</span>
+        <span className="display-clock-seconds">
+          {synced ? `:${padClock(synced.second)}` : ""}
+        </span>
       </p>
     );
   }

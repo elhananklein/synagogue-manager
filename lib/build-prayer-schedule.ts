@@ -13,8 +13,24 @@ export function isParashaScheduleWeekday(jsDay: number) {
   return jsDay >= 0 && jsDay <= 4;
 }
 
+export type BuiltPrayerRow = {
+  label: string;
+  time: string;
+  details: string;
+  prayerType: string;
+};
+
 function displayLabelForPrayerType(prayerType: PrayerType | string): string {
   return prayerType === "מנחה ערב שבת" ? EREV_SHABBAT_DISPLAY_LABEL : prayerType;
+}
+
+function builtRow(setting: PrayerSetting, time: string, details = ""): BuiltPrayerRow {
+  return {
+    label: displayLabelForPrayerType(setting.prayerType),
+    time,
+    details,
+    prayerType: setting.prayerType
+  };
 }
 
 function roundToFiveMinutes(date: Date, mode: "none" | "up" | "down") {
@@ -198,13 +214,9 @@ function resolveFixedOrRelativeRow(
   setting: PrayerSetting,
   zmanimSourceTimes: Record<string, string>,
   sundayZmanimSourceTimes?: Record<string, string> | null
-): { label: string; time: string; details: string } | null {
+): BuiltPrayerRow | null {
   if (setting.mode === "fixed" && setting.fixedTime) {
-    return {
-      label: displayLabelForPrayerType(setting.prayerType),
-      time: setting.fixedTime.slice(0, 5),
-      details: ""
-    };
+    return builtRow(setting, setting.fixedTime.slice(0, 5));
   }
   if (setting.mode === "relative" && setting.zmanAnchor) {
     const times =
@@ -212,11 +224,10 @@ function resolveFixedOrRelativeRow(
         ? sundayZmanimSourceTimes
         : zmanimSourceTimes;
     if (setting.zmanAnchor in times) {
-      return {
-        label: displayLabelForPrayerType(setting.prayerType),
-        time: formatWithOffset(times[setting.zmanAnchor], setting.offsetMinutes ?? 0, setting.roundMode ?? "none"),
-        details: ""
-      };
+      return builtRow(
+        setting,
+        formatWithOffset(times[setting.zmanAnchor], setting.offsetMinutes ?? 0, setting.roundMode ?? "none")
+      );
     }
   }
   return null;
@@ -237,7 +248,7 @@ export function buildPrayerScheduleForDay(
   parashaKeyForDay: string | null,
   sundayZmanimSourceTimes?: Record<string, string> | null,
   parashaCatalog?: ParashaPrayerCatalogRow[] | null
-): Array<{ label: string; time: string; details: string }> {
+): BuiltPrayerRow[] {
   const weekdaySettings = prayerSettings.filter((setting) => setting.category === "weekday");
   const shabbatSettings = prayerSettings.filter((setting) => setting.category === "shabbat");
   const weekdayForToday = weekdaySettings.filter(
@@ -255,13 +266,11 @@ export function buildPrayerScheduleForDay(
           const time = minchaShabbatTime
             ? formatClockWithOffset(minchaShabbatTime, setting.offsetMinutes ?? 0, setting.roundMode ?? "none")
             : null;
-          return time
-            ? { label: displayLabelForPrayerType(setting.prayerType), time, details: "" }
-            : null;
+          return time ? builtRow(setting, time) : null;
         }
         return resolveFixedOrRelativeRow(setting, zmanimSourceTimes, sundayZmanimSourceTimes);
       })
-      .filter((item): item is { label: string; time: string; details: string } => item !== null);
+      .filter((item): item is BuiltPrayerRow => item !== null);
   }
 
   const isFriday = jsDay === 5;
@@ -306,7 +315,7 @@ export function buildPrayerScheduleForDay(
   if (maarivCatalog) catalogTimeByType.set("ערבית", maarivCatalog);
   const emittedCatalog = new Set<string>();
 
-  const out: Array<{ label: string; time: string; details: string }> = [];
+  const out: BuiltPrayerRow[] = [];
   for (const setting of sorted) {
     // תפילות ערב שבת — רק fixed/relative (לא parasha)
     if (setting.category === "shabbat") {
@@ -318,11 +327,7 @@ export function buildPrayerScheduleForDay(
     const winner = parshaWinnerByType.get(setting.prayerType);
     if (winner) {
       if (setting === winner && setting.mode === "parasha" && setting.fixedTime) {
-        out.push({
-          label: displayLabelForPrayerType(setting.prayerType),
-          time: setting.fixedTime.slice(0, 5),
-          details: ""
-        });
+        out.push(builtRow(setting, setting.fixedTime.slice(0, 5)));
       }
       continue;
     }
@@ -334,11 +339,7 @@ export function buildPrayerScheduleForDay(
     if (catalogTime) {
       if (isCatalogParashaMode(setting) && !emittedCatalog.has(setting.prayerType)) {
         emittedCatalog.add(setting.prayerType);
-        out.push({
-          label: displayLabelForPrayerType(setting.prayerType),
-          time: catalogTime,
-          details: ""
-        });
+        out.push(builtRow(setting, catalogTime));
       }
       continue;
     }
@@ -351,11 +352,7 @@ export function buildPrayerScheduleForDay(
         ? formatClockWithOffset(baseMincha, setting.offsetMinutes ?? 0, setting.roundMode ?? "none")
         : null;
       if (time) {
-        out.push({
-          label: displayLabelForPrayerType(setting.prayerType),
-          time,
-          details: ""
-        });
+        out.push(builtRow(setting, time));
       }
       continue;
     }

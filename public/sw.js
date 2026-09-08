@@ -1,5 +1,5 @@
 /* Service worker — נדרש ב-Android Chrome ליצירת WebAPK (אפליקציה) ולא רק קיצור דרך. */
-const CACHE = "synagogue-shell-v8";
+const CACHE = "synagogue-shell-v10";
 const OFFLINE_URLS = ["/admin/login", "/icons/admin-icon-192.png", "/icons/admin-icon-512.png"];
 const DISPLAY_LAST = "/__display-last";
 const DISPLAY_NAV_TIMEOUT_MS = 12000;

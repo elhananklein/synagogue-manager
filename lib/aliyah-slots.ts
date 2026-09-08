@@ -237,7 +237,8 @@ export function parashaOrChagLabel(isoDate: string, kind: AliyahDayKind) {
     .replace(/[\u0591-\u05C7]/g, "")
     .replace(/\s+\d{3,4}\s*$/g, "")
     .trim();
-  if (kind !== "shabbat" && chagTitle) return chagTitle;
+  // שבת שחל בה יום טוב — שם החג, לא פרשת השבוע שנדחית.
+  if (chagTitle) return chagTitle;
   try {
     const lookup = getSedra(hd.getFullYear(), true).lookup(hd);
     if (lookup.chag) return chagTitle || lookup.parsha.join("־");

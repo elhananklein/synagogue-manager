@@ -38,7 +38,7 @@ export type DisplayTimeSection = {
   items: Array<{ label: string; time: string; details?: string; kind: "zman" | "prayer" }>;
 };
 
-export type DisplayPrayerSlot = { label: string; time: string; details: string };
+export type DisplayPrayerSlot = { label: string; time: string; details: string; prayerType?: string };
 
 export type DisplayShabbat = {
   parasha: string;

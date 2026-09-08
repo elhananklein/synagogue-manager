@@ -18,6 +18,8 @@ import { addDaysIsoDate, toIsoDateJerusalem } from "@/lib/hebcal";
 import { daysBetweenIso, relativeDayLabel, VIEW_DATE_RANGE_DAYS } from "@/lib/view-date";
 import type { MobileMinyanOption, ScheduleTimesListMode } from "@/lib/display-config";
 import { DEFAULT_DISPLAY_FONT, type DisplayFont } from "@/lib/display-font";
+import { groupPrayersForDisplay } from "@/lib/prayer-display-groups";
+import { groupShabbatScheduleByPeriod } from "@/lib/shabbat-schedule-periods";
 import { setPreferredSynagogue } from "@/lib/mobile-synagogue-preference";
 
 type ScreenKey =
@@ -98,33 +100,6 @@ const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> =
   shabbat: { title: "שבת וחג", Icon: Sun },
   bulletin: { title: "לוח מודעות", Icon: Megaphone }
 };
-
-const PRAYER_GROUP_ORDER = ["סליחות", "שחרית", "מנחה", "ערבית", "אחר"] as const;
-type PrayerGroupId = (typeof PRAYER_GROUP_ORDER)[number];
-
-const PRAYER_GROUP_TITLES: Record<PrayerGroupId, string> = {
-  סליחות: "סליחות",
-  שחרית: "שחרית",
-  מנחה: "מנחה",
-  ערבית: "ערבית",
-  אחר: "נוספות"
-};
-
-function prayerGroupIdFromLabel(label: string): PrayerGroupId {
-  const t = label.trim();
-  if (t.includes("סליחות")) return "סליחות";
-  if (t.includes("שחרית")) return "שחרית";
-  if (t.includes("מנחה")) return "מנחה";
-  if (t.includes("ערבית")) return "ערבית";
-  return "אחר";
-}
-
-function prayerGroupTitle(group: PrayerGroupId, rows: Array<{ label: string }>): string {
-  if (group === "מנחה" && rows.length > 0 && rows.every((r) => r.label.includes("ערב שבת"))) {
-    return rows[0]!.label;
-  }
-  return PRAYER_GROUP_TITLES[group];
-}
 
 function nowJerusalemMinutes() {
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
@@ -904,35 +879,17 @@ function PrayerTimesScreen({
   highlightNow: boolean;
   zmanim?: Array<{ label: string; time: string }>;
 }) {
-  const rows = prayerSchedule
-    .map((row) => ({ ...row, totalMinutes: toMinutes(row.time) }));
-
-  if (!rows.length && !zmanim.length) {
-    return <Card className="m-center m-muted">אין תפילות להיום.</Card>;
-  }
-
+  const groups = groupPrayersForDisplay(prayerSchedule);
   const nextTotalMinutes = highlightNow
-    ? rows
+    ? groups
+        .flatMap((group) => group.rows)
         .filter((row) => row.totalMinutes >= nowMinutes)
         .sort((a, b) => a.totalMinutes - b.totalMinutes)[0]?.totalMinutes
     : undefined;
 
-  const byGroup = new Map<PrayerGroupId, typeof rows>();
-  for (const row of rows) {
-    const group = prayerGroupIdFromLabel(row.label);
-    const list = byGroup.get(group) ?? [];
-    list.push(row);
-    byGroup.set(group, list);
+  if (!groups.length && !zmanim.length) {
+    return <Card className="m-center m-muted">אין תפילות להיום.</Card>;
   }
-
-  const groups = PRAYER_GROUP_ORDER.filter((g) => byGroup.has(g)).map((group) => {
-    const groupRows = byGroup.get(group)!.sort((a, b) => a.totalMinutes - b.totalMinutes);
-    return {
-      group,
-      title: prayerGroupTitle(group, groupRows),
-      rows: groupRows
-    };
-  });
 
   return (
     <Card>
@@ -972,6 +929,12 @@ function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
     return <Card className="m-center m-muted">אין נתוני שבת או חג להצגה כעת.</Card>;
   }
   const hasAgenda = Boolean(shabbat.agenda?.length);
+  const scheduleRows = hasAgenda
+    ? shabbat.agenda.map((row) => ({ label: row.content, time: row.itemTime ?? "" }))
+    : shabbat.prayers.map((row) => ({ label: row.label, time: row.time }));
+  const periods = groupShabbatScheduleByPeriod(scheduleRows, {
+    weekdayChag: Boolean(shabbat.isChag && !shabbat.isShabbatWeekend)
+  });
   return (
     <div className="space-y-3">
       <div className="m-hero">
@@ -988,28 +951,16 @@ function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
           <InfoTile label={shabbat.havdalahLabel || "צאת השבת"} value={shabbat.havdalah} />
         ) : null}
       </div>
-      {hasAgenda ? (
-        <Card>
-          <h3 className="m-section-title">סדר היום</h3>
+      {periods.map((column) => (
+        <Card key={column.id}>
+          <h3 className="m-section-title">{column.title}</h3>
           <div>
-            {shabbat.agenda.map((row, i) => (
-              <div key={`${row.content}-${i}`} className="m-time-row">
-                <span>{row.content}</span>
-                {row.itemTime ? <span className="m-time-row-time">{row.itemTime}</span> : null}
-              </div>
+            {column.rows.map((row, i) => (
+              <TimeRow key={`${column.id}-${row.label}-${i}`} label={row.label} time={row.time} />
             ))}
           </div>
         </Card>
-      ) : shabbat.prayers.length ? (
-        <Card>
-          <h3 className="m-section-title">{shabbat.isChag ? "זמני תפילות" : "זמני תפילות שבת"}</h3>
-          <div>
-            {shabbat.prayers.map((row, i) => (
-              <TimeRow key={`${row.label}-${i}`} label={row.label} time={row.time} />
-            ))}
-          </div>
-        </Card>
-      ) : null}
+      ))}
     </div>
   );
 }

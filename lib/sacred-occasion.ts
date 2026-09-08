@@ -42,6 +42,8 @@ export function weeklyOccasionIso(fromIso: string) {
 function cleanOccasionLabel(raw: string): string {
   return stripHebrewNiqqud(raw)
     .replace(/\s+\d{3,4}\s*$/g, "")
+    .replace(/^[א-ב]['׳]?\s+/u, "")
+    .replace(/\s+[א-ב]['׳]?$/u, "")
     .replace(/יום כפור/g, "יום כיפור")
     .replace(/סכות/g, "סוכות")
     .trim();
@@ -54,6 +56,10 @@ export function resolveOccasionLabel(isoDate: string): string {
 }
 
 export function applyOccasionDisplayLabel(weeklyParashaFromApi: string | null | undefined, occasionIso: string): string {
+  if (isChagOnDate(occasionIso)) {
+    const holiday = resolveOccasionLabel(occasionIso);
+    if (holiday) return holiday;
+  }
   const fromApi = weeklyParashaFromApi?.trim() ?? "";
   if (fromApi && fromApi !== "לא נמצא") return cleanOccasionLabel(fromApi);
   return resolveOccasionLabel(occasionIso);

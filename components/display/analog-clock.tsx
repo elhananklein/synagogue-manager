@@ -1,12 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef } from "react";
 import { cn } from "@/lib/utils";
-import {
-  analogHandAngles,
-  readJerusalemSweep,
-  subscribeJerusalemSweep
-} from "@/lib/jerusalem-clock";
+import { analogHandAngles, subscribeJerusalemSweep } from "@/lib/jerusalem-clock";
 
 const CARDINAL = [
   { label: "12", x: 100, y: 36 },
@@ -21,7 +17,6 @@ export function AnalogClock({ className }: { className?: string }) {
   const hourRef = useRef<SVGGElement | null>(null);
   const minuteRef = useRef<SVGGElement | null>(null);
   const secondRef = useRef<SVGGElement | null>(null);
-  const [initial] = useState(() => analogHandAngles(readJerusalemSweep(), false));
 
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -71,13 +66,13 @@ export function AnalogClock({ className }: { className?: string }) {
           </text>
         ))}
 
-        <g ref={hourRef} transform={`rotate(${initial.hour} 100 100)`}>
+        <g ref={hourRef} suppressHydrationWarning>
           <rect className="display-analog-clock-hand display-analog-clock-hand--hour" x="95.1" y="48" width="9.8" height="62" rx="4.9" />
         </g>
-        <g ref={minuteRef} transform={`rotate(${initial.minute} 100 100)`}>
+        <g ref={minuteRef} suppressHydrationWarning>
           <rect className="display-analog-clock-hand display-analog-clock-hand--minute" x="97.15" y="24" width="5.7" height="82" rx="2.85" />
         </g>
-        <g ref={secondRef} transform={`rotate(${initial.second} 100 100)`}>
+        <g ref={secondRef} suppressHydrationWarning>
           <line className="display-analog-clock-hand display-analog-clock-hand--second" x1="100" y1="124" x2="100" y2="27" />
           <circle className="display-analog-clock-hand display-analog-clock-hand--second" cx="100" cy="24.5" r="4.1" />
           <circle className="display-analog-clock-second-weight" cx="100" cy="118" r="2.3" />

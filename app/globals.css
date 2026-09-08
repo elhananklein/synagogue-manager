@@ -1761,6 +1761,19 @@ optgroup {
     padding: clamp(0.75rem, 2.4vmin, 1.85rem) clamp(0.85rem, 2.2vmin, 1.75rem);
     min-height: clamp(5.5rem, 14vmin, 10rem);
   }
+  .display-shabbat-zman-heading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+  }
+
+  .display-shabbat-zman-icon {
+    width: 1.15em;
+    height: 1.15em;
+    flex-shrink: 0;
+  }
+
   .display-shabbat-zman-label {
     font-size: clamp(1.45rem, 3.2vmin, 2.35rem);
     font-weight: 600;
@@ -1830,6 +1843,84 @@ optgroup {
   }
   .display-shabbat-agenda-tile .display-shabbat-prayer-time:empty {
     display: none;
+  }
+
+  .display-shabbat-periods {
+    display: grid;
+    grid-template-columns: repeat(var(--shabbat-period-cols, 3), minmax(0, 1fr));
+    gap: clamp(0.65rem, 1.8vmin, 1.3rem);
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .display-shabbat-period {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .display-shabbat-period + .display-shabbat-period::before {
+    content: "";
+    position: absolute;
+    inset-block: 10%;
+    inset-inline-start: calc(clamp(0.45rem, 1.2vmin, 0.85rem) * -1);
+    width: 2px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, transparent, rgb(148 163 184 / 0.55), transparent);
+    pointer-events: none;
+  }
+
+  .display-shabbat-period-title {
+    margin: 0 0 clamp(0.4rem, 1.1vmin, 0.75rem);
+    font-size: clamp(1.75rem, 4.2vmin, 2.8rem);
+    font-weight: 800;
+    line-height: 1.15;
+    text-align: center;
+  }
+
+  .display-shabbat-period-list {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: clamp(0.4rem, 1.2vmin, 0.8rem);
+    min-height: 0;
+  }
+
+  .display-shabbat-period-item {
+    display: flex;
+    flex: 0 0 var(--vb-shabbat-tile-h, 6.5rem);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15em;
+    width: 100%;
+    height: var(--vb-shabbat-tile-h, 6.5rem);
+    max-height: var(--vb-shabbat-tile-h, 6.5rem);
+    min-width: 0;
+    padding: clamp(0.55rem, 1.6vmin, 1.1rem) clamp(0.65rem, 1.8vmin, 1.2rem);
+    border-radius: 0.95rem;
+    background: color-mix(in srgb, currentColor 10%, transparent);
+    font-size: clamp(1.7rem, 4vmin, 2.8rem);
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .display-shabbat-period-label {
+    min-width: 0;
+    font-size: 0.55em;
+    font-weight: 700;
+  }
+
+  .display-shabbat-period-time {
+    order: -1;
+    font-size: 1.15em;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   /* מסכי טלוויזיה / רוחב — כותרת מימין, זמנים משמאל, לוח רחב מתחת */
