@@ -176,8 +176,7 @@ export function hebrewYearGematria(isoDate: string): string {
 
 /** שם הרישום: «נצבים-וילך תשפ״ו» או «ראש השנה תשפ״ז». */
 export function aliyahOccasionTitle(isoDate: string): string {
-  const kind = aliyahDayKind(isoDate);
-  const name = stripHebrewNiqqud(parashaOrChagLabel(isoDate, kind))
+  const name = stripHebrewNiqqud(parashaOrChagLabel(isoDate))
     .replace(/^פרשת\s+/, "")
     .replace(/\s+\d{3,4}\s*$/g, "")
     .replace(/־/g, "-")
@@ -223,7 +222,7 @@ export function withCurrentAliyahOccasion(options: AliyahOccasionOption[], isoDa
   );
 }
 
-export function parashaOrChagLabel(isoDate: string, kind: AliyahDayKind) {
+export function parashaOrChagLabel(isoDate: string) {
   const hd = hdateFromIso(isoDate);
   if (!hd) return "";
   const events = getHolidaysOnDate(hd, true) ?? [];

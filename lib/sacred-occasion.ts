@@ -1,5 +1,5 @@
 import { getHolidaysOnDate, HDate, flags } from "@hebcal/core";
-import { aliyahDayKind, parashaOrChagLabel, saturdayOnOrAfter } from "@/lib/aliyah-slots";
+import { parashaOrChagLabel, saturdayOnOrAfter } from "@/lib/aliyah-slots";
 import { parseIsoDate } from "@/lib/hebrew-civil-date";
 
 export const OCCASION_DAY_MAX = 3;
@@ -115,8 +115,7 @@ function cleanOccasionLabel(raw: string): string {
 
 /** שם לתצוגה: פרשת השבוע, או שם החג כשאין קריאה שבועית. */
 export function resolveOccasionLabel(isoDate: string): string {
-  const kind = aliyahDayKind(isoDate);
-  return cleanOccasionLabel(parashaOrChagLabel(isoDate, kind));
+  return cleanOccasionLabel(parashaOrChagLabel(isoDate));
 }
 
 export function applyOccasionDisplayLabel(weeklyParashaFromApi: string | null | undefined, occasionIso: string): string {
