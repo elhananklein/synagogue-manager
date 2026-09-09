@@ -1848,9 +1848,9 @@ optgroup {
   .display-shabbat-day-title {
     margin: 0 0 clamp(0.35rem, 1vmin, 0.65rem);
     text-align: center;
-    font-size: clamp(1.5rem, 3.6vmin, 2.4rem);
+    font-size: clamp(2.2rem, 5.4vmin, 3.6rem);
     font-weight: 800;
-    line-height: 1.2;
+    line-height: 1.15;
   }
 
   .display-shabbat-agenda-days {

@@ -874,9 +874,10 @@
 }
 
 .display.display--veryBold .display-shabbat-day-title {
-  margin: 0 0 0.28em;
+  flex: 0 0 auto;
+  margin: 0 0 clamp(0.25rem, 0.9vmin, 0.5rem);
   color: var(--vb-ink, #152238);
-  font-size: 0.72em;
+  font-size: clamp(2.8rem, 6.4vmin, 5rem);
   font-weight: 800;
   line-height: 1.15;
   text-align: center;

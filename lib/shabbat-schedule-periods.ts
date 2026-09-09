@@ -48,19 +48,19 @@ function labelHint(label: string): LabelHint | null {
   if (/מנחה/.test(text) && /ערב/.test(text)) return "erev";
   if (/שחרית|מוסף|קרבנות|קריאת\s*התורה/.test(text)) return "morning";
   if (/מנחה/.test(text)) return "afternoon";
-  if (/ערבית/.test(text)) return "evening";
+  if (/ערבית|מעריב/.test(text)) return "evening";
   return null;
 }
 
 /** שיוך שורה בודדת בלי הקשר סדר — לבדיקות. בלוח משתמשים ב־group לפי סדר הגבאי. */
 export function shabbatPeriodFromRow(row: ShabbatScheduleRow): ShabbatPeriodId {
   const hint = labelHint(row.label);
-  if (hint === "motzaei") return "afternoon";
-  if (hint === "erev" || hint === "morning" || hint === "afternoon") return hint;
   const band = clockBand(parseClockMinutes(row.time));
-  if (band === "morning") return "morning";
-  if (band === "afternoon") return "afternoon";
+  if (hint === "motzaei") return "afternoon";
+  if (hint === "erev") return "erev";
+  if (hint === "morning" || band === "morning") return "morning";
   if (band === "evening" || hint === "evening") return "erev";
+  if (hint === "afternoon" || band === "afternoon") return "afternoon";
   return "morning";
 }
 
@@ -89,17 +89,18 @@ function periodTitle(id: ShabbatPeriodId, options?: ShabbatPeriodTitleOptions) {
   return weekdayChag ? def.chagTitle : def.title;
 }
 
-function assignPeriod(row: ShabbatScheduleRow, seenAfternoon: boolean): ShabbatPeriodId {
+function assignPeriod(row: ShabbatScheduleRow, seenMorning: boolean, seenAfternoon: boolean): ShabbatPeriodId {
   const hint = labelHint(row.label);
   const band = clockBand(parseClockMinutes(row.time));
 
   if (hint === "motzaei") return "afternoon";
   if (hint === "morning" || band === "morning") return "morning";
+
+  // מנחה/ערבית של ערב החג (אחרי כניסת החג, לפני שחרית) — לא עמודת מנחה של היום.
+  if (!seenMorning) return "erev";
+
   if (hint === "afternoon" || band === "afternoon") return "afternoon";
-
-  const isEvening = hint === "evening" || hint === "erev" || band === "evening";
-  if (isEvening) return seenAfternoon ? "afternoon" : "erev";
-
+  if (hint === "evening" || hint === "erev" || band === "evening") return "afternoon";
   return seenAfternoon ? "afternoon" : "morning";
 }
 
@@ -114,13 +115,15 @@ export function groupShabbatScheduleByPeriod(
     afternoon: []
   };
 
+  let seenMorning = false;
   let seenAfternoon = false;
   let previousPeriod: ShabbatPeriodId | null = null;
   for (const row of rows) {
     const period: ShabbatPeriodId =
       parseClockMinutes(row.time) == null && previousPeriod
         ? previousPeriod
-        : assignPeriod(row, seenAfternoon);
+        : assignPeriod(row, seenMorning, seenAfternoon);
+    if (period === "morning") seenMorning = true;
     if (period === "afternoon") seenAfternoon = true;
     previousPeriod = period;
     buckets[period].push(row);
