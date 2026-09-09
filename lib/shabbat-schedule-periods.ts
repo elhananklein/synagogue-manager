@@ -9,8 +9,8 @@ export type ShabbatPeriodColumn = {
 };
 
 const PERIOD_DEFS: Array<{ id: ShabbatPeriodId; title: string; chagTitle: string }> = [
-  { id: "erev", title: "ערב שבת", chagTitle: "ערב החג" },
-  { id: "morning", title: "ביום השבת", chagTitle: "ביום החג" },
+  { id: "erev", title: "ערב שבת", chagTitle: "ערב חג" },
+  { id: "morning", title: "ביום השבת", chagTitle: "חג - בוקר" },
   { id: "afternoon", title: "מנחה עד מוצ״ש", chagTitle: "מנחה עד מוצאי החג" }
 ];
 
@@ -66,6 +66,8 @@ export function shabbatPeriodFromRow(row: ShabbatScheduleRow): ShabbatPeriodId {
 
 export type ShabbatPeriodTitleOptions = {
   weekdayChag?: boolean;
+  /** כותרות ערב/בוקר של חג — גם כשחל בשבת */
+  isChag?: boolean;
   isLastDay?: boolean;
   isSaturday?: boolean;
 };
@@ -78,6 +80,7 @@ export function shabbatAfternoonColumnTitle(options?: { isLastDay?: boolean; isS
 
 function periodTitle(id: ShabbatPeriodId, options?: ShabbatPeriodTitleOptions) {
   const weekdayChag = Boolean(options?.weekdayChag);
+  const isChag = Boolean(options?.isChag ?? weekdayChag);
   if (id === "afternoon") {
     return shabbatAfternoonColumnTitle({
       isLastDay: options?.isLastDay,
@@ -86,7 +89,7 @@ function periodTitle(id: ShabbatPeriodId, options?: ShabbatPeriodTitleOptions) {
   }
   const def = PERIOD_DEFS.find((item) => item.id === id);
   if (!def) return "";
-  return weekdayChag ? def.chagTitle : def.title;
+  return isChag ? def.chagTitle : def.title;
 }
 
 function assignPeriod(row: ShabbatScheduleRow, seenMorning: boolean, seenAfternoon: boolean): ShabbatPeriodId {

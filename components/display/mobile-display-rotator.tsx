@@ -937,6 +937,7 @@ function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
         key: `day-${day.day}`,
         title: day.title,
         weekdayChag: day.weekdayChag,
+        isChag: day.isChag,
         isLastDay: day.isLastDay,
         isSaturday: day.isSaturday,
         rows: day.items.map((item) => ({ label: item.content, time: item.itemTime ?? "" }))
@@ -947,6 +948,7 @@ function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
             key: "single",
             title: "",
             weekdayChag: Boolean(shabbat.isChag && !shabbat.isShabbatWeekend),
+            isChag: Boolean(shabbat.isChag),
             isLastDay: true,
             isSaturday: Boolean(shabbat.isShabbatWeekend && !shabbat.isChag) || Boolean(shabbat.isShabbatWeekend),
             rows: fallbackRows
@@ -972,6 +974,7 @@ function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
       {dayBoards.map((board) => {
         const periods = groupShabbatScheduleByPeriod(board.rows, {
           weekdayChag: board.weekdayChag,
+          isChag: board.isChag,
           isLastDay: board.isLastDay,
           isSaturday: board.isSaturday
         });

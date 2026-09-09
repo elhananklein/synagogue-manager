@@ -42,7 +42,7 @@ export function prayerDisplayGroupId(row: { label: string; prayerType?: string |
 }
 
 export function prayerDisplayGroupTitle(group: PrayerDisplayGroupId, rows: Array<{ label: string }>): string {
-  if (group === "מנחה" && rows.length > 0 && rows.every((row) => row.label.includes("ערב שבת"))) {
+  if (group === "מנחה" && rows.length > 0 && rows.every((row) => /ערב שבת|ערב חג/.test(row.label))) {
     return rows[0]!.label;
   }
   return PRAYER_DISPLAY_GROUP_TITLES[group];

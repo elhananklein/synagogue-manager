@@ -40,8 +40,7 @@ export function PrayerEditor({
   const currentOffset = setting.offsetMinutes ?? 0;
   const direction: "before" | "after" = currentOffset < 0 ? "before" : "after";
   const absoluteMinutes = Math.abs(currentOffset);
-  const prayerLabel =
-    setting.prayerType === "מנחה ערב שבת" ? "מנחה ערב שבת וקבלת שבת" : setting.prayerType;
+  const prayerLabel = setting.prayerType;
 
   return (
     <div
@@ -83,7 +82,7 @@ export function PrayerEditor({
             <option value="">בחרו תפילה…</option>
             {prayerOptions.map((option) => (
               <option key={option} value={option}>
-                {option === "מנחה ערב שבת" ? "מנחה ערב שבת וקבלת שבת" : option}
+                {option}
               </option>
             ))}
           </select>

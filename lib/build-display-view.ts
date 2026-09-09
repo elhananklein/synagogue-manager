@@ -11,7 +11,7 @@ import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule, settingsNeedSund
 import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
 import { filterDailyLearningByKeys } from "@/lib/daily-learning-catalog";
 import { hebrewWeekdayLong, resolveViewIsoDate } from "@/lib/view-date";
-import { isChagOnDate, isOccasionScreenDay, preferredOccasionDayIndex, resolveOccasionCluster, resolveOccasionLabel } from "@/lib/sacred-occasion";
+import { isChagOnDate, isErevShabbatonDate, isOccasionScreenDay, preferredOccasionDayIndex, resolveOccasionCluster, resolveOccasionLabel } from "@/lib/sacred-occasion";
 
 export type DisplayViewParams = {
   synagogueId?: string | string[];
@@ -45,6 +45,7 @@ export type DisplayShabbatAgendaDay = {
   iso: string;
   title: string;
   weekdayChag: boolean;
+  isChag: boolean;
   isSaturday: boolean;
   isLastDay: boolean;
   items: Array<{ itemTime: string | null; content: string }>;
@@ -210,7 +211,11 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     isShabbatToday,
     snapshot.parashaCatalogKey,
     zmanimByIso(todaySundayIso),
-    displayConfig.parashaCatalog
+    displayConfig.parashaCatalog,
+    {
+      treatAsErev: isErevShabbatonDate(todayIsoDate),
+      isChag: isChagOnDate(tomorrowIsoDate)
+    }
   );
   const tomorrowPrayerSchedule = buildPrayerScheduleForDay(
     displayConfig.prayerSettings,
@@ -219,7 +224,11 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     tomorrowJsDay === 6,
     tomorrowSnapshot.parashaCatalogKey,
     zmanimByIso(tomorrowSundayIso),
-    displayConfig.parashaCatalog
+    displayConfig.parashaCatalog,
+    {
+      treatAsErev: isErevShabbatonDate(tomorrowIsoDate),
+      isChag: isChagOnDate(addDaysIsoDate(tomorrowIsoDate, 1))
+    }
   );
 
   const forceYaalehRaw = singleQueryParam(params.forceYaaleh);
@@ -341,6 +350,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
         iso: meta?.iso ?? "",
         title: meta?.title ?? "",
         weekdayChag: meta?.weekdayChag ?? false,
+        isChag: meta?.isChag ?? false,
         isSaturday: meta?.isSaturday ?? false,
         isLastDay: meta ? meta.isLastDay : day === maxFilled,
         items: dayItems.map((item) => ({ itemTime: item.itemTime, content: item.content }))
@@ -360,7 +370,8 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
           ? buildShabbatPrayerSchedule(
               displayConfig.prayerSettings,
               fridaySnapshot.zmanimSourceTimes,
-              saturdaySnapshot.zmanimSourceTimes
+              saturdaySnapshot.zmanimSourceTimes,
+              firstDayIsChag
             )
           : [],
       mevarchimText: weekMevarchimText,

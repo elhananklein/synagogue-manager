@@ -39,6 +39,7 @@ function dayMetaFallback(day: OccasionDayIndex): OccasionAgendaDayMeta {
     weekdayLabel: "",
     hebrewDate: "",
     weekdayChag: false,
+    isChag: false,
     isSaturday: false,
     isLastDay: day === 1
   };

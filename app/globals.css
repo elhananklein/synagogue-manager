@@ -1858,9 +1858,115 @@ optgroup {
     flex: 1 1 auto;
     min-height: 0;
     flex-direction: column;
+    position: relative;
   }
   .display-shabbat-agenda-days .display-shabbat-periods {
     flex: 1 1 auto;
+  }
+
+  .display-shabbat-day-fade-layer {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .display-shabbat-day-fade--cross {
+    overflow: hidden;
+  }
+
+  .display-shabbat-day-fade--cross .display-shabbat-day-fade-layer {
+    position: absolute;
+    inset: 0;
+  }
+
+  .display-shabbat-day-fade-from {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    overflow: hidden;
+    animation: display-shabbat-day-fade-out 2.8s ease forwards;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+
+  .display-shabbat-checker-svg {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
+  .display-shabbat-checker-mask {
+    fill: #fff;
+    animation: display-shabbat-checker-mask-out 1.35s ease forwards;
+  }
+
+  @keyframes display-shabbat-day-fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes display-shabbat-checker-mask-out {
+    from {
+      fill-opacity: 1;
+    }
+    to {
+      fill-opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .display-shabbat-day-fade-from,
+    .display-shabbat-checker-mask {
+      animation: none;
+    }
+  }
+
+  .display-shabbat-day-seq-layer {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .display-shabbat-day-seq--out {
+    animation: display-shabbat-day-seq-out 0.8s ease forwards;
+  }
+
+  .display-shabbat-day-seq--in {
+    animation: display-shabbat-day-seq-in 0.8s ease forwards;
+  }
+
+  @keyframes display-shabbat-day-seq-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes display-shabbat-day-seq-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .display-shabbat-day-seq--out,
+    .display-shabbat-day-seq--in {
+      animation: none;
+    }
   }
 
   .display-shabbat-periods {

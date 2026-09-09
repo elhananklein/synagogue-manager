@@ -12,6 +12,8 @@ export type OccasionAgendaDayMeta = {
   weekdayLabel: string;
   hebrewDate: string;
   weekdayChag: boolean;
+  /** יום טוב, גם כשחל בשבת */
+  isChag: boolean;
   isSaturday: boolean;
   isLastDay: boolean;
 };
@@ -195,6 +197,7 @@ export function resolveOccasionCluster(fromIso: string): OccasionCluster {
       weekdayLabel: weekdayLong(iso),
       hebrewDate: hebrewDateLabel(iso),
       weekdayChag: Boolean(isChag && !isSaturday),
+      isChag,
       isSaturday,
       isLastDay: day === total
     };

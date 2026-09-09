@@ -276,17 +276,19 @@ function AutoFit({
 function ShabbatPeriodBoard({
   rows,
   weekdayChag,
+  isChag,
   isLastDay,
   isSaturday,
   scaleToViewport
 }: {
   rows: ShabbatScheduleRow[];
   weekdayChag: boolean;
+  isChag?: boolean;
   isLastDay?: boolean;
   isSaturday?: boolean;
   scaleToViewport: boolean;
 }) {
-  const columns = groupShabbatScheduleByPeriod(rows, { weekdayChag, isLastDay, isSaturday });
+  const columns = groupShabbatScheduleByPeriod(rows, { weekdayChag, isChag, isLastDay, isSaturday });
   const ref = useRef<HTMLDivElement>(null);
   const maxRows = Math.max(1, ...columns.map((column) => column.rows.length));
 
@@ -316,7 +318,7 @@ function ShabbatPeriodBoard({
       cancelAnimationFrame(frame);
       ro.disconnect();
     };
-  }, [scaleToViewport, maxRows, columns.length, weekdayChag, isLastDay, isSaturday]);
+  }, [scaleToViewport, maxRows, columns.length, weekdayChag, isChag, isLastDay, isSaturday]);
 
   if (!columns.length) return null;
 
@@ -354,22 +356,54 @@ type WallShabbatAgendaDay = {
   iso: string;
   title: string;
   weekdayChag: boolean;
+  isChag: boolean;
   isSaturday: boolean;
   isLastDay: boolean;
   items: Array<{ itemTime: string | null; content: string }>;
 };
+
+const SHABBAT_DAY_HOLD_MS = 8000;
+const SHABBAT_DAY_FADE_MS = 800;
+type ShabbatDaySeqPhase = "hold" | "out" | "in";
+
+function ShabbatDayPanel({
+  day,
+  isVeryBold
+}: {
+  day: WallShabbatAgendaDay;
+  isVeryBold: boolean;
+}) {
+  return (
+    <>
+      {day.title ? <p className="display-shabbat-day-title">{day.title}</p> : null}
+      <ShabbatPeriodBoard
+        scaleToViewport={isVeryBold}
+        weekdayChag={day.weekdayChag}
+        isChag={day.isChag}
+        isLastDay={day.isLastDay}
+        isSaturday={day.isSaturday}
+        rows={day.items.map((row) => ({
+          label: row.content,
+          time: row.itemTime ?? ""
+        }))}
+      />
+    </>
+  );
+}
 
 function ShabbatAgendaBoards({
   days,
   preferredDay,
   fallbackRows,
   fallbackWeekdayChag,
+  fallbackIsChag,
   isVeryBold
 }: {
   days: WallShabbatAgendaDay[];
   preferredDay: 1 | 2 | 3;
   fallbackRows: ShabbatScheduleRow[];
   fallbackWeekdayChag: boolean;
+  fallbackIsChag: boolean;
   isVeryBold: boolean;
 }) {
   const filled = days.filter((day) => day.items.length);
@@ -379,24 +413,59 @@ function ShabbatAgendaBoards({
     filled.findIndex((day) => day.day === preferredDay)
   );
   const [index, setIndex] = useState(preferredIndex);
+  const [phase, setPhase] = useState<ShabbatDaySeqPhase>("hold");
 
   useEffect(() => {
+    setPhase("hold");
     setIndex(preferredIndex);
   }, [preferredIndex, filledKey]);
 
   useEffect(() => {
     if (filled.length <= 1) return;
-    const timer = window.setInterval(() => {
-      setIndex((current) => (current + 1) % filled.length);
-    }, 8000);
-    return () => window.clearInterval(timer);
-  }, [filled.length]);
+    const reduceMotion =
+      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let cancelled = false;
+    let timer = 0;
+
+    const later = (fn: () => void, ms: number) => {
+      timer = window.setTimeout(fn, ms);
+    };
+
+    const loop = () => {
+      later(() => {
+        if (cancelled) return;
+        if (reduceMotion) {
+          setIndex((current) => (current + 1) % filled.length);
+          loop();
+          return;
+        }
+        setPhase("out");
+        later(() => {
+          if (cancelled) return;
+          setIndex((current) => (current + 1) % filled.length);
+          setPhase("in");
+          later(() => {
+            if (cancelled) return;
+            setPhase("hold");
+            loop();
+          }, SHABBAT_DAY_FADE_MS);
+        }, SHABBAT_DAY_FADE_MS);
+      }, SHABBAT_DAY_HOLD_MS);
+    };
+
+    loop();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [filled.length, filledKey]);
 
   if (!filled.length) {
     return (
       <ShabbatPeriodBoard
         scaleToViewport={isVeryBold}
         weekdayChag={fallbackWeekdayChag}
+        isChag={fallbackIsChag}
         isLastDay
         isSaturday={!fallbackWeekdayChag}
         rows={fallbackRows}
@@ -404,20 +473,20 @@ function ShabbatAgendaBoards({
     );
   }
 
-  const active = filled[Math.min(index, filled.length - 1)]!;
+  const current = filled[Math.min(index, filled.length - 1)]!;
+
   return (
     <div className="display-shabbat-agenda-days">
-      {active.title ? <p className="display-shabbat-day-title">{active.title}</p> : null}
-      <ShabbatPeriodBoard
-        scaleToViewport={isVeryBold}
-        weekdayChag={active.weekdayChag}
-        isLastDay={active.isLastDay}
-        isSaturday={active.isSaturday}
-        rows={active.items.map((row) => ({
-          label: row.content,
-          time: row.itemTime ?? ""
-        }))}
-      />
+      <div
+        key={current.day}
+        className={cn(
+          "display-shabbat-day-seq-layer",
+          phase === "out" && "display-shabbat-day-seq--out",
+          phase === "in" && "display-shabbat-day-seq--in"
+        )}
+      >
+        <ShabbatDayPanel day={current} isVeryBold={isVeryBold} />
+      </div>
     </div>
   );
 }
@@ -1143,7 +1212,6 @@ export function DisplayRotator({
           <Card className="display-card display-daily-learning-card">
             <CardHeader className="display-daily-learning-header">
               <CardTitle className="display-daily-learning-title">לימוד יומי</CardTitle>
-              <p className="display-daily-learning-note">לפי לוח הלימוד היומי (מקור הנתונים כמו דף יומי במסך הראשי)</p>
             </CardHeader>
             <CardContent className="display-daily-learning-body">
               {dailyLearning.length ? (
@@ -1549,6 +1617,7 @@ export function DisplayRotator({
                       }
                       days={shabbat.agendaDays ?? []}
                       fallbackWeekdayChag={Boolean(shabbat.isChag && !shabbat.isShabbatWeekend)}
+                      fallbackIsChag={Boolean(shabbat.isChag)}
                       fallbackRows={
                         shabbat.agenda?.length
                           ? shabbat.agenda.map((row) => ({
