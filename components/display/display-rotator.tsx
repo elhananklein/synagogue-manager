@@ -279,14 +279,14 @@ function ShabbatPeriodBoard({
   isChag,
   isLastDay,
   isSaturday,
-  scaleToViewport
+  scaleFont
 }: {
   rows: ShabbatScheduleRow[];
   weekdayChag: boolean;
   isChag?: boolean;
   isLastDay?: boolean;
   isSaturday?: boolean;
-  scaleToViewport: boolean;
+  scaleFont?: boolean;
 }) {
   const columns = groupShabbatScheduleByPeriod(rows, { weekdayChag, isChag, isLastDay, isSaturday });
   const ref = useRef<HTMLDivElement>(null);
@@ -295,30 +295,48 @@ function ShabbatPeriodBoard({
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    let lastTileH = 0;
+    let lastFontPx = 0;
+    let frame = 0;
+    let extraPasses = 0;
 
-    const apply = () => {
+    const apply = (fromObserver: boolean) => {
       const lists = [...el.querySelectorAll<HTMLElement>(".display-shabbat-period-list")];
       const listH = Math.max(0, ...lists.map((list) => list.clientHeight));
       if (!listH) return;
       const sample = lists[0];
       const gap = sample ? Number.parseFloat(getComputedStyle(sample).rowGap || getComputedStyle(sample).gap) || 10 : 10;
       const tileH = Math.max(72, Math.floor((listH - gap * Math.max(0, maxRows - 1)) / maxRows));
+      const fontPx = scaleFont ? Math.round(Math.min(110, Math.max(36, tileH * 0.32))) : 0;
+      const tileChanged = Math.abs(tileH - lastTileH) >= 2;
+      const fontChanged = Boolean(scaleFont && Math.abs(fontPx - lastFontPx) >= 1);
+      if (!tileChanged && !fontChanged) return;
+      lastTileH = tileH;
+      lastFontPx = fontPx;
       el.style.setProperty("--vb-shabbat-tile-h", `${tileH}px`);
-      if (scaleToViewport) {
-        el.style.setProperty("--vb-shabbat-period-font", `${Math.round(Math.min(110, Math.max(36, tileH * 0.32)))}px`);
+      if (scaleFont) el.style.setProperty("--vb-shabbat-period-font", `${fontPx}px`);
+      if (fromObserver) extraPasses = 0;
+      if (fontChanged && extraPasses < 2) {
+        extraPasses += 1;
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => apply(false));
       }
     };
 
-    apply();
-    const frame = requestAnimationFrame(apply);
-    const ro = new ResizeObserver(apply);
-    ro.observe(el);
-    el.querySelectorAll<HTMLElement>(".display-shabbat-period-list").forEach((list) => ro.observe(list));
+    apply(true);
+    frame = requestAnimationFrame(() => apply(false));
+    const box = el.parentElement ?? el;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      extraPasses = 0;
+      frame = requestAnimationFrame(() => apply(true));
+    });
+    ro.observe(box);
     return () => {
       cancelAnimationFrame(frame);
       ro.disconnect();
     };
-  }, [scaleToViewport, maxRows, columns.length, weekdayChag, isChag, isLastDay, isSaturday]);
+  }, [maxRows, columns.length, scaleFont]);
 
   if (!columns.length) return null;
 
@@ -366,18 +384,12 @@ const SHABBAT_DAY_HOLD_MS = 8000;
 const SHABBAT_DAY_FADE_MS = 800;
 type ShabbatDaySeqPhase = "hold" | "out" | "in";
 
-function ShabbatDayPanel({
-  day,
-  isVeryBold
-}: {
-  day: WallShabbatAgendaDay;
-  isVeryBold: boolean;
-}) {
+function ShabbatDayPanel({ day, scaleFont }: { day: WallShabbatAgendaDay; scaleFont?: boolean }) {
   return (
     <>
       {day.title ? <p className="display-shabbat-day-title">{day.title}</p> : null}
       <ShabbatPeriodBoard
-        scaleToViewport={isVeryBold}
+        scaleFont={scaleFont}
         weekdayChag={day.weekdayChag}
         isChag={day.isChag}
         isLastDay={day.isLastDay}
@@ -397,14 +409,14 @@ function ShabbatAgendaBoards({
   fallbackRows,
   fallbackWeekdayChag,
   fallbackIsChag,
-  isVeryBold
+  scaleFont
 }: {
   days: WallShabbatAgendaDay[];
   preferredDay: 1 | 2 | 3;
   fallbackRows: ShabbatScheduleRow[];
   fallbackWeekdayChag: boolean;
   fallbackIsChag: boolean;
-  isVeryBold: boolean;
+  scaleFont?: boolean;
 }) {
   const filled = days.filter((day) => day.items.length);
   const filledKey = filled.map((day) => day.day).join(",");
@@ -463,7 +475,7 @@ function ShabbatAgendaBoards({
   if (!filled.length) {
     return (
       <ShabbatPeriodBoard
-        scaleToViewport={isVeryBold}
+        scaleFont={scaleFont}
         weekdayChag={fallbackWeekdayChag}
         isChag={fallbackIsChag}
         isLastDay
@@ -473,20 +485,25 @@ function ShabbatAgendaBoards({
     );
   }
 
-  const current = filled[Math.min(index, filled.length - 1)]!;
-
   return (
-    <div className="display-shabbat-agenda-days">
-      <div
-        key={current.day}
-        className={cn(
-          "display-shabbat-day-seq-layer",
-          phase === "out" && "display-shabbat-day-seq--out",
-          phase === "in" && "display-shabbat-day-seq--in"
-        )}
-      >
-        <ShabbatDayPanel day={current} isVeryBold={isVeryBold} />
-      </div>
+    <div className="display-shabbat-agenda-days display-shabbat-agenda-days--seq">
+      {filled.map((day, dayIndex) => {
+        const active = dayIndex === Math.min(index, filled.length - 1);
+        return (
+          <div
+            key={day.day}
+            className={cn(
+              "display-shabbat-day-seq-pane",
+              active && phase === "hold" && "display-shabbat-day-seq-pane--show",
+              active && phase === "out" && "display-shabbat-day-seq-pane--show",
+              active && phase === "out" && "display-shabbat-day-seq--out",
+              active && phase === "in" && "display-shabbat-day-seq--in"
+            )}
+          >
+            <ShabbatDayPanel day={day} scaleFont={scaleFont} />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1607,7 +1624,7 @@ export function DisplayRotator({
                     shabbat.agenda?.length ||
                     shabbat.prayers?.length) ? (
                     <ShabbatAgendaBoards
-                      isVeryBold={isVeryBold}
+                      scaleFont={isVeryBold}
                       preferredDay={
                         viewDate && shabbat.erevIso && viewDate === shabbat.erevIso
                           ? 1

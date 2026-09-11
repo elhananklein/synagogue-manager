@@ -964,6 +964,28 @@
   animation: display-shabbat-day-seq-in 0.8s ease forwards;
 }
 
+.display.display--veryBold .display-shabbat-agenda-days--seq {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.display.display--veryBold .display-shabbat-day-seq-pane {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.display.display--veryBold .display-shabbat-day-seq-pane--show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 @keyframes display-shabbat-day-seq-out {
   from {
     opacity: 1;
