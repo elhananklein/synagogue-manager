@@ -1,5 +1,8 @@
 /** תוספות עונתיות לאריחי המסך הראשי — מחוץ לגשם/טל, ברכה, עומר ויעלה ויבוא. */
 
+export const FAST_START_LABEL = "תחילת הצום";
+export const FAST_END_LABEL = "סוף הצום";
+
 function plainEvent(raw: string) {
   return raw.replace(/[\u0591-\u05C7]/g, "").replace(/\u00A0/g, " ").normalize("NFC").trim();
 }
@@ -135,6 +138,24 @@ export function publicFastKind(events: string[]): "minor" | "major" | null {
   if (someEvent(events, isTishaBAvEvent)) return "major";
   if (someEvent(events, isFastDayEvent)) return "minor";
   return null;
+}
+
+/** שם הצום לתצוגה. null אם אין צום ציבורי היום. */
+export function resolvePublicFastName(events: string[]): string | null {
+  if (!publicFastKind(events)) return null;
+  for (const event of events) {
+    const plain = plainEvent(event);
+    if (isErev(event) || isYomKippurEvent(event, plain)) continue;
+    if (isTishaBAvEvent(event, plain)) return "תשעה באב";
+    if (/Tzom Gedaliah|Fast of Gedaliah/i.test(event) || /צום גדליה/.test(plain)) return "צום גדליה";
+    if (/Asara B'?Tevet|Tenth of Tevet/i.test(event) || /עשרה בטבת/.test(plain)) return "עשרה בטבת";
+    if (/Ta'?anit Esther|Fast of Esther/i.test(event) || /תענית אסתר/.test(plain)) return "תענית אסתר";
+    if (/Tzom Tammuz|Seventeenth of Tammuz|17th of Tammuz/i.test(event) || /צום י[״"']?ז/.test(plain) || /שבעה עשר בתמוז/.test(plain)) {
+      return "צום י״ז בתמוז";
+    }
+    if (/Ta'?anit Bechorot|Fast of the Firstborn/i.test(event) || /תענית בכורות/.test(plain)) return "תענית בכורות";
+  }
+  return "צום";
 }
 
 function resolveHallel(events: string[]): string | null {

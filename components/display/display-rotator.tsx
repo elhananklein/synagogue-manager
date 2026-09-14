@@ -13,14 +13,16 @@ import type { BulletinItem } from "@/lib/bulletin-board";
 import type { DisplayPalette, DisplayStyle } from "@/lib/display-theme";
 import { DEFAULT_DISPLAY_FONT, type DisplayFont } from "@/lib/display-font";
 import { pickDisplayLiveFields, useDisplayLiveRefresh, useHalachicDayLiveRefresh } from "@/lib/display-live-refresh";
-import { groupPrayersForDisplay, type PrayerDisplayGroupId } from "@/lib/prayer-display-groups";
+import { groupPrayersForDisplay, weekdayMinchaClockTimes, type PrayerDisplayGroupId } from "@/lib/prayer-display-groups";
 import { groupShabbatScheduleByPeriod, type ShabbatScheduleRow } from "@/lib/shabbat-schedule-periods";
+import { FAST_END_LABEL, FAST_START_LABEL } from "@/lib/liturgical-additions";
 
 type ScreenKey =
   | "main"
   | "mainInfo"
   | "clock"
   | "omer"
+  | "fast"
   | "halacha"
   | "dailyLearning"
   | "prayerTimes"
@@ -62,6 +64,9 @@ type Snapshot = {
   omerShortText?: string | null;
   amidahAdditionText: string | null;
   liturgicalTiles?: string[];
+  fastName?: string | null;
+  fastStart?: string | null;
+  fastEnd?: string | null;
   haftarah?: { name: string | null; source: string } | null;
 };
 
@@ -643,9 +648,11 @@ export function DisplayRotator({
       if (!s.enabled) return false;
       if (s.screenKey === "shabbat" && !shabbat) return false;
       if (s.screenKey === "omer" && !snapshot.omerText) return false;
+      if (s.screenKey === "fast" && !snapshot.fastName) return false;
+      if (s.screenKey === "bulletin" && bulletinItems.length === 0) return false;
       return true;
     });
-  }, [screens, snapshot.omerText, shabbat, style]);
+  }, [screens, snapshot.omerText, snapshot.fastName, shabbat, bulletinItems.length, style]);
   const [index, setIndex] = useState(0);
   const [halachaSeifIndex, setHalachaSeifIndex] = useState(0);
   const timesScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1192,6 +1199,15 @@ export function DisplayRotator({
           >
             <p className="display-omer-line">{snapshot.omerText}</p>
           </section>
+        ) : null}
+
+        {currentScreen === "fast" ? (
+          <FastDayScreen
+            name={snapshot.fastName}
+            fastStart={snapshot.fastStart}
+            fastEnd={snapshot.fastEnd}
+            minchaTimes={weekdayMinchaClockTimes(prayerSchedule)}
+          />
         ) : null}
 
         {currentScreen === "halacha" ? (
@@ -1757,7 +1773,6 @@ function PrimaryInfoStack({
           ))}
         </div>
       )}
-
       {isWoodSilverRevolution ? (
         <div className="display-ws-daf-shell">
           <Card className="display-card display-daf-card display-ws-daf-card-inner">
@@ -1778,6 +1793,73 @@ function PrimaryInfoStack({
         </Card>
       )}
     </>
+  );
+}
+
+function FastBoundsCards({
+  fastStart,
+  fastEnd
+}: {
+  fastStart?: string | null;
+  fastEnd?: string | null;
+}) {
+  if (!fastStart && !fastEnd) return null;
+  const single = Boolean(fastStart) !== Boolean(fastEnd);
+  return (
+    <div className="display-fast-bounds">
+      {fastStart ? (
+        <Card className={cn("display-card display-fast-bound-card", single && "display-fast-bound-card--single")}>
+          <CardContent className="display-fast-bound-content !p-0">
+            <p className="display-fast-bound-label">{FAST_START_LABEL}</p>
+            <p className="display-fast-bound-time">{fastStart}</p>
+          </CardContent>
+        </Card>
+      ) : null}
+      {fastEnd ? (
+        <Card className={cn("display-card display-fast-bound-card", single && "display-fast-bound-card--single")}>
+          <CardContent className="display-fast-bound-content !p-0">
+            <p className="display-fast-bound-label">{FAST_END_LABEL}</p>
+            <p className="display-fast-bound-time">{fastEnd}</p>
+          </CardContent>
+        </Card>
+      ) : null}
+    </div>
+  );
+}
+
+function FastDayScreen({
+  name,
+  fastStart,
+  fastEnd,
+  minchaTimes
+}: {
+  name?: string | null;
+  fastStart?: string | null;
+  fastEnd?: string | null;
+  minchaTimes: string[];
+}) {
+  const times = [...new Set(minchaTimes.filter(Boolean))];
+  return (
+    <section className="display-card display-fast-screen">
+      <p className="display-fast-screen-title">{name || "צום"}</p>
+      <FastBoundsCards fastStart={fastStart} fastEnd={fastEnd} />
+      <Card className="display-card display-fast-screen-mincha">
+        <CardContent className="display-fast-screen-mincha-content !p-0">
+          <p className="display-fast-screen-mincha-label">תפילת מנחה</p>
+          {times.length ? (
+            <div className="display-fast-screen-mincha-times">
+              {times.map((time) => (
+                <p key={time} className="display-fast-screen-mincha-time">
+                  {time}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className="display-fast-screen-mincha-empty">אין שעה בלוח</p>
+          )}
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 

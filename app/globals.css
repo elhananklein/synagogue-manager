@@ -383,6 +383,27 @@ optgroup {
     min-height: 0;
     overflow: hidden;
   }
+  .display-main-primary-stack .display-fast-bounds {
+    flex: 0.85 1 0;
+    min-height: 0;
+    width: 100%;
+  }
+  .display-main-primary-stack .display-fast-bound-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+  .display-main-primary-stack .display-fast-bound-content {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    height: 100%;
+    text-align: center;
+  }
   .display-main-primary-stack .display-main-additions {
     flex: 1 1 0;
     min-height: 0;
@@ -482,6 +503,12 @@ optgroup {
     font-size: clamp(1.75rem, 3.9vmin, 3.25rem);
     text-align: center;
   }
+  .display-main-grid .display-main-primary-stack .display-fast-bound-label {
+    font-size: clamp(1.15rem, 2.5vmin, 1.85rem);
+  }
+  .display-main-grid .display-main-primary-stack .display-fast-bound-time {
+    font-size: clamp(2.2rem, 5.2vmin, 3.6rem);
+  }
 
   .display-parasha {
     font-size: 2.25rem;
@@ -555,6 +582,123 @@ optgroup {
   .display-main-additions--many {
     gap: 0.55rem;
     grid-auto-rows: minmax(2.7rem, 1fr);
+  }
+
+  .display-fast-bounds {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .display-fast-bound-card--single {
+    grid-column: 1 / -1;
+  }
+
+  .display-fast-bound-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2em;
+    min-height: clamp(4.25rem, 8.5vh, 7.5rem);
+    padding: clamp(0.55rem, 1.4vh, 1rem) !important;
+    text-align: center;
+  }
+
+  .display-fast-bound-label {
+    font-size: clamp(1.05rem, 2.4vmin, 1.7rem);
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .display-fast-bound-time {
+    font-size: clamp(2.1rem, 5vmin, 3.4rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    white-space: nowrap;
+    direction: ltr;
+  }
+
+  .display-fast-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1.1rem, 2.8vh, 2.2rem);
+    width: 100%;
+    min-height: 0;
+    flex: 1;
+    padding: clamp(1.4rem, 3.6vh, 3.2rem) clamp(1.4rem, 4vw, 3.6rem);
+    text-align: center;
+  }
+
+  .display-screen-stage > .display-fast-screen {
+    justify-content: center;
+    align-items: center;
+  }
+
+  .display-screen-stage > .display-fast-screen > :last-child {
+    flex: none;
+    width: min(100%, 52rem);
+  }
+
+  .display-fast-screen-title {
+    margin: 0;
+    font-size: clamp(3.2rem, 8vmin, 6.4rem);
+    font-weight: 800;
+    line-height: 1.12;
+  }
+
+  .display-fast-screen .display-fast-bounds {
+    width: min(100%, 52rem);
+  }
+
+  .display-fast-screen-mincha {
+    width: min(100%, 52rem);
+  }
+
+  .display-fast-screen-mincha-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25em;
+    min-height: clamp(6.5rem, 16vh, 11rem);
+    padding: clamp(0.8rem, 2vh, 1.4rem) !important;
+    text-align: center;
+  }
+
+  .display-fast-screen-mincha-label {
+    margin: 0;
+    font-size: clamp(1.35rem, 3vmin, 2.15rem);
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .display-fast-screen-mincha-times {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6em 1.4em;
+  }
+
+  .display-fast-screen-mincha-time {
+    margin: 0;
+    font-size: clamp(3.4rem, 9vmin, 6.8rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    white-space: nowrap;
+    direction: ltr;
+  }
+
+  .display-fast-screen-mincha-empty {
+    margin: 0;
+    font-size: clamp(1.2rem, 2.6vmin, 1.9rem);
+    font-weight: 700;
+    opacity: 0.85;
   }
 
   .display-daf-yomi {
@@ -1496,6 +1640,29 @@ optgroup {
     flex: 0 0 auto;
     min-height: min-content;
   }
+  .display-info-stack .display-fast-bounds {
+    flex: 0.85 1 0;
+    min-height: 0;
+    gap: clamp(0.45rem, 1vh, 0.75rem);
+  }
+  .display-info-stack .display-fast-bound-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .display-info-stack .display-fast-bound-content {
+    min-height: clamp(3.4rem, 8vh, 6rem);
+    padding: 0.35rem 0.55rem !important;
+  }
+  .display-info-stack .display-fast-bound-label {
+    font-size: clamp(1rem, 2.2vmin, 1.55rem);
+  }
+  .display-info-stack .display-fast-bound-time {
+    font-size: clamp(1.7rem, 3.8vmin, 2.8rem);
+  }
   .display-info-stack .display-main-additions .display-card {
     display: flex;
     flex-direction: column;
@@ -2181,6 +2348,20 @@ optgroup {
   .display--modern .display-daf-yomi {
     color: #f1f5f9;
   }
+  .display--modern .display-fast-bound-label {
+    color: #f1f5f9;
+  }
+  .display--modern .display-fast-bound-time {
+    color: #fde047;
+  }
+  .display--modern .display-fast-screen-title,
+  .display--modern .display-fast-screen-mincha-label,
+  .display--modern .display-fast-screen-mincha-empty {
+    color: #f1f5f9;
+  }
+  .display--modern .display-fast-screen-mincha-time {
+    color: #fde047;
+  }
   .display--modern .display-screen-dots,
   .display--modern .display-gregorian-date,
   .display--modern .display-date-gregorian,
@@ -2472,6 +2653,24 @@ optgroup {
   .display--woodSilver .display-accent {
     color: #9a3412;
     font-weight: 900;
+  }
+  .display--woodSilver .display-fast-bound-label {
+    color: #1c150f;
+    text-shadow: none;
+  }
+  .display--woodSilver .display-fast-bound-time {
+    color: #9a3412;
+    text-shadow: none;
+  }
+  .display--woodSilver .display-fast-screen-title,
+  .display--woodSilver .display-fast-screen-mincha-label,
+  .display--woodSilver .display-fast-screen-mincha-empty {
+    color: #1c150f;
+    text-shadow: none;
+  }
+  .display--woodSilver .display-fast-screen-mincha-time {
+    color: #9a3412;
+    text-shadow: none;
   }
   .display--woodSilver .display-gregorian-date,
   .display--woodSilver .display-date-gregorian,
@@ -2899,6 +3098,26 @@ optgroup {
     color: #ffffff;
     text-shadow: 0 2px 6px rgb(0 0 0 / 0.65);
   }
+  .display--classic .display-fast-bound-label {
+    color: #ffffff;
+    text-shadow: 0 2px 6px rgb(0 0 0 / 0.65);
+    -webkit-text-stroke: 0;
+  }
+  .display--classic .display-fast-bound-time {
+    color: #fde047;
+    text-shadow: 0 2px 6px rgb(0 0 0 / 0.65);
+    -webkit-text-stroke: 0;
+  }
+  .display--classic .display-fast-screen-title,
+  .display--classic .display-fast-screen-mincha-label,
+  .display--classic .display-fast-screen-mincha-empty {
+    color: #ffffff;
+    text-shadow: 0 2px 6px rgb(0 0 0 / 0.65);
+  }
+  .display--classic .display-fast-screen-mincha-time {
+    color: #fde047;
+    text-shadow: 0 2px 6px rgb(0 0 0 / 0.65);
+  }
   .display--classic .display-times-title {
     color: #fef08a;
     font-weight: 900;
@@ -3179,6 +3398,18 @@ optgroup {
   .display--royalBlue .display-halacha-intro,
   .display--royalBlue .display-daily-learning-name,
   .display--royalBlue .display-daily-learning-detail {
+    color: #241708;
+    text-shadow: none;
+  }
+  .display--royalBlue .display-fast-bound-label,
+  .display--royalBlue .display-fast-bound-time {
+    color: #241708;
+    text-shadow: none;
+  }
+  .display--royalBlue .display-fast-screen-title,
+  .display--royalBlue .display-fast-screen-mincha-label,
+  .display--royalBlue .display-fast-screen-mincha-time,
+  .display--royalBlue .display-fast-screen-mincha-empty {
     color: #241708;
     text-shadow: none;
   }

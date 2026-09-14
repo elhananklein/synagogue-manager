@@ -34,6 +34,7 @@ const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "mainInfo", label: "מידע מרכזי (מוגדל)" },
   { key: "clock", label: "שעון" },
   { key: "omer", label: "ספירת העומר" },
+  { key: "fast", label: "צום" },
   { key: "halacha", label: "הלכה יומית" },
   { key: "dailyLearning", label: "לימוד יומי" },
   { key: "prayerTimes", label: "זמני תפילות" },

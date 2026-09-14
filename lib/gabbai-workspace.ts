@@ -114,8 +114,9 @@ export function createDefaultMinyan(): GabbaiMinyan {
       { screenKey: "main", sortOrder: 1, durationSeconds: 20, enabled: true },
       { screenKey: "clock", sortOrder: 2, durationSeconds: 15, enabled: true },
       { screenKey: "omer", sortOrder: 3, durationSeconds: 12, enabled: true },
-      { screenKey: "halacha", sortOrder: 4, durationSeconds: 18, enabled: true },
-      { screenKey: "dailyLearning", sortOrder: 5, durationSeconds: 22, enabled: false }
+      { screenKey: "fast", sortOrder: 4, durationSeconds: 16, enabled: true },
+      { screenKey: "halacha", sortOrder: 5, durationSeconds: 18, enabled: true },
+      { screenKey: "dailyLearning", sortOrder: 6, durationSeconds: 22, enabled: false }
     ],
     shabbatAgendaItems: [],
     parashaCatalog: []

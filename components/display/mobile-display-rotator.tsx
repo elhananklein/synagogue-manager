@@ -18,15 +18,17 @@ import { addDaysIsoDate, toIsoDateJerusalem } from "@/lib/hebcal";
 import { daysBetweenIso, relativeDayLabel, VIEW_DATE_RANGE_DAYS } from "@/lib/view-date";
 import type { MobileMinyanOption, ScheduleTimesListMode } from "@/lib/display-config";
 import { DEFAULT_DISPLAY_FONT, type DisplayFont } from "@/lib/display-font";
-import { groupPrayersForDisplay } from "@/lib/prayer-display-groups";
+import { groupPrayersForDisplay, weekdayMinchaClockTimes } from "@/lib/prayer-display-groups";
 import { groupShabbatScheduleByPeriod } from "@/lib/shabbat-schedule-periods";
 import { setPreferredSynagogue } from "@/lib/mobile-synagogue-preference";
+import { FAST_END_LABEL, FAST_START_LABEL } from "@/lib/liturgical-additions";
 
 type ScreenKey =
   | "main"
   | "mainInfo"
   | "clock"
   | "omer"
+  | "fast"
   | "halacha"
   | "dailyLearning"
   | "prayerTimes"
@@ -55,6 +57,9 @@ type Snapshot = {
   omerText: string | null;
   amidahAdditionText: string | null;
   liturgicalTiles?: string[];
+  fastName?: string | null;
+  fastStart?: string | null;
+  fastEnd?: string | null;
 };
 
 type HalachaData = {
@@ -93,6 +98,7 @@ const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> =
   mainInfo: { title: "מידע מרכזי", Icon: Sparkles },
   clock: { title: "שעון", Icon: Clock },
   omer: { title: "ספירת העומר", Icon: Flame },
+  fast: { title: "צום", Icon: CalendarDays },
   halacha: { title: "הלכה יומית", Icon: ScrollText },
   dailyLearning: { title: "לימוד יומי", Icon: BookOpen },
   prayerTimes: { title: "זמני תפילות", Icon: CalendarDays },
@@ -292,10 +298,12 @@ export function MobileDisplayRotator({
         if (s.screenKey === "halacha") return false;
         if (s.screenKey === "shabbat" && !shabbat) return false;
         if (s.screenKey === "omer" && !snapshot.omerText) return false;
+        if (s.screenKey === "fast" && !snapshot.fastName) return false;
+        if (s.screenKey === "bulletin" && bulletinItems.length === 0) return false;
         return true;
       })
     );
-  }, [screens, snapshot.omerText, shabbat]);
+  }, [screens, snapshot.omerText, snapshot.fastName, shabbat, bulletinItems.length]);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -356,6 +364,9 @@ export function MobileDisplayRotator({
         )}
         {screenKey === "clock" && <ClockScreen nextPrayer={nextPrayer} />}
         {screenKey === "omer" && <OmerScreen snapshot={snapshot} />}
+        {screenKey === "fast" && (
+          <FastDayScreen snapshot={snapshot} prayerSchedule={prayerSchedule} />
+        )}
         {screenKey === "dailyLearning" && <DailyLearningScreen lines={dailyLearning} />}
         {screenKey === "prayerTimes" && (
           <PrayerTimesScreen
@@ -779,6 +790,31 @@ function OmerScreen({ snapshot }: { snapshot: Snapshot }) {
     <Card className="m-clock-panel m-center">
       <p className="m-omer-text">{snapshot.omerText}</p>
     </Card>
+  );
+}
+
+function FastDayScreen({
+  snapshot,
+  prayerSchedule
+}: {
+  snapshot: Snapshot;
+  prayerSchedule: DisplayPrayerSlot[];
+}) {
+  const minchaTimes = weekdayMinchaClockTimes(prayerSchedule);
+  return (
+    <div className="space-y-3">
+      <Card className="m-clock-panel m-center">
+        <p className="m-fast-title">{snapshot.fastName || "צום"}</p>
+      </Card>
+      <div className="grid grid-cols-2 gap-3">
+        {snapshot.fastStart ? <InfoTile label={FAST_START_LABEL} value={snapshot.fastStart} /> : null}
+        {snapshot.fastEnd ? <InfoTile label={FAST_END_LABEL} value={snapshot.fastEnd} /> : null}
+      </div>
+      <InfoTile
+        label="תפילת מנחה"
+        value={minchaTimes.length ? minchaTimes.join(" · ") : "אין שעה בלוח"}
+      />
+    </div>
   );
 }
 

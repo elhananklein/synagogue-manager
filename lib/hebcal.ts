@@ -1,7 +1,7 @@
 import { DAILY_LEARNING_CATALOG } from "@/lib/daily-learning-catalog";
 import type { HebcalLeyningItem } from "@/lib/haftarah";
 import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
-import { publicFastKind, resolveLiturgicalTiles } from "@/lib/liturgical-additions";
+import { publicFastKind, resolveLiturgicalTiles, resolvePublicFastName } from "@/lib/liturgical-additions";
 import { FAST_CATALOG_KEY } from "@/lib/parasha-prayer-catalog";
 import { applyOccasionDisplayLabel, isChagOnDate, weeklyOccasionIso } from "@/lib/sacred-occasion";
 import { birkatHashanimLabel, type HaftarahMinhag } from "@/lib/haftarah-minhag";
@@ -64,6 +64,7 @@ export type DisplaySnapshot = {
   omerShortText: string | null;
   liturgicalTiles: string[];
   /** צום ציבורי — שעות תחילה וסיום (לא יום כיפור). */
+  fastName: string | null;
   fastStart: string | null;
   fastEnd: string | null;
   /** תוספת תפילה: "יעלה ויבוא" (ר"ח / חוה"מ) או שם הרגל (פסח / שבועות / סוכות). */
@@ -223,8 +224,7 @@ export function parashaCatalogLookupKey(events: string[], weeklyParasha: string)
   return weeklyParasha;
 }
 
-export const FAST_START_LABEL = "תחילת הצום";
-export const FAST_END_LABEL = "סוף הצום";
+export { FAST_START_LABEL, FAST_END_LABEL } from "@/lib/liturgical-additions";
 
 function clockFromZmanimIso(iso: string | null | undefined): string | null {
   if (!iso) return null;
@@ -672,9 +672,6 @@ export async function getDisplaySnapshot(
     weekday: new Date(Date.UTC(converter.gy, converter.gm - 1, converter.gd, 12, 0, 0)).getUTCDay(),
     isChag: todayIsChag
   });
-  if (fastStart) liturgicalTiles.push(`${FAST_START_LABEL} ${fastStart}`);
-  if (fastEnd) liturgicalTiles.push(`${FAST_END_LABEL} ${fastEnd}`);
-
   const winter = isWinterSeason(converter.hm, converter.hd);
   const omerDay = extractOmerDayFromEvents(events);
   const omerText = omerDay == null ? null : `היום ${omerDay} ימים לעומר`;
@@ -719,6 +716,7 @@ export async function getDisplaySnapshot(
     zmanim: zmanimRows,
     zmanimSourceTimes: times,
     halachicDayRollIso: times.tzeit85deg ?? null,
+    fastName: resolvePublicFastName(events),
     fastStart,
     fastEnd,
     rainText: winter ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",

@@ -488,6 +488,68 @@
   line-height: 1.2;
 }
 
+.display.display--veryBold .display-fast-bound-card {
+  background-color: var(--vb-soft, rgb(255 248 234 / 0.82));
+  border: 1px solid var(--vb-gold, #b8923a);
+  border-radius: 1rem;
+}
+
+.display.display--veryBold .display-fast-bounds {
+  gap: 0.75rem;
+}
+
+.display.display--veryBold .display-fast-bound-content {
+  min-height: clamp(4.8rem, 11vh, 8.2rem);
+}
+
+.display.display--veryBold .display-fast-bound-label {
+  color: var(--vb-ink-soft, #2a3b58);
+  font-size: clamp(1.35rem, 3.2vh, 2.2rem);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.display.display--veryBold .display-fast-bound-time {
+  color: var(--vb-ink, #152238);
+  font-size: clamp(2.6rem, 6.4vh, 4.6rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  direction: ltr;
+}
+
+.display.display--veryBold .display-fast-screen {
+  background: var(--vb-soft, rgb(255 248 234 / 0.82));
+  border: 1px solid var(--vb-gold, #b8923a);
+  border-radius: 1rem;
+  gap: clamp(1.2rem, 3.2vh, 2.4rem);
+}
+
+.display.display--veryBold .display-fast-screen-title {
+  color: var(--vb-ink, #152238);
+  font-size: clamp(3.6rem, 9vh, 7.2rem);
+  font-weight: 800;
+}
+
+.display.display--veryBold .display-fast-screen-mincha {
+  background-color: var(--vb-soft, rgb(255 248 234 / 0.82));
+  border: 1px solid var(--vb-gold, #b8923a);
+  border-radius: 1rem;
+}
+
+.display.display--veryBold .display-fast-screen-mincha-label,
+.display.display--veryBold .display-fast-screen-mincha-empty {
+  color: var(--vb-ink-soft, #2a3b58);
+  font-size: clamp(1.6rem, 3.8vh, 2.6rem);
+  font-weight: 800;
+}
+
+.display.display--veryBold .display-fast-screen-mincha-time {
+  color: var(--vb-ink, #152238);
+  font-size: clamp(3.8rem, 10vh, 7.4rem);
+  font-weight: 800;
+}
+
 .display.display--veryBold .display-addition-text {
   color: var(--vb-ink, #152238);
   font-size: clamp(3.2rem, 7.8vh, 6.2rem);

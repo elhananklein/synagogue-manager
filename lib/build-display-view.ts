@@ -140,6 +140,22 @@ function fastZmanItems(snap: DisplaySnapshot) {
   return items;
 }
 
+/** בצום ציבורי: אם הגבאי לא הוסיף את המסך — מזריקים אחרי הראשי. כיבוי במפורש נשמר. */
+function withFastDayScreen(screens: ScreenSetting[], isFastDay: boolean): ScreenSetting[] {
+  if (!isFastDay) return screens;
+  if (screens.some((screen) => screen.screenKey === "fast")) return screens;
+  const afterMain = screens.findIndex((screen) => screen.screenKey === "main");
+  const insertAt = afterMain >= 0 ? afterMain + 1 : 0;
+  const next = [...screens];
+  next.splice(insertAt, 0, {
+    screenKey: "fast",
+    sortOrder: insertAt + 1,
+    durationSeconds: 16,
+    enabled: true
+  });
+  return next;
+}
+
 const ALLOWED_STYLES: DisplayStyle[] = [...DISPLAY_STYLES];
 
 /**
@@ -448,7 +464,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     minyanName: displayConfig.minyanName,
     footerText: displayConfig.footerText,
     scheduleTimesListMode: displayConfig.scheduleTimesListMode,
-    screens: displayConfig.screens,
+    screens: withFastDayScreen(displayConfig.screens, Boolean(displaySnapshot.fastName)),
     dailyLearning: filterDailyLearningByKeys(snapshot.dailyLearning, displayConfig.dailyLearningKeys),
     snapshot: displaySnapshot,
     shabbatMevarchimText,

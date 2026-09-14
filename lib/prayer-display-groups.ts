@@ -74,3 +74,21 @@ export function groupPrayersForDisplay<T extends { label: string; time: string; 
     };
   });
 }
+
+/** מנחה של חול ליום צום — בלי מנחה ערב שבת/חג ומנחה שבת. */
+export function weekdayMinchaClockTimes(
+  rows: Array<{ label: string; time: string; prayerType?: string | null }>
+): string[] {
+  const times: string[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (prayerDisplayGroupId(row) !== "מנחה") continue;
+    const haystack = `${row.label} ${row.prayerType ?? ""}`;
+    if (/ערב שבת|ערב חג|מנחה שבת/.test(haystack)) continue;
+    const time = row.time.trim();
+    if (!time || seen.has(time)) continue;
+    seen.add(time);
+    times.push(time);
+  }
+  return times;
+}
