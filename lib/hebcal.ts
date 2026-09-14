@@ -226,7 +226,7 @@ export function parashaCatalogLookupKey(events: string[], weeklyParasha: string)
 export const FAST_START_LABEL = "תחילת הצום";
 export const FAST_END_LABEL = "סוף הצום";
 
-function clockFromZmanimIso(iso: string | undefined): string | null {
+function clockFromZmanimIso(iso: string | null | undefined): string | null {
   if (!iso) return null;
   return formatHmTime(iso);
 }
