@@ -256,7 +256,7 @@ export function PrayerEditor({
       ) : null}
       {showDaysOfWeek && setting.mode === "parasha" ? (
         <p className="mt-2 text-xs text-muted-foreground">
-          בימים א׳–ה׳ בלבד. שישי ושבת נשארים לפי ההגדרה הרגילה.
+          בימים א׳–ה׳ בלבד. שישי ושבת נשארים לפי ההגדרה הרגילה. אפשר לבחור «צום» לשעת מנחה/ערבית ביום תענית.
         </p>
       ) : null}
       {showDaysOfWeek ? (

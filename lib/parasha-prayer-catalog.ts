@@ -1,7 +1,8 @@
 export const CHOL_HAMOED_PESACH_KEY = "חול המועד פסח";
 export const CHOL_HAMOED_SUKKOT_KEY = "חול המועד סוכות";
 
-export const PARASHA_CATALOG_EXTRA_KEYS = [CHOL_HAMOED_PESACH_KEY, CHOL_HAMOED_SUKKOT_KEY] as const;
+export const FAST_CATALOG_KEY = "צום";
+export const PARASHA_CATALOG_EXTRA_KEYS = [CHOL_HAMOED_PESACH_KEY, CHOL_HAMOED_SUKKOT_KEY, FAST_CATALOG_KEY] as const;
 
 /** 54 פרשות השבוע — תווית Hebcal (עם «פרשת») וכינויים למיון. */
 const TORAH_PARASHOT: { label: string; aliases: string[] }[] = [
@@ -117,6 +118,7 @@ function parashaSortRank(key: string): number {
   ) {
     return HAAZINU_INDEX + 0.3;
   }
+  if (normalized === FAST_CATALOG_KEY) return 9_500;
 
   const exact = PARASHA_RANK.get(normalized);
   if (exact != null) return exact;

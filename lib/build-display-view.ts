@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { getPublishedBulletinItems, type BulletinItem } from "@/lib/bulletin-board";
-import { addDaysIsoDate, buildZmanimRows, fetchHebcalLeyningForDate, formatOmerShortLabel, getDisplaySnapshot, getTomorrowIsoDateFrom, resolveShabbatMevarchimText, toIsoDateJerusalem, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
+import { addDaysIsoDate, buildZmanimRows, FAST_END_LABEL, FAST_START_LABEL, fetchHebcalLeyningForDate, formatOmerShortLabel, getDisplaySnapshot, getTomorrowIsoDateFrom, resolveShabbatMevarchimText, toIsoDateJerusalem, type DailyLearningLine, type DisplaySnapshot } from "@/lib/hebcal";
 import { resolveHaftarahDisplay, type HaftarahDisplay } from "@/lib/haftarah";
 import { PREVIEW_LITURGICAL_TILES, previewTilesFromKeys } from "@/lib/liturgical-additions";
 import { DISPLAY_STYLES, isDisplayPalette, resolveDisplayPalette } from "@/lib/display-theme";
@@ -131,6 +131,13 @@ export async function resolveSynagogueId(params: DisplayViewParams): Promise<str
 function jsWeekdayFromIsoDate(isoDate: string): number {
   const [year, month, day] = isoDate.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getUTCDay();
+}
+
+function fastZmanItems(snap: DisplaySnapshot) {
+  const items: Array<{ label: string; time: string; kind: "zman" }> = [];
+  if (snap.fastStart) items.push({ label: FAST_START_LABEL, time: snap.fastStart, kind: "zman" });
+  if (snap.fastEnd) items.push({ label: FAST_END_LABEL, time: snap.fastEnd, kind: "zman" });
+  return items;
 }
 
 const ALLOWED_STYLES: DisplayStyle[] = [...DISPLAY_STYLES];
@@ -386,18 +393,22 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     };
   }
 
-  const todayZmanimItems = buildZmanimRows(snapshot.zmanimSourceTimes, displayConfig.scheduleZmanimKeys).map((row) => ({
-    label: row.label,
-    time: row.time,
-    kind: "zman" as const
-  }));
-  const tomorrowZmanimItems = buildZmanimRows(tomorrowSnapshot.zmanimSourceTimes, displayConfig.scheduleZmanimKeys).map(
-    (row) => ({
+  const todayZmanimItems = [
+    ...fastZmanItems(snapshot),
+    ...buildZmanimRows(snapshot.zmanimSourceTimes, displayConfig.scheduleZmanimKeys).map((row) => ({
       label: row.label,
       time: row.time,
       kind: "zman" as const
-    })
-  );
+    }))
+  ];
+  const tomorrowZmanimItems = [
+    ...fastZmanItems(tomorrowSnapshot),
+    ...buildZmanimRows(tomorrowSnapshot.zmanimSourceTimes, displayConfig.scheduleZmanimKeys).map((row) => ({
+      label: row.label,
+      time: row.time,
+      kind: "zman" as const
+    }))
+  ];
   const todayPrayerItems = prayerSchedule.map((row) => ({
     label: row.label,
     time: row.time,
@@ -424,8 +435,8 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const timeSections: DisplayTimeSection[] = includeZmanimInTimesList
     ? timeSectionsAll
     : [
-        { title: timeSectionsAll[0].title, items: todayPrayerItems },
-        { title: timeSectionsAll[1].title, items: tomorrowPrayerItems }
+        { title: timeSectionsAll[0].title, items: [...fastZmanItems(snapshot), ...todayPrayerItems] },
+        { title: timeSectionsAll[1].title, items: [...fastZmanItems(tomorrowSnapshot), ...tomorrowPrayerItems] }
       ];
 
   return {

@@ -1,7 +1,8 @@
 import { DAILY_LEARNING_CATALOG } from "@/lib/daily-learning-catalog";
 import type { HebcalLeyningItem } from "@/lib/haftarah";
 import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
-import { resolveLiturgicalTiles } from "@/lib/liturgical-additions";
+import { publicFastKind, resolveLiturgicalTiles } from "@/lib/liturgical-additions";
+import { FAST_CATALOG_KEY } from "@/lib/parasha-prayer-catalog";
 import { applyOccasionDisplayLabel, isChagOnDate, weeklyOccasionIso } from "@/lib/sacred-occasion";
 import { birkatHashanimLabel, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, resolveScheduleZmanimKeys, zmanLabelForKey } from "@/lib/zmanim-catalog";
@@ -62,6 +63,9 @@ export type DisplaySnapshot = {
   /** מלל מקוצר לאריחי התצוגה, למשל «שלושה עשר יום לעומר». */
   omerShortText: string | null;
   liturgicalTiles: string[];
+  /** צום ציבורי — שעות תחילה וסיום (לא יום כיפור). */
+  fastStart: string | null;
+  fastEnd: string | null;
   /** תוספת תפילה: "יעלה ויבוא" (ר"ח / חוה"מ) או שם הרגל (פסח / שבועות / סוכות). */
   amidahAdditionText: string | null;
   /** שבת מברכין + שם החודש (כשהיום הוא שבת מברכין לפי Hebcal). */
@@ -211,11 +215,32 @@ function isCholHamoedEvent(event: string) {
   return false;
 }
 
-/** מפתח לקטלוג מנחה/ערבית: חול המועד אם רלוונטי, אחרת פרשת השבוע. */
+/** מפתח לקטלוג מנחה/ערבית: חול המועד או צום אם רלוונטי, אחרת פרשת השבוע. */
 export function parashaCatalogLookupKey(events: string[], weeklyParasha: string): string {
   if (events.some(isCholHamoedPesachEvent)) return "חול המועד פסח";
   if (events.some(isCholHamoedSukkotEvent)) return "חול המועד סוכות";
+  if (publicFastKind(events)) return FAST_CATALOG_KEY;
   return weeklyParasha;
+}
+
+export const FAST_START_LABEL = "תחילת הצום";
+export const FAST_END_LABEL = "סוף הצום";
+
+function clockFromZmanimIso(iso: string | undefined): string | null {
+  if (!iso) return null;
+  return formatHmTime(iso);
+}
+
+async function previousSunsetIso(civilIso: string, geoQuery: string): Promise<string | null> {
+  const prevIso = addDaysIsoDate(civilIso, -1);
+  try {
+    const res = await fetch(`https://www.hebcal.com/zmanim?cfg=json&${geoQuery}&date=${prevIso}`, hebcalDisplayFetch);
+    if (!res.ok) return null;
+    const data = (await res.json()) as HebcalZmanimResponse;
+    return data.times?.sunset ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function isRoshChodeshEvent(event: string) {
@@ -629,6 +654,26 @@ export async function getDisplaySnapshot(
   const havdalah = havdalahItem?.title?.split(": ").slice(1).join(": ") ?? null;
 
   const zmanimRows = buildZmanimRows(zmanim.times ?? {}, DEFAULT_SCHEDULE_ZMANIM_KEYS);
+  const times = zmanim.times ?? {};
+  const fastKind = publicFastKind(events);
+  let fastStart: string | null = null;
+  let fastEnd: string | null = null;
+  if (fastKind) {
+    const startIso =
+      fastKind === "major" ? await previousSunsetIso(civilIso, geoQuery) : times.alotHaShachar ?? times.sunrise;
+    const endIso = times.tzeit85deg ?? times.sunset;
+    fastStart = clockFromZmanimIso(startIso);
+    fastEnd = clockFromZmanimIso(endIso);
+  }
+  const liturgicalTiles = resolveLiturgicalTiles({
+    events,
+    hebrewMonth: converter.hm,
+    hebrewDay: converter.hd,
+    weekday: new Date(Date.UTC(converter.gy, converter.gm - 1, converter.gd, 12, 0, 0)).getUTCDay(),
+    isChag: todayIsChag
+  });
+  if (fastStart) liturgicalTiles.push(`${FAST_START_LABEL} ${fastStart}`);
+  if (fastEnd) liturgicalTiles.push(`${FAST_END_LABEL} ${fastEnd}`);
 
   const winter = isWinterSeason(converter.hm, converter.hd);
   const omerDay = extractOmerDayFromEvents(events);
@@ -672,20 +717,16 @@ export async function getDisplaySnapshot(
     dafYomi,
     dailyLearning,
     zmanim: zmanimRows,
-    zmanimSourceTimes: zmanim.times ?? {},
-    halachicDayRollIso: zmanim.times?.tzeit85deg ?? null,
+    zmanimSourceTimes: times,
+    halachicDayRollIso: times.tzeit85deg ?? null,
+    fastStart,
+    fastEnd,
     rainText: winter ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
     blessingText: birkatHashanimLabel(winter, options?.haftarahMinhag),
     omerText,
     omerShortText,
     amidahAdditionText: resolveAmidahAdditionText(events),
-    liturgicalTiles: resolveLiturgicalTiles({
-      events,
-      hebrewMonth: converter.hm,
-      hebrewDay: converter.hd,
-      weekday: new Date(Date.UTC(converter.gy, converter.gm - 1, converter.gd, 12, 0, 0)).getUTCDay(),
-      isChag: todayIsChag
-    }),
+    liturgicalTiles,
     shabbatMevarchimText: resolveShabbatMevarchimText(events),
     sourceEvents: events,
     parashaCatalogKey: todayIsChag

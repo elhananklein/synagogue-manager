@@ -27,7 +27,7 @@ function isPurimEvent(event: string, plain: string) {
   return /^(Purim|Shushan Purim|Purim Katan|Shushan Purim Katan)\b/i.test(event) || /פורים/.test(plain);
 }
 
-function isTishaBAvEvent(event: string, plain: string) {
+export function isTishaBAvEvent(event: string, plain: string) {
   if (isErev(event)) return false;
   return /Tish'?a\s*B'?Av/i.test(event) || /תשעה\s*באב/.test(plain);
 }
@@ -37,7 +37,7 @@ function isYomKippurEvent(event: string, plain: string) {
   return /Yom Kippur/i.test(event) || /יום\s*כיפור/.test(plain);
 }
 
-function isFastDayEvent(event: string, plain: string) {
+export function isFastDayEvent(event: string, plain: string) {
   if (isErev(event) || isYomKippurEvent(event, plain)) return false;
   return (
     /Tzom Gedaliah/i.test(event) ||
@@ -128,6 +128,13 @@ function isNoTachanunByEvent(events: string[]) {
     if (/Tu BiShvat|Tu B'?Shvat|Tu B'?Av|Lag BaOmer|Pesach Sheni/i.test(event)) return true;
     return false;
   });
+}
+
+/** צום ציבורי (לא יום כיפור). תשעה באב = major — מתחיל מהשקיעה של אתמול. */
+export function publicFastKind(events: string[]): "minor" | "major" | null {
+  if (someEvent(events, isTishaBAvEvent)) return "major";
+  if (someEvent(events, isFastDayEvent)) return "minor";
+  return null;
 }
 
 function resolveHallel(events: string[]): string | null {
