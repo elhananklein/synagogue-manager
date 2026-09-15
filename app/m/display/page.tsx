@@ -49,6 +49,8 @@ export default async function MobileDisplayPage({
       minyanOptions={minyanOptions}
       currentMinyanIndex={currentMinyanIndex}
       font={view.font}
+      style={view.style}
+      palette={view.palette}
       footerText={view.footerText}
       screens={view.screens}
       dailyLearning={view.dailyLearning}
@@ -62,6 +64,7 @@ export default async function MobileDisplayPage({
       scheduleTimesListMode={view.scheduleTimesListMode}
       shabbat={view.shabbat}
       bulletinItems={view.bulletinItems}
+      haftarahMinhag={view.haftarahMinhag}
     />
     </>
   );

@@ -19,6 +19,8 @@ export function pickDisplayLiveFields(view: DisplayView) {
     synagogueName: view.synagogueName,
     minyanName: view.minyanName,
     font: view.font,
+    style: view.style,
+    palette: view.palette,
     footerText: view.footerText ?? null,
     scheduleTimesListMode: view.scheduleTimesListMode,
     screens: view.screens,
@@ -31,7 +33,8 @@ export function pickDisplayLiveFields(view: DisplayView) {
     timeSectionsAll: view.timeSectionsAll,
     viewDate: view.viewDate,
     shabbat: view.shabbat,
-    bulletinItems: view.bulletinItems
+    bulletinItems: view.bulletinItems,
+    haftarahMinhag: view.haftarahMinhag
   };
 }
 

@@ -12,6 +12,7 @@ import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
 import { filterDailyLearningByKeys } from "@/lib/daily-learning-catalog";
 import { hebrewWeekdayLong, resolveViewIsoDate } from "@/lib/view-date";
 import { isChagOnDate, isErevShabbatonDate, isOccasionScreenDay, preferredOccasionDayIndex, resolveOccasionCluster, resolveOccasionLabel } from "@/lib/sacred-occasion";
+import type { HaftarahMinhag } from "@/lib/haftarah-minhag";
 
 export type DisplayViewParams = {
   synagogueId?: string | string[];
@@ -103,6 +104,8 @@ export type DisplayView = {
   viewDate: string;
   shabbat: DisplayShabbat | null;
   bulletinItems: BulletinItem[];
+  /** נוסח התפילה/הפטרה של המניין — לסידור במובייל */
+  haftarahMinhag: HaftarahMinhag;
 };
 
 function singleQueryParam(value: string | string[] | undefined | null): string | null {
@@ -483,6 +486,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     timeSectionsAll,
     viewDate: todayIsoDate,
     shabbat,
-    bulletinItems
+    bulletinItems,
+    haftarahMinhag: displayConfig.haftarahMinhag
   };
 }

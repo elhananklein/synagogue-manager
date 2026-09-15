@@ -18,11 +18,15 @@ import { addDaysIsoDate, toIsoDateJerusalem } from "@/lib/hebcal";
 import { daysBetweenIso, relativeDayLabel, VIEW_DATE_RANGE_DAYS } from "@/lib/view-date";
 import type { MobileMinyanOption, ScheduleTimesListMode } from "@/lib/display-config";
 import { DEFAULT_DISPLAY_FONT, type DisplayFont } from "@/lib/display-font";
+import { DEFAULT_DISPLAY_PALETTE, styleUsesPalettes, type DisplayPalette, type DisplayStyle } from "@/lib/display-theme";
 import { groupPrayersForDisplay, weekdayMinchaClockTimes } from "@/lib/prayer-display-groups";
 import { groupShabbatScheduleByPeriod } from "@/lib/shabbat-schedule-periods";
 import { setPreferredSynagogue } from "@/lib/mobile-synagogue-preference";
 import { FAST_END_LABEL, FAST_START_LABEL } from "@/lib/liturgical-additions";
 import { useHideMainPrayerTimes } from "@/hooks/use-hide-main-prayer-times";
+import { SiddurReader } from "@/components/mobile/siddur-reader";
+import { DEFAULT_HAFTARAH_MINHAG, type HaftarahMinhag } from "@/lib/haftarah-minhag";
+import { siddurPrayerFromLabel, type SiddurPrayer } from "@/lib/siddur";
 
 type ScreenKey =
   | "main"
@@ -42,6 +46,8 @@ type RotatorScreen = {
   durationSeconds: number;
   enabled: boolean;
 };
+
+type NextPrayerMark = { label: string; time: string; dayOffset: 0 | 1 };
 
 type Snapshot = {
   hebrewDate: string;
@@ -80,6 +86,8 @@ type MobileDisplayRotatorProps = {
   minyanOptions?: MobileMinyanOption[];
   currentMinyanIndex?: number;
   font?: DisplayFont;
+  style?: DisplayStyle;
+  palette?: DisplayPalette;
   footerText?: string | null;
   screens: RotatorScreen[];
   dailyLearning: DailyLearningLine[];
@@ -93,6 +101,7 @@ type MobileDisplayRotatorProps = {
   scheduleTimesListMode?: ScheduleTimesListMode;
   shabbat?: DisplayShabbat | null;
   bulletinItems?: BulletinItem[];
+  haftarahMinhag?: HaftarahMinhag;
 };
 
 const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> = {
@@ -145,6 +154,8 @@ export function MobileDisplayRotator({
   minyanOptions = [],
   currentMinyanIndex: currentMinyanIndexProp = 1,
   font: fontProp = DEFAULT_DISPLAY_FONT,
+  style: styleProp = "classic",
+  palette: paletteProp = DEFAULT_DISPLAY_PALETTE,
   footerText: footerTextProp,
   screens: screensProp,
   dailyLearning: dailyLearningProp,
@@ -157,12 +168,15 @@ export function MobileDisplayRotator({
   viewDate: viewDateProp,
   scheduleTimesListMode: scheduleTimesListModeProp = "all",
   shabbat: shabbatProp = null,
-  bulletinItems: bulletinItemsProp = []
+  bulletinItems: bulletinItemsProp = [],
+  haftarahMinhag: haftarahMinhagProp = DEFAULT_HAFTARAH_MINHAG
 }: MobileDisplayRotatorProps) {
   const [live, setLive] = useState(() => ({
     synagogueName: synagogueNameProp,
     minyanName: minyanNameProp,
     font: fontProp,
+    style: styleProp,
+    palette: paletteProp,
     footerText: footerTextProp ?? null,
     screens: screensProp,
     dailyLearning: dailyLearningProp,
@@ -175,12 +189,15 @@ export function MobileDisplayRotator({
     viewDate: viewDateProp ?? toIsoDateJerusalem(),
     scheduleTimesListMode: scheduleTimesListModeProp,
     shabbat: shabbatProp,
-    bulletinItems: bulletinItemsProp
+    bulletinItems: bulletinItemsProp,
+    haftarahMinhag: haftarahMinhagProp
   }));
   const {
     synagogueName,
     minyanName,
     font,
+    style,
+    palette,
     footerText,
     screens,
     dailyLearning,
@@ -192,9 +209,11 @@ export function MobileDisplayRotator({
     timeSectionsAll,
     viewDate,
     shabbat,
-    bulletinItems
+    bulletinItems,
+    haftarahMinhag
   } = live;
   const [showFullSchedule, setShowFullSchedule] = useState(false);
+  const [siddurPrayer, setSiddurPrayer] = useState<SiddurPrayer | null>(null);
   const [minyanIndex, setMinyanIndex] = useState(currentMinyanIndexProp);
   const [dayLoading, setDayLoading] = useState(false);
   const dayLoadingRef = useRef(false);
@@ -206,6 +225,8 @@ export function MobileDisplayRotator({
       synagogueName: next.synagogueName,
       minyanName: next.minyanName,
       font: next.font ?? DEFAULT_DISPLAY_FONT,
+      style: next.style ?? "classic",
+      palette: next.palette ?? DEFAULT_DISPLAY_PALETTE,
       footerText: next.footerText,
       screens: next.screens,
       dailyLearning: next.dailyLearning,
@@ -218,7 +239,8 @@ export function MobileDisplayRotator({
       viewDate: next.viewDate ?? toIsoDateJerusalem(),
       scheduleTimesListMode: next.scheduleTimesListMode,
       shabbat: next.shabbat,
-      bulletinItems: next.bulletinItems
+      bulletinItems: next.bulletinItems,
+      haftarahMinhag: next.haftarahMinhag ?? DEFAULT_HAFTARAH_MINHAG
     });
     const resolved = next.viewDate ?? toIsoDateJerusalem();
     const url = new URL(window.location.href);
@@ -234,6 +256,30 @@ export function MobileDisplayRotator({
     viewIso: viewDate,
     chatzotIso: snapshot.chatzotIso
   });
+  const [nowMinutes, setNowMinutes] = useState(nowJerusalemMinutes);
+  const shellRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const tick = () => setNowMinutes(nowJerusalemMinutes());
+    const id = window.setInterval(tick, 15_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const accent = getComputedStyle(shell).getPropertyValue("--m-burgundy").trim();
+    if (!accent) return;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", accent);
+  }, [style, palette]);
 
   const jerusalemTodayIso = toIsoDateJerusalem();
   const isViewingToday = viewDate === jerusalemTodayIso;
@@ -317,7 +363,6 @@ export function MobileDisplayRotator({
     viewportRef.current?.scrollTo({ top: 0 });
   }, [viewDate]);
 
-  const nowMinutes = nowJerusalemMinutes();
   const [viewYear, viewMonth, viewDay] = viewDate.split("-").map(Number);
   const viewJsDay = new Date(Date.UTC(viewYear, viewMonth - 1, viewDay, 12, 0, 0)).getUTCDay();
   const headerCandleLighting = shabbat?.candleLighting ?? snapshot.candleLighting;
@@ -325,12 +370,21 @@ export function MobileDisplayRotator({
   const showHeaderShabbatZmanim =
     (viewJsDay === 5 || viewJsDay === 6) &&
     Boolean(headerCandleLighting || headerHavdalah);
-  const todayPrayers = (timeSections[0]?.items ?? [])
-    .filter((item) => item.kind === "prayer")
+  const todayPrayers = (prayerOnlySections[0]?.items ?? [])
     .map((item) => ({ ...item, totalMinutes: toMinutes(item.time) }))
     .sort((a, b) => a.totalMinutes - b.totalMinutes);
-  const nextPrayer =
-    isViewingToday ? todayPrayers.find((item) => item.totalMinutes >= nowMinutes) ?? null : null;
+  const tomorrowPrayers = (prayerOnlySections[1]?.items ?? [])
+    .map((item) => ({ ...item, totalMinutes: toMinutes(item.time) }))
+    .sort((a, b) => a.totalMinutes - b.totalMinutes);
+  const nextToday = todayPrayers.find((item) => item.totalMinutes >= nowMinutes) ?? null;
+  const nextPrayer: NextPrayerMark | null = !isViewingToday
+    ? null
+    : nextToday
+      ? { label: nextToday.label, time: nextToday.time, dayOffset: 0 }
+      : tomorrowPrayers[0]
+        ? { label: tomorrowPrayers[0].label, time: tomorrowPrayers[0].time, dayOffset: 1 }
+        : null;
+  const nextSiddur = nextPrayer ? siddurPrayerFromLabel(nextPrayer.label) : null;
   const zmanimForToggle = (timeSectionsAll[0]?.items ?? []).filter((item) => item.kind === "zman");
   const dayTitle = relativeDayLabel(viewDate, jerusalemTodayIso);
 
@@ -364,15 +418,21 @@ export function MobileDisplayRotator({
             timeSections={hideMainTimes ? [] : visibleTimeSections}
             mevarchimText={shabbatMevarchimText}
             nextPrayer={hideMainTimes ? null : nextPrayer}
+            onOpenSiddur={setSiddurPrayer}
           />
         )}
         {screenKey === "mainInfo" && (
-          <MainInfoScreen snapshot={snapshot} nextPrayer={nextPrayer} mevarchimText={shabbatMevarchimText} />
+          <MainInfoScreen
+            snapshot={snapshot}
+            nextPrayer={nextPrayer}
+            mevarchimText={shabbatMevarchimText}
+            onOpenSiddur={setSiddurPrayer}
+          />
         )}
-        {screenKey === "clock" && <ClockScreen nextPrayer={nextPrayer} />}
+        {screenKey === "clock" && <ClockScreen nextPrayer={nextPrayer} onOpenSiddur={setSiddurPrayer} />}
         {screenKey === "omer" && <OmerScreen snapshot={snapshot} />}
         {screenKey === "fast" && (
-          <FastDayScreen snapshot={snapshot} prayerSchedule={prayerSchedule} />
+          <FastDayScreen snapshot={snapshot} prayerSchedule={prayerSchedule} onOpenSiddur={setSiddurPrayer} />
         )}
         {screenKey === "dailyLearning" && <DailyLearningScreen lines={dailyLearning} />}
         {screenKey === "prayerTimes" && (
@@ -381,6 +441,7 @@ export function MobileDisplayRotator({
             nowMinutes={nowMinutes}
             highlightNow={isViewingToday}
             zmanim={showFullSchedule ? zmanimForToggle : []}
+            onOpenSiddur={setSiddurPrayer}
           />
         )}
         {screenKey === "fullSchedule" && (
@@ -388,16 +449,25 @@ export function MobileDisplayRotator({
             timeSections={visibleTimeSections}
             nowMinutes={nowMinutes}
             highlightNow={isViewingToday}
+            onOpenSiddur={setSiddurPrayer}
           />
         )}
-        {screenKey === "shabbat" && <ShabbatScreen shabbat={shabbat} />}
+        {screenKey === "shabbat" && (
+          <ShabbatScreen shabbat={shabbat} nowMinutes={nowMinutes} highlightNow={isViewingToday} />
+        )}
         {screenKey === "bulletin" && <BulletinScreen items={bulletinItems} />}
       </div>
     </>
   );
 
   return (
-    <div className="m-shell" data-display-font={font}>
+    <div
+      ref={shellRef}
+      className="m-shell"
+      data-display-font={font}
+      data-display-style={style}
+      data-display-palette={styleUsesPalettes(style) ? palette : undefined}
+    >
       <header className="m-header">
         <div className="m-header-top">
           <div className="m-header-names">
@@ -508,10 +578,21 @@ export function MobileDisplayRotator({
           </div>
         ) : null}
         {nextPrayer ? (
-          <div className="m-next-prayer">
-            <span>התפילה הבאה: {nextPrayer.label}</span>
-            <span className="m-next-prayer-time">{nextPrayer.time}</span>
-          </div>
+          nextSiddur ? (
+            <button
+              type="button"
+              className="m-next-prayer m-next-prayer--siddur"
+              onClick={() => setSiddurPrayer(nextSiddur)}
+            >
+              <span>התפילה הבאה: {nextPrayer.label}</span>
+              <span className="m-next-prayer-time">{nextPrayer.time}</span>
+            </button>
+          ) : (
+            <div className="m-next-prayer">
+              <span>התפילה הבאה: {nextPrayer.label}</span>
+              <span className="m-next-prayer-time">{nextPrayer.time}</span>
+            </div>
+          )
         ) : null}
       </header>
 
@@ -534,6 +615,9 @@ export function MobileDisplayRotator({
           <Link href="/admin/login">כניסה כמנהל</Link>
         </nav>
       </div>
+      {siddurPrayer ? (
+        <SiddurReader prayer={siddurPrayer} nusach={haftarahMinhag} onClose={() => setSiddurPrayer(null)} />
+      ) : null}
     </div>
   );
 }
@@ -662,25 +746,51 @@ function Badges({ snapshot }: { snapshot: Snapshot }) {
   );
 }
 
-function TimeRow({ label, time, highlight }: { label: string; time: string; highlight?: boolean }) {
-  return (
-    <div className={cn("m-time-row", highlight && "m-time-row--next")}>
-      <span>{label}</span>
+function TimeRow({
+  label,
+  time,
+  highlight,
+  onOpenSiddur
+}: {
+  label: string;
+  time: string;
+  highlight?: boolean;
+  onOpenSiddur?: (prayer: SiddurPrayer) => void;
+}) {
+  const siddur = onOpenSiddur ? siddurPrayerFromLabel(label) : null;
+  const className = cn("m-time-row", highlight && "m-time-row--next", siddur && "m-time-row--siddur");
+  const inner = (
+    <>
+      <span className="m-time-row-label">
+        {highlight ? <span className="m-time-row-badge">הבא</span> : null}
+        {siddur ? <BookOpen className="m-time-row-book" aria-hidden /> : null}
+        {label}
+      </span>
       <span className="m-time-row-time">{time}</span>
-    </div>
+    </>
   );
+  if (siddur && onOpenSiddur) {
+    return (
+      <button type="button" className={className} onClick={() => onOpenSiddur(siddur)}>
+        {inner}
+      </button>
+    );
+  }
+  return <div className={className}>{inner}</div>;
 }
 
 function MainScreen({
   snapshot,
   timeSections,
   mevarchimText,
-  nextPrayer
+  nextPrayer,
+  onOpenSiddur
 }: {
   snapshot: Snapshot;
   timeSections: DisplayTimeSection[];
   mevarchimText?: string | null;
-  nextPrayer?: { label: string; time: string } | null;
+  nextPrayer?: NextPrayerMark | null;
+  onOpenSiddur: (prayer: SiddurPrayer) => void;
 }) {
   const parasha = snapshot.parasha && snapshot.parasha !== "לא נמצא" ? snapshot.parasha : null;
   return (
@@ -694,7 +804,7 @@ function MainScreen({
       ) : null}
       <Badges snapshot={snapshot} />
       {mevarchimText ? <p className="m-center m-learn-title">{mevarchimText}</p> : null}
-      {timeSections.map((section) => {
+      {timeSections.map((section, sectionIndex) => {
         if (!section.items.length) return null;
         const items = [...section.items].sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
         return (
@@ -706,10 +816,12 @@ function MainScreen({
                   key={`${item.label}-${i}`}
                   label={item.label}
                   time={item.time}
+                  onOpenSiddur={item.kind === "prayer" ? onOpenSiddur : undefined}
                   highlight={
                     Boolean(
                       nextPrayer &&
                         item.kind === "prayer" &&
+                        sectionIndex === nextPrayer.dayOffset &&
                         item.label === nextPrayer.label &&
                         item.time === nextPrayer.time
                     )
@@ -724,11 +836,31 @@ function MainScreen({
   );
 }
 
-function InfoTile({ label, value }: { label: string; value: string }) {
-  return (
-    <Card className="m-tile">
+function InfoTile({
+  label,
+  value,
+  onClick
+}: {
+  label: string;
+  value: string;
+  onClick?: () => void;
+}) {
+  const inner = (
+    <>
       <p className="m-tile-label">{label}</p>
       <p className="m-tile-value">{value}</p>
+    </>
+  );
+  if (onClick) {
+    return (
+      <button type="button" className="m-card m-tile m-tile--siddur" onClick={onClick}>
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <Card className="m-tile">
+      {inner}
     </Card>
   );
 }
@@ -736,13 +868,16 @@ function InfoTile({ label, value }: { label: string; value: string }) {
 function MainInfoScreen({
   snapshot,
   nextPrayer,
-  mevarchimText
+  mevarchimText,
+  onOpenSiddur
 }: {
   snapshot: Snapshot;
-  nextPrayer: { label: string; time: string } | null;
+  nextPrayer: NextPrayerMark | null;
   mevarchimText?: string | null;
+  onOpenSiddur: (prayer: SiddurPrayer) => void;
 }) {
   const parasha = snapshot.parasha && snapshot.parasha !== "לא נמצא" ? snapshot.parasha : null;
+  const nextSiddur = nextPrayer ? siddurPrayerFromLabel(nextPrayer.label) : null;
   return (
     <div className="space-y-3">
       {parasha ? (
@@ -756,7 +891,13 @@ function MainInfoScreen({
       )}
       <div className="grid grid-cols-2 gap-3">
         <InfoTile label="דף יומי" value={snapshot.dafYomi} />
-        {nextPrayer ? <InfoTile label="התפילה הבאה" value={`${nextPrayer.label} ${nextPrayer.time}`} /> : null}
+        {nextPrayer ? (
+          <InfoTile
+            label="התפילה הבאה"
+            value={`${nextPrayer.label} ${nextPrayer.time}`}
+            onClick={nextSiddur ? () => onOpenSiddur(nextSiddur) : undefined}
+          />
+        ) : null}
       </div>
       {mevarchimText ? (
         <Card className="m-center">
@@ -768,7 +909,14 @@ function MainInfoScreen({
   );
 }
 
-function ClockScreen({ nextPrayer }: { nextPrayer: { label: string; time: string } | null }) {
+function ClockScreen({
+  nextPrayer,
+  onOpenSiddur
+}: {
+  nextPrayer: NextPrayerMark | null;
+  onOpenSiddur: (prayer: SiddurPrayer) => void;
+}) {
+  const nextSiddur = nextPrayer ? siddurPrayerFromLabel(nextPrayer.label) : null;
   return (
     <Card className="m-clock-panel">
       <div className="display-datetime-pair">
@@ -776,15 +924,27 @@ function ClockScreen({ nextPrayer }: { nextPrayer: { label: string; time: string
         <div className="display-datetime-digital-col">
           <LiveClock className="display-datetime-digital display-datetime-digital--mobile" splitSeconds />
           {nextPrayer ? (
-            <p className="display-datetime-next-prayer">
-              <span className="display-datetime-next-prayer-label">התפילה הבאה:</span>
-              <span className="display-datetime-next-prayer-detail">
-                {nextPrayer.label}{" "}
-                <span className="display-datetime-next-prayer-at">
-                  ב־<span dir="ltr">{nextPrayer.time}</span>
+            nextSiddur ? (
+              <button type="button" className="display-datetime-next-prayer m-clock-siddur" onClick={() => onOpenSiddur(nextSiddur)}>
+                <span className="display-datetime-next-prayer-label">התפילה הבאה:</span>
+                <span className="display-datetime-next-prayer-detail">
+                  {nextPrayer.label}{" "}
+                  <span className="display-datetime-next-prayer-at">
+                    ב־<span dir="ltr">{nextPrayer.time}</span>
+                  </span>
                 </span>
-              </span>
-            </p>
+              </button>
+            ) : (
+              <p className="display-datetime-next-prayer">
+                <span className="display-datetime-next-prayer-label">התפילה הבאה:</span>
+                <span className="display-datetime-next-prayer-detail">
+                  {nextPrayer.label}{" "}
+                  <span className="display-datetime-next-prayer-at">
+                    ב־<span dir="ltr">{nextPrayer.time}</span>
+                  </span>
+                </span>
+              </p>
+            )
           ) : null}
         </div>
       </div>
@@ -802,10 +962,12 @@ function OmerScreen({ snapshot }: { snapshot: Snapshot }) {
 
 function FastDayScreen({
   snapshot,
-  prayerSchedule
+  prayerSchedule,
+  onOpenSiddur
 }: {
   snapshot: Snapshot;
   prayerSchedule: DisplayPrayerSlot[];
+  onOpenSiddur: (prayer: SiddurPrayer) => void;
 }) {
   const minchaTimes = weekdayMinchaClockTimes(prayerSchedule);
   return (
@@ -820,6 +982,7 @@ function FastDayScreen({
       <InfoTile
         label="תפילת מנחה"
         value={minchaTimes.length ? minchaTimes.join(" · ") : "אין שעה בלוח"}
+        onClick={() => onOpenSiddur("mincha")}
       />
     </div>
   );
@@ -844,11 +1007,13 @@ function DailyLearningScreen({ lines }: { lines: DailyLearningLine[] }) {
 function FullScheduleScreen({
   timeSections,
   nowMinutes,
-  highlightNow
+  highlightNow,
+  onOpenSiddur
 }: {
   timeSections: DisplayTimeSection[];
   nowMinutes: number;
   highlightNow: boolean;
+  onOpenSiddur: (prayer: SiddurPrayer) => void;
 }) {
   const timeline = [
     ...(timeSections[0]?.items ?? []).map((row) => ({
@@ -879,31 +1044,41 @@ function FullScheduleScreen({
         const isPrayer = row.kind === "prayer";
         const isNext = i === nextLocalIdx;
         const isPast = nextLocalIdx === -1 ? true : i < nextLocalIdx;
+        const siddur = isPrayer ? siddurPrayerFromLabel(row.label) : null;
+        const tileClass = cn(
+          "m-schedule-tile",
+          isPrayer && "m-schedule-tile--prayer",
+          isNext && "m-schedule-tile--next",
+          isPast && !isNext && "m-schedule-tile--past",
+          siddur && "m-schedule-tile--siddur"
+        );
+        const tileInner = (
+          <>
+            {isNext ? <span className="m-tag m-tag--next">הבא</span> : null}
+            {row.dayTag ? <span className="m-tag m-tag--day">{row.dayTag}</span> : null}
+            <div className={cn("m-schedule-label", isNext && "pt-3")}>
+              {isPrayer ? `תפילת ${row.label}` : row.label}
+            </div>
+            <div className="m-schedule-time">{row.time}</div>
+          </>
+        );
         return (
           <div key={`${row.dayOffset}-${row.kind}-${row.label}-${row.time}-${i}`} className="flex min-w-0 items-stretch">
             {i > 0 ? (
               <div
-                className={cn("flex w-5 shrink-0 items-center justify-center", isNext ? "text-[#c9a24a]" : "text-[#d7c7a8]")}
+                className={cn("flex w-5 shrink-0 items-center justify-center", isNext ? "text-[var(--m-gold)]" : "text-[var(--m-line)]")}
                 aria-hidden
               >
                 <ChevronLeft className="h-5 w-5" strokeWidth={2.5} />
               </div>
             ) : null}
-            <div
-              className={cn(
-                "m-schedule-tile",
-                isPrayer && "m-schedule-tile--prayer",
-                isNext && "m-schedule-tile--next",
-                isPast && !isNext && "m-schedule-tile--past"
-              )}
-            >
-              {isNext ? <span className="m-tag m-tag--next">הבא</span> : null}
-              {row.dayTag ? <span className="m-tag m-tag--day">{row.dayTag}</span> : null}
-              <div className={cn("m-schedule-label", isNext && "pt-3")}>
-                {isPrayer ? `תפילת ${row.label}` : row.label}
-              </div>
-              <div className="m-schedule-time">{row.time}</div>
-            </div>
+            {siddur ? (
+              <button type="button" className={tileClass} onClick={() => onOpenSiddur(siddur)}>
+                {tileInner}
+              </button>
+            ) : (
+              <div className={tileClass}>{tileInner}</div>
+            )}
           </div>
         );
       })}
@@ -915,12 +1090,14 @@ function PrayerTimesScreen({
   prayerSchedule,
   nowMinutes,
   highlightNow,
-  zmanim = []
+  zmanim = [],
+  onOpenSiddur
 }: {
   prayerSchedule: DisplayPrayerSlot[];
   nowMinutes: number;
   highlightNow: boolean;
   zmanim?: Array<{ label: string; time: string }>;
+  onOpenSiddur: (prayer: SiddurPrayer) => void;
 }) {
   const groups = groupPrayersForDisplay(prayerSchedule);
   const nextTotalMinutes = highlightNow
@@ -937,23 +1114,47 @@ function PrayerTimesScreen({
   return (
     <Card>
       <div className="space-y-2">
-        {groups.map(({ group, title, rows: groupRows }) => (
-          <div key={group} className="m-prayer-group">
-            <span className={cn("m-prayer-group-title", title.length > 8 && "m-prayer-group-title--wide")}>
-              {title}
-            </span>
-            <div className="m-prayer-chips">
-              {groupRows.map((row, i) => {
-                const isNext = row.totalMinutes === nextTotalMinutes;
-                return (
-                  <span key={`${group}-${row.time}-${i}`} className={cn("m-chip", isNext && "m-chip--next")}>
-                    {row.time}
+        {groups.map(({ group, title, rows: groupRows }) => {
+          const siddur = siddurPrayerFromLabel(title, groupRows[0]?.prayerType);
+          return (
+            <div key={group} className="m-prayer-group">
+              {siddur ? (
+                <button type="button" className="m-prayer-group-open" onClick={() => onOpenSiddur(siddur)}>
+                  <span className={cn("m-prayer-group-title", title.length > 8 && "m-prayer-group-title--wide")}>
+                    {title}
                   </span>
-                );
-              })}
+                  <BookOpen className="m-prayer-group-book" aria-hidden />
+                  <span className="m-prayer-chips">
+                    {groupRows.map((row, i) => {
+                      const isNext = row.totalMinutes === nextTotalMinutes;
+                      return (
+                        <span key={`${group}-${row.time}-${i}`} className={cn("m-chip", isNext && "m-chip--next")}>
+                          {row.time}
+                        </span>
+                      );
+                    })}
+                  </span>
+                </button>
+              ) : (
+                <>
+                  <span className={cn("m-prayer-group-title", title.length > 8 && "m-prayer-group-title--wide")}>
+                    {title}
+                  </span>
+                  <div className="m-prayer-chips">
+                    {groupRows.map((row, i) => {
+                      const isNext = row.totalMinutes === nextTotalMinutes;
+                      return (
+                        <span key={`${group}-${row.time}-${i}`} className={cn("m-chip", isNext && "m-chip--next")}>
+                          {row.time}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
         {zmanim.length ? (
           <div>
             <h3 className="m-section-title">זמני היום</h3>
@@ -967,7 +1168,15 @@ function PrayerTimesScreen({
   );
 }
 
-function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
+function ShabbatScreen({
+  shabbat,
+  nowMinutes,
+  highlightNow
+}: {
+  shabbat: DisplayShabbat | null;
+  nowMinutes: number;
+  highlightNow: boolean;
+}) {
   if (!shabbat) {
     return <Card className="m-center m-muted">אין נתוני שבת או חג להצגה כעת.</Card>;
   }
@@ -998,6 +1207,13 @@ function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
           }
         ]
       : [];
+  const nextShabbat = highlightNow
+    ? dayBoards
+        .flatMap((board) => board.rows.map((row) => ({ ...row, boardKey: board.key, totalMinutes: toMinutes(row.time) })))
+        .filter((row) => row.time && Number.isFinite(row.totalMinutes))
+        .sort((a, b) => a.totalMinutes - b.totalMinutes)
+        .find((row) => row.totalMinutes >= nowMinutes) ?? null
+    : null;
   return (
     <div className="space-y-3">
       <div className="m-hero">
@@ -1029,7 +1245,17 @@ function ShabbatScreen({ shabbat }: { shabbat: DisplayShabbat | null }) {
                 <h3 className="m-section-title">{column.title}</h3>
                 <div>
                   {column.rows.map((row, i) => (
-                    <TimeRow key={`${column.id}-${row.label}-${i}`} label={row.label} time={row.time} />
+                    <TimeRow
+                      key={`${column.id}-${row.label}-${i}`}
+                      label={row.label}
+                      time={row.time}
+                      highlight={Boolean(
+                        nextShabbat &&
+                          board.key === nextShabbat.boardKey &&
+                          row.label === nextShabbat.label &&
+                          row.time === nextShabbat.time
+                      )}
+                    />
                   ))}
                 </div>
               </Card>
