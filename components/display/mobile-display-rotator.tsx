@@ -22,6 +22,7 @@ import { groupPrayersForDisplay, weekdayMinchaClockTimes } from "@/lib/prayer-di
 import { groupShabbatScheduleByPeriod } from "@/lib/shabbat-schedule-periods";
 import { setPreferredSynagogue } from "@/lib/mobile-synagogue-preference";
 import { FAST_END_LABEL, FAST_START_LABEL } from "@/lib/liturgical-additions";
+import { useHideMainPrayerTimes } from "@/hooks/use-hide-main-prayer-times";
 
 type ScreenKey =
   | "main"
@@ -52,6 +53,7 @@ type Snapshot = {
   dafYomi: string;
   zmanim: Array<{ label: string; time: string }>;
   halachicDayRollIso: string | null;
+  chatzotIso?: string | null;
   rainText: string;
   blessingText: string;
   omerText: string | null;
@@ -227,6 +229,11 @@ export function MobileDisplayRotator({
 
   const refreshLive = useDisplayLiveRefresh(applyView);
   useHalachicDayLiveRefresh(snapshot.halachicDayRollIso, refreshLive);
+  const hideMainTimes = useHideMainPrayerTimes({
+    shabbatScreenActive: Boolean(shabbat),
+    viewIso: viewDate,
+    chatzotIso: snapshot.chatzotIso
+  });
 
   const jerusalemTodayIso = toIsoDateJerusalem();
   const isViewingToday = viewDate === jerusalemTodayIso;
@@ -354,9 +361,9 @@ export function MobileDisplayRotator({
         {screenKey === "main" && (
           <MainScreen
             snapshot={snapshot}
-            timeSections={visibleTimeSections}
+            timeSections={hideMainTimes ? [] : visibleTimeSections}
             mevarchimText={shabbatMevarchimText}
-            nextPrayer={nextPrayer}
+            nextPrayer={hideMainTimes ? null : nextPrayer}
           />
         )}
         {screenKey === "mainInfo" && (

@@ -349,6 +349,15 @@ optgroup {
     align-items: stretch;
   }
 
+  .display-main-grid--info-only {
+    grid-template-columns: 1fr;
+  }
+
+  .display-main-grid--info-only .display-main-primary {
+    max-width: min(86%, 80rem);
+    margin-inline: auto;
+  }
+
   .display-main-primary {
     display: flex;
     flex-direction: column;

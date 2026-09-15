@@ -354,6 +354,15 @@
   overflow: hidden;
 }
 
+.display.display--veryBold .display-main-grid--info-only {
+  grid-template-columns: 1fr;
+}
+
+.display.display--veryBold .display-main-grid--info-only .display-main-primary {
+  max-width: min(90%, 96rem);
+  margin-inline: auto;
+}
+
 .display.display--veryBold .display-screen-stage > .display-main-grid {
   flex: 1;
 }

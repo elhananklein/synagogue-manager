@@ -16,6 +16,7 @@ import { pickDisplayLiveFields, useDisplayLiveRefresh, useHalachicDayLiveRefresh
 import { groupPrayersForDisplay, weekdayMinchaClockTimes, type PrayerDisplayGroupId } from "@/lib/prayer-display-groups";
 import { groupShabbatScheduleByPeriod, type ShabbatScheduleRow } from "@/lib/shabbat-schedule-periods";
 import { FAST_END_LABEL, FAST_START_LABEL } from "@/lib/liturgical-additions";
+import { useHideMainPrayerTimes } from "@/hooks/use-hide-main-prayer-times";
 
 type ScreenKey =
   | "main"
@@ -58,6 +59,7 @@ type Snapshot = {
   dafYomi: string;
   zmanim: Array<{ label: string; time: string }>;
   halachicDayRollIso: string | null;
+  chatzotIso?: string | null;
   rainText: string;
   blessingText: string;
   omerText: string | null;
@@ -642,6 +644,11 @@ export function DisplayRotator({
     }
   });
   useHalachicDayLiveRefresh(snapshot.halachicDayRollIso, refreshLive);
+  const hideMainTimes = useHideMainPrayerTimes({
+    shabbatScreenActive: Boolean(shabbat),
+    viewIso: viewDate,
+    chatzotIso: snapshot.chatzotIso
+  });
 
   const enabledScreens = useMemo(() => {
     return screens.filter((s) => {
@@ -1389,7 +1396,7 @@ export function DisplayRotator({
         ) : null}
 
         {currentScreen === "main" ? (
-          <section className={cn("display-main-grid", isWoodSilverRevolution && "display-main-grid--ws-revolution")}>
+          <section className={cn("display-main-grid", isWoodSilverRevolution && "display-main-grid--ws-revolution", hideMainTimes && "display-main-grid--info-only")}>
             <div className="display-main-primary">
               <div className="display-main-primary-stack">
                 <PrimaryInfoStack
@@ -1402,7 +1409,7 @@ export function DisplayRotator({
               </div>
             </div>
 
-            {!isWoodSilverRevolution ? (
+            {!isWoodSilverRevolution && !hideMainTimes ? (
             <Card
               className={cn(
                 "display-card display-main-times-card",
@@ -1709,14 +1716,17 @@ function PrimaryInfoStack({
   const extraTiles = [omerTileText, amidahAddition, ...(snapshot.liturgicalTiles ?? [])]
     .filter((value): value is string => Boolean(value))
     .flatMap((value) => value.split("\n").map((line) => line.trim()).filter(Boolean));
-  const lastExtraSpans = extraTiles.length % 2 === 1;
-  const additionTileCount = 2 + extraTiles.length;
+  const additionTiles = [snapshot.rainText, snapshot.blessingText, ...extraTiles]
+    .map((value) => value?.trim() ?? "")
+    .filter(Boolean);
+  const lastExtraSpans = additionTiles.length % 2 === 1;
+  const additionTileCount = additionTiles.length;
   const additionsClass =
-    extraTiles.length >= 3
+    additionTileCount >= 5
       ? "display-main-additions display-main-additions--many"
-      : extraTiles.length === 1
+      : additionTileCount === 3
         ? "display-main-additions display-main-additions--three"
-        : extraTiles.length >= 2
+        : additionTileCount >= 4
           ? "display-main-additions display-main-additions--four"
           : "display-main-additions";
 
@@ -1740,9 +1750,7 @@ function PrimaryInfoStack({
       {isWoodSilverRevolution ? (
         <div className="display-ws-additions-shell">
           <div className="display-ws-additions-inner">
-            <p className="display-addition-text">{snapshot.rainText}</p>
-            <p className="display-addition-text">{snapshot.blessingText}</p>
-            {extraTiles.map((text) => (
+            {additionTiles.map((text) => (
               <p key={text} className="display-addition-text">
                 {text}
               </p>
@@ -1751,20 +1759,10 @@ function PrimaryInfoStack({
         </div>
       ) : (
         <div className={additionsClass} data-addition-count={additionTileCount}>
-          <Card className="display-card">
-            <CardContent className="display-addition-content !p-0">
-              <p className="display-addition-text">{snapshot.rainText}</p>
-            </CardContent>
-          </Card>
-          <Card className="display-card">
-            <CardContent className="display-addition-content !p-0">
-              <p className="display-addition-text">{snapshot.blessingText}</p>
-            </CardContent>
-          </Card>
-          {extraTiles.map((text, index) => (
+          {additionTiles.map((text, index) => (
             <Card
               key={text}
-              className={`display-card${lastExtraSpans && index === extraTiles.length - 1 ? " display-addition-single" : ""}`}
+              className={`display-card${lastExtraSpans && index === additionTiles.length - 1 ? " display-addition-single" : ""}`}
             >
               <CardContent className="display-addition-content !p-0">
                 <p className="display-addition-text">{text}</p>

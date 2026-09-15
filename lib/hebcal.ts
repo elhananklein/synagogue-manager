@@ -54,6 +54,8 @@ export type DisplaySnapshot = {
   dailyLearning: DailyLearningLine[];
   zmanim: Array<{ label: string; time: string }>;
   zmanimSourceTimes: Record<string, string>;
+  /** ISO של חצות היום — להסתרת זמני הראשי בשישי אחרי חצות. */
+  chatzotIso: string | null;
   /** צאת הכוכבים ליום האזרחי של הזמנים — לרענון כשהיום העברי מתקדם (לא חצות). */
   halachicDayRollIso: string | null;
   rainText: string;
@@ -665,11 +667,12 @@ export async function getDisplaySnapshot(
     fastStart = clockFromZmanimIso(startIso);
     fastEnd = clockFromZmanimIso(endIso);
   }
+  const liturgicalWeekday = new Date(Date.UTC(converter.gy, converter.gm - 1, converter.gd, 12, 0, 0)).getUTCDay();
   const liturgicalTiles = resolveLiturgicalTiles({
     events,
     hebrewMonth: converter.hm,
     hebrewDay: converter.hd,
-    weekday: new Date(Date.UTC(converter.gy, converter.gm - 1, converter.gd, 12, 0, 0)).getUTCDay(),
+    weekday: liturgicalWeekday,
     isChag: todayIsChag
   });
   const winter = isWinterSeason(converter.hm, converter.hd);
@@ -715,12 +718,14 @@ export async function getDisplaySnapshot(
     dailyLearning,
     zmanim: zmanimRows,
     zmanimSourceTimes: times,
+    chatzotIso: times.chatzot ?? null,
     halachicDayRollIso: times.tzeit85deg ?? null,
     fastName: resolvePublicFastName(events),
     fastStart,
     fastEnd,
     rainText: winter ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
-    blessingText: birkatHashanimLabel(winter, options?.haftarahMinhag),
+    blessingText:
+      liturgicalWeekday === 6 || todayIsChag ? "" : birkatHashanimLabel(winter, options?.haftarahMinhag),
     omerText,
     omerShortText,
     amidahAdditionText: resolveAmidahAdditionText(events),
