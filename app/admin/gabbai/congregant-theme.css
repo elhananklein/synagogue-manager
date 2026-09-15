@@ -221,7 +221,8 @@
   resize: vertical;
 }
 
-.congregant-field input:read-only {
+.congregant-field input:read-only,
+.congregant-field select:disabled {
   background: rgb(15 23 42 / 0.04);
 }
 

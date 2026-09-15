@@ -11,7 +11,7 @@ import {
   type CongregantInput,
   type CongregantMinyanOption
 } from "@/lib/congregant-types";
-import { formatIsoDate, isIsoDate, parseHebrewMonth } from "@/lib/hebrew-civil-date";
+import { formatIsoDate, isIsoDate, parseHebrewDayInput, parseHebrewMonth, parseHebrewYearInput } from "@/lib/hebrew-civil-date";
 
 export const CONGREGANT_EXCEL_COLUMNS = [
   { key: "firstName", header: "שם פרטי" },
@@ -107,15 +107,17 @@ function parseGregorianCell(value: unknown): string {
 }
 
 function parseYearCell(value: unknown): number {
-  if (typeof value === "number" && Number.isInteger(value)) return value;
-  const text = cellText(value).replace(/[^\d]/g, "");
-  return text ? Number(text) : 0;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return parseHebrewYearInput(Math.round(value));
+  }
+  return parseHebrewYearInput(cellText(value));
 }
 
 function parseDayCell(value: unknown): number {
-  if (typeof value === "number" && Number.isInteger(value)) return value;
-  const text = cellText(value);
-  return text ? Number(text) : 0;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return parseHebrewDayInput(Math.round(value));
+  }
+  return parseHebrewDayInput(cellText(value));
 }
 
 function matchMinyan(name: string, minyanim: CongregantMinyanOption[]): CongregantMinyanOption | null {
@@ -165,6 +167,7 @@ export function buildCongregantTemplateWorkbook(minyanim: CongregantMinyanOption
   const instructions = [
     ["הוראות למילוי קובץ המתפללים"],
     ["אפשר למלא תאריך לועזי או תאריך עברי (יום + חודש + שנה). השני יחושב אוטומטית."],
+    ["בתאריך עברי: יום באותיות (א׳, י״א, ט״ו), חודש בשם (תשרי, ניסן), שנה באותיות (תשפ״ו). אפשר גם ספרות."],
     ["שנת לידה חובה תמיד."],
     ["גבר / אשה: גבר או אשה. אם ריק — גבר."],
     ["כהן / לוי / ישראל: כהן, לוי או ישראל."],

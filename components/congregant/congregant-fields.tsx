@@ -20,7 +20,7 @@ import {
   type CongregantYahrzeit,
   type YahrzeitRelation
 } from "@/lib/congregant-types";
-import { hebrewMonthsForYear, isHebrewLeapYear } from "@/lib/hebrew-civil-date";
+import { hebrewMonthsForYear, hebrewDayLetters, hebrewYearLetters, isHebrewLeapYear, parseHebrewYearInput } from "@/lib/hebrew-civil-date";
 
 export function CongregantFields({
   input,
@@ -37,12 +37,7 @@ export function CongregantFields({
   onPatch: (next: Partial<CongregantInput>, source?: BirthDateSource) => void;
   onBirthSource: (source: BirthDateSource) => void;
 }) {
-  const months = useMemo(
-    () => hebrewMonthsForYear(input.hebrewBirthYear || null),
-    [input.hebrewBirthYear]
-  );
   const prayerName = congregantPrayerName(input);
-  const hebrewYear = input.hebrewBirthYear > 0 ? String(input.hebrewBirthYear) : "";
   const self = variant === "self";
   const bornLabel = input.gender === "female" ? "נולדה אחרי השקיעה" : "נולד אחרי השקיעה";
 
@@ -206,49 +201,22 @@ export function CongregantFields({
           />
         </label>
         <div className="congregant-grid congregant-grid--3">
-          <label className="congregant-field">
-            <span>יום עברי</span>
-            <input
-              type="number"
-              min={1}
-              max={30}
-              inputMode="numeric"
-              readOnly={birthSource !== "hebrew"}
-              value={input.hebrewBirthDay || ""}
-              onChange={(e) => onPatch({ hebrewBirthDay: Number(e.target.value) || 0 }, "hebrew")}
-            />
-          </label>
-          <label className="congregant-field">
-            <span>חודש עברי</span>
-            <select
-              disabled={birthSource !== "hebrew"}
-              value={input.hebrewBirthMonth || ""}
-              onChange={(e) => onPatch({ hebrewBirthMonth: Number(e.target.value) }, "hebrew")}
-            >
-              {months.map((month) => (
-                <option key={month.month} value={month.month}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="congregant-field">
-            <span>שנה עברית</span>
-            <input
-              type="number"
-              min={5000}
-              max={6000}
-              inputMode="numeric"
-              readOnly={birthSource !== "hebrew"}
-              value={hebrewYear}
-              onChange={(e) => {
-                const year = Number(e.target.value) || 0;
-                const leap = year ? isHebrewLeapYear(year) : true;
-                const month = !leap && input.hebrewBirthMonth === 13 ? 12 : input.hebrewBirthMonth;
-                onPatch({ hebrewBirthYear: year, hebrewBirthMonth: month }, "hebrew");
-              }}
-            />
-          </label>
+          <HebrewDateFields
+            day={input.hebrewBirthDay}
+            month={input.hebrewBirthMonth}
+            year={input.hebrewBirthYear}
+            disabled={birthSource !== "hebrew"}
+            onChange={(next) =>
+              onPatch(
+                {
+                  ...(next.day != null ? { hebrewBirthDay: next.day } : {}),
+                  ...(next.month != null ? { hebrewBirthMonth: next.month } : {}),
+                  ...(next.year != null ? { hebrewBirthYear: next.year } : {})
+                },
+                "hebrew"
+              )
+            }
+          />
         </div>
       </div>
 
@@ -328,7 +296,6 @@ function YahrzeitCard({
 }) {
   const [source, setSource] = useState<BirthDateSource>(item.gregorianDate ? "gregorian" : "hebrew");
   const started = isYahrzeitStarted(item);
-  const months = hebrewMonthsForYear(item.hebrewYear || null);
 
   function patchDate(next: Partial<CongregantYahrzeit>, nextSource: BirthDateSource) {
     setSource(nextSource);
@@ -382,49 +349,23 @@ function YahrzeitCard({
           />
         </label>
         <div className="congregant-grid congregant-grid--3">
-          <label className="congregant-field">
-            <span>יום עברי</span>
-            <input
-              type="number"
-              min={1}
-              max={30}
-              inputMode="numeric"
-              readOnly={source !== "hebrew"}
-              value={started ? item.hebrewDay || "" : ""}
-              onChange={(e) => patchDate({ hebrewDay: Number(e.target.value) || 0 }, "hebrew")}
-            />
-          </label>
-          <label className="congregant-field">
-            <span>חודש עברי</span>
-            <select
-              disabled={source !== "hebrew"}
-              value={item.hebrewMonth || ""}
-              onChange={(e) => patchDate({ hebrewMonth: Number(e.target.value) }, "hebrew")}
-            >
-              {months.map((month) => (
-                <option key={month.month} value={month.month}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="congregant-field">
-            <span>שנה עברית</span>
-            <input
-              type="number"
-              min={5000}
-              max={6000}
-              inputMode="numeric"
-              readOnly={source !== "hebrew"}
-              value={item.hebrewYear > 0 ? String(item.hebrewYear) : ""}
-              onChange={(e) => {
-                const year = Number(e.target.value) || 0;
-                const leap = year ? isHebrewLeapYear(year) : true;
-                const month = !leap && item.hebrewMonth === 13 ? 12 : item.hebrewMonth;
-                patchDate({ hebrewYear: year, hebrewMonth: month }, "hebrew");
-              }}
-            />
-          </label>
+          <HebrewDateFields
+            day={started ? item.hebrewDay : 0}
+            month={item.hebrewMonth}
+            year={item.hebrewYear}
+            disabled={source !== "hebrew"}
+            allowEmptyDay
+            onChange={(next) =>
+              patchDate(
+                {
+                  ...(next.day != null ? { hebrewDay: next.day } : {}),
+                  ...(next.month != null ? { hebrewMonth: next.month } : {}),
+                  ...(next.year != null ? { hebrewYear: next.year } : {})
+                },
+                "hebrew"
+              )
+            }
+          />
         </div>
       </div>
       <label className="congregant-check" style={{ marginTop: "0.65rem" }}>
@@ -436,6 +377,97 @@ function YahrzeitCard({
         {yahrzeitDiedAfterSunsetLabel(item.relation)}
       </label>
     </div>
+  );
+}
+
+const HEBREW_DAY_OPTIONS = Array.from({ length: 30 }, (_, index) => index + 1);
+
+function HebrewDateFields({
+  day,
+  month,
+  year,
+  disabled,
+  allowEmptyDay = false,
+  onChange
+}: {
+  day: number;
+  month: number;
+  year: number;
+  disabled: boolean;
+  allowEmptyDay?: boolean;
+  onChange: (next: { day?: number; month?: number; year?: number }) => void;
+}) {
+  const months = useMemo(() => hebrewMonthsForYear(year || null), [year]);
+  const [yearDraft, setYearDraft] = useState<string | null>(null);
+  const yearShown = yearDraft ?? (year > 0 ? hebrewYearLetters(year) : "");
+
+  function commitYear(raw: string) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      onChange({ year: 0, month });
+      return;
+    }
+    const parsed = parseHebrewYearInput(trimmed);
+    if (!parsed) return;
+    const leap = isHebrewLeapYear(parsed);
+    const nextMonth = !leap && month === 13 ? 12 : month;
+    onChange({ year: parsed, month: nextMonth });
+  }
+
+  return (
+    <>
+      <label className="congregant-field">
+        <span>יום עברי</span>
+        <select
+          disabled={disabled}
+          value={day >= 1 && day <= 30 ? day : ""}
+          onChange={(e) => onChange({ day: Number(e.target.value) || 0 })}
+        >
+          {allowEmptyDay || !day ? <option value="">—</option> : null}
+          {HEBREW_DAY_OPTIONS.map((item) => (
+            <option key={item} value={item}>
+              {hebrewDayLetters(item)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="congregant-field">
+        <span>חודש עברי</span>
+        <select
+          disabled={disabled}
+          value={month || ""}
+          onChange={(e) => onChange({ month: Number(e.target.value) })}
+        >
+          {months.map((item) => (
+            <option key={item.month} value={item.month}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="congregant-field">
+        <span>שנה עברית</span>
+        <input
+          type="text"
+          inputMode="text"
+          lang="he"
+          dir="rtl"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="תשפ״ו"
+          readOnly={disabled}
+          value={yearShown}
+          onFocus={() => {
+            if (!disabled) setYearDraft(year > 0 ? hebrewYearLetters(year) : "");
+          }}
+          onChange={(e) => setYearDraft(e.target.value)}
+          onBlur={(e) => {
+            commitYear(e.target.value);
+            setYearDraft(null);
+          }}
+        />
+      </label>
+    </>
   );
 }
 
