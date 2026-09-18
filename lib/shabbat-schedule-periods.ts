@@ -107,6 +107,32 @@ function assignPeriod(row: ShabbatScheduleRow, seenMorning: boolean, seenAfterno
   return seenAfternoon ? "afternoon" : "morning";
 }
 
+export type AgendaMinchaSourceItem = {
+  occasionDay?: number | null;
+  itemTime: string | null;
+  content: string;
+};
+
+/**
+ * זמן מנחה של ערב שבת/חג מלוח השבת הידני — השורה הראשונה בעמודת ערב שמכילה «מנחה» ויש לה שעה.
+ * מנחה של שבת אחה״צ (אחרי שחרית) לא נספרת.
+ */
+export function erevMinchaTimeFromShabbatAgenda(items: AgendaMinchaSourceItem[]): string | null {
+  const withContent = items.filter((item) => item.content.trim());
+  if (!withContent.length) return null;
+  const hasDayField = withContent.some((item) => item.occasionDay != null);
+  const day1 = hasDayField ? withContent.filter((item) => (item.occasionDay ?? 1) === 1) : withContent;
+  const source = day1.length ? day1 : withContent;
+  const rows = source.map((item) => ({
+    label: item.content,
+    time: item.itemTime?.trim() ?? ""
+  }));
+  const erev = groupShabbatScheduleByPeriod(rows).find((column) => column.id === "erev");
+  const mincha = erev?.rows.find((row) => /מנחה/.test(normalizeLabel(row.label)) && parseClockMinutes(row.time) != null);
+  const time = mincha?.time.trim().slice(0, 5) ?? "";
+  return /^\d{2}:\d{2}$/.test(time) ? time : null;
+}
+
 export function groupShabbatScheduleByPeriod(
   rows: ShabbatScheduleRow[],
   options?: ShabbatPeriodTitleOptions

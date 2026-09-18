@@ -4,6 +4,7 @@ import {
   parashaKeyMatchRank,
   type ParashaPrayerCatalogRow
 } from "@/lib/parasha-prayer-catalog";
+import { prayerDisplayGroupId } from "@/lib/prayer-display-groups";
 
 /** תווית תצוגה למנחה ערב שבת — במסד נשאר המפתח «מנחה ערב שבת». */
 export const EREV_SHABBAT_DISPLAY_LABEL = "מנחה ערב שבת";
@@ -368,6 +369,40 @@ export function buildPrayerScheduleForDay(
     if (row) out.push(row);
   }
   return out;
+}
+
+/**
+ * ביום שישי בלבד: אם בלוח השבת יש מנחה של ערב עם שעה — היא מחליפה את זמן המנחה בלוח המרכזי.
+ * שבת ומנחה של חול בימים אחרים לא משתנים.
+ */
+export function applyFridayAgendaMinchaTime(
+  rows: BuiltPrayerRow[],
+  jsDay: number,
+  agendaMinchaTime: string | null | undefined,
+  erevIsChag = false
+): BuiltPrayerRow[] {
+  if (jsDay !== 5) return rows;
+  const time = agendaMinchaTime?.trim().slice(0, 5) ?? "";
+  if (!/^\d{2}:\d{2}$/.test(time)) return rows;
+
+  let replaced = false;
+  const next = rows.map((row) => {
+    if (prayerDisplayGroupId(row) !== "מנחה") return row;
+    if (row.prayerType === "מנחה שבת") return row;
+    replaced = true;
+    return { ...row, time };
+  });
+  if (replaced) return next;
+
+  return [
+    ...next,
+    {
+      label: erevIsChag ? EREV_CHAG_DISPLAY_LABEL : EREV_SHABBAT_DISPLAY_LABEL,
+      time,
+      details: "",
+      prayerType: "מנחה ערב שבת"
+    }
+  ];
 }
 
 /** סדר תצוגת תפילות השבת — מנחה ערב שבת תחילה, ואז שחרית/מנחה/ערבית מוצ"ש. */

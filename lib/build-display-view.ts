@@ -7,8 +7,14 @@ import { DISPLAY_STYLES, isDisplayPalette, resolveDisplayPalette } from "@/lib/d
 import { isDisplayFont, resolveDisplayFont, type DisplayFont } from "@/lib/display-font";
 import { getDisplayConfig, type DisplayPalette, type DisplayStyle, type ScheduleTimesListMode, type ScreenSetting } from "@/lib/display-config";
 import { getPublicHomeData } from "@/lib/data/public-content";
-import { buildPrayerScheduleForDay, buildShabbatPrayerSchedule, settingsNeedSundayZmanim } from "@/lib/build-prayer-schedule";
+import {
+  applyFridayAgendaMinchaTime,
+  buildPrayerScheduleForDay,
+  buildShabbatPrayerSchedule,
+  settingsNeedSundayZmanim
+} from "@/lib/build-prayer-schedule";
 import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
+import { erevMinchaTimeFromShabbatAgenda } from "@/lib/shabbat-schedule-periods";
 import { filterDailyLearningByKeys } from "@/lib/daily-learning-catalog";
 import { hebrewWeekdayLong, resolveViewIsoDate } from "@/lib/view-date";
 import { isChagOnDate, isErevShabbatonDate, isOccasionScreenDay, preferredOccasionDayIndex, resolveOccasionCluster, resolveOccasionLabel } from "@/lib/sacred-occasion";
@@ -230,31 +236,42 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     return snapshot.zmanimSourceTimes;
   };
 
-  const prayerSchedule = buildPrayerScheduleForDay(
-    displayConfig.prayerSettings,
-    snapshot.zmanimSourceTimes,
+  const fridayAgendaMinchaTime = erevMinchaTimeFromShabbatAgenda(shabbatAgendaItems);
+  const prayerSchedule = applyFridayAgendaMinchaTime(
+    buildPrayerScheduleForDay(
+      displayConfig.prayerSettings,
+      snapshot.zmanimSourceTimes,
+      todayJsDay,
+      isShabbatToday,
+      snapshot.parashaCatalogKey,
+      zmanimByIso(todaySundayIso),
+      displayConfig.parashaCatalog,
+      {
+        treatAsErev: isErevShabbatonDate(todayIsoDate),
+        isChag: isChagOnDate(tomorrowIsoDate)
+      }
+    ),
     todayJsDay,
-    isShabbatToday,
-    snapshot.parashaCatalogKey,
-    zmanimByIso(todaySundayIso),
-    displayConfig.parashaCatalog,
-    {
-      treatAsErev: isErevShabbatonDate(todayIsoDate),
-      isChag: isChagOnDate(tomorrowIsoDate)
-    }
+    fridayAgendaMinchaTime,
+    isChagOnDate(tomorrowIsoDate)
   );
-  const tomorrowPrayerSchedule = buildPrayerScheduleForDay(
-    displayConfig.prayerSettings,
-    tomorrowSnapshot.zmanimSourceTimes,
+  const tomorrowPrayerSchedule = applyFridayAgendaMinchaTime(
+    buildPrayerScheduleForDay(
+      displayConfig.prayerSettings,
+      tomorrowSnapshot.zmanimSourceTimes,
+      tomorrowJsDay,
+      tomorrowJsDay === 6,
+      tomorrowSnapshot.parashaCatalogKey,
+      zmanimByIso(tomorrowSundayIso),
+      displayConfig.parashaCatalog,
+      {
+        treatAsErev: isErevShabbatonDate(tomorrowIsoDate),
+        isChag: isChagOnDate(addDaysIsoDate(tomorrowIsoDate, 1))
+      }
+    ),
     tomorrowJsDay,
-    tomorrowJsDay === 6,
-    tomorrowSnapshot.parashaCatalogKey,
-    zmanimByIso(tomorrowSundayIso),
-    displayConfig.parashaCatalog,
-    {
-      treatAsErev: isErevShabbatonDate(tomorrowIsoDate),
-      isChag: isChagOnDate(addDaysIsoDate(tomorrowIsoDate, 1))
-    }
+    fridayAgendaMinchaTime,
+    isChagOnDate(addDaysIsoDate(tomorrowIsoDate, 1))
   );
 
   const forceYaalehRaw = singleQueryParam(params.forceYaaleh);
@@ -410,6 +427,11 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       preferredDay: preferredOccasionDayIndex(todayIsoDate, cluster),
       haftarah
     };
+    if (fridayAgendaMinchaTime) {
+      shabbat.prayers = shabbat.prayers.map((row) =>
+        /מנחה/.test(row.label) && /ערב/.test(row.label) ? { ...row, time: fridayAgendaMinchaTime } : row
+      );
+    }
   }
 
   const todayZmanimItems = [
