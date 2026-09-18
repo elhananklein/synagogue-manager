@@ -1904,18 +1904,20 @@ optgroup {
     flex-wrap: wrap;
     align-items: baseline;
     justify-content: center;
-    gap: 0.35em 0.75em;
-    margin: 0;
+    gap: 0.2em 0.55em;
+    margin: 0.2rem 0 0;
     text-align: center;
-  }
-  .display-shabbat-haftarah-name {
-    font-size: clamp(1.55rem, 3.8vmin, 2.85rem);
+    font-size: clamp(2.25rem, 5.6vmin, 4.4rem);
     font-weight: 800;
     line-height: 1.15;
   }
+  .display-shabbat-haftarah-name {
+    font-size: 1em;
+    font-weight: 800;
+  }
   .display-shabbat-haftarah-source {
-    font-size: clamp(1.05rem, 2.4vmin, 1.7rem);
-    font-weight: 700;
+    font-size: 1em;
+    font-weight: 800;
     opacity: 0.78;
   }
   .display-shabbat-zmanim {
@@ -2245,25 +2247,31 @@ optgroup {
     white-space: nowrap;
   }
 
-  /* מסכי טלוויזיה / רוחב — כותרת מימין, זמנים משמאל, לוח רחב מתחת */
+  /* מסכי טלוויזיה / רוחב — כותרת ממורכזת, זמנים ולוח מתחת */
   @media (orientation: landscape) and (min-width: 700px) {
     .display-shabbat-inner {
       width: min(97vw, 104rem);
       gap: clamp(0.75rem, 2.4vmin, 2rem);
     }
     .display-shabbat-hero {
-      display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.95fr);
+      display: flex;
+      flex-direction: column;
       align-items: center;
       gap: clamp(1rem, 3.2vmin, 2.75rem);
     }
     .display-shabbat-heading {
-      align-items: flex-start;
-      text-align: start;
+      align-items: center;
+      text-align: center;
+      width: 100%;
     }
     .display-shabbat-parasha,
-    .display-shabbat-mevarchim {
-      text-align: start;
+    .display-shabbat-mevarchim,
+    .display-shabbat-haftarah {
+      text-align: center;
+    }
+    .display-shabbat-haftarah {
+      justify-content: center;
+      font-size: clamp(2.45rem, 6.1vmin, 4.75rem);
     }
     .display-shabbat-zmanim {
       max-width: none;

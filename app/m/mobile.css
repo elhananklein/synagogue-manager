@@ -423,6 +423,20 @@
   color: var(--m-gold-bright);
 }
 
+.m-hero-haftarah {
+  margin: 0.5rem 0 0;
+  font-size: clamp(1.15rem, 4.8vw, 1.5rem);
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.m-hero-haftarah-source {
+  margin-inline-start: 0.35em;
+  font-size: 1em;
+  font-weight: 800;
+  color: var(--m-gold-bright);
+}
+
 .m-badge-row {
   display: flex;
   flex-wrap: wrap;

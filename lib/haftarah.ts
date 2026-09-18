@@ -92,25 +92,48 @@ function formatRange(ch1: number, v1: number, ch2?: number, v2?: number) {
 }
 
 function parseEnglishRange(raw: string): string | null {
-  const same = raw.match(/^(\d+):(\d+)-(\d+)$/);
+  const compact = raw.replace(/\u2013|\u2014/g, "-").replace(/\s+/g, "");
+  const same = compact.match(/^(\d+):(\d+)-(\d+)$/);
   if (same) {
     return formatRange(Number(same[1]), Number(same[2]), Number(same[1]), Number(same[3]));
   }
-  const cross = raw.match(/^(\d+):(\d+)-(\d+):(\d+)$/);
+  const cross = compact.match(/^(\d+):(\d+)-(\d+):(\d+)$/);
   if (cross) {
     return formatRange(Number(cross[1]), Number(cross[2]), Number(cross[3]), Number(cross[4]));
   }
-  const single = raw.match(/^(\d+):(\d+)$/);
+  const single = compact.match(/^(\d+):(\d+)$/);
   if (single) {
     return formatRange(Number(single[1]), Number(single[2]));
   }
   return null;
 }
 
-export function formatHaftarahSource(english: string): string {
+function bookKeyAtStart(text: string): string | undefined {
+  const lower = text.toLowerCase();
+  return BOOK_KEYS.find((key) => lower === key.toLowerCase() || lower.startsWith(`${key.toLowerCase()} `));
+}
+
+/** פיצול ציטוטים עם כמה ספרים (פסיק או נקודה-פסיק), בלי לפרק טווחים מאותו ספר. */
+function splitBookCitations(english: string): string[] {
+  const chunks = english
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const citations: string[] = [];
+  for (const chunk of chunks) {
+    const bits = chunk.split(",").map((part) => part.trim()).filter(Boolean);
+    for (const bit of bits) {
+      if (bookKeyAtStart(bit) || citations.length === 0) citations.push(bit);
+      else citations[citations.length - 1] += `, ${bit}`;
+    }
+  }
+  return citations;
+}
+
+function formatSingleBookCitation(english: string): string {
   const trimmed = english.trim();
   if (!trimmed) return "";
-  const bookKey = BOOK_KEYS.find((key) => trimmed === key || trimmed.startsWith(`${key} `));
+  const bookKey = bookKeyAtStart(trimmed);
   if (!bookKey) return trimmed;
   const bookHe = TANAKH_BOOK[bookKey];
   const rest = trimmed.slice(bookKey.length).trim();
@@ -118,6 +141,12 @@ export function formatHaftarahSource(english: string): string {
   const parts = rest.split(",").map((part) => part.trim()).filter(Boolean);
   const heParts = parts.map((part) => parseEnglishRange(part) ?? part);
   return `${bookHe} ${heParts.join(", ")}`;
+}
+
+export function formatHaftarahSource(english: string): string {
+  const trimmed = english.trim();
+  if (!trimmed) return "";
+  return splitBookCitations(trimmed).map(formatSingleBookCitation).filter(Boolean).join("; ");
 }
 
 function formatPassage(passage: LeyningPassage): string | null {

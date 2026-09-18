@@ -1599,7 +1599,7 @@ export function DisplayRotator({
                               {haftarah.name ? `הפטרת ${haftarah.name}` : "הפטרה"}
                             </span>
                             {haftarah.source ? (
-                              <span className="display-shabbat-haftarah-source">{haftarah.source}</span>
+                              <strong className="display-shabbat-haftarah-source">– {haftarah.source}</strong>
                             ) : null}
                           </p>
                         );

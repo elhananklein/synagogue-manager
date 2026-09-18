@@ -1219,6 +1219,14 @@ function ShabbatScreen({
       <div className="m-hero">
         <p className="m-hero-kicker">{shabbat.isChag ? "החג" : "פרשת השבוע"}</p>
         <p className="m-hero-title">{shabbat.parasha}</p>
+        {shabbat.haftarah?.name || shabbat.haftarah?.source ? (
+          <p className="m-hero-haftarah">
+            {shabbat.haftarah.name ? `הפטרת ${shabbat.haftarah.name}` : "הפטרה"}
+            {shabbat.haftarah.source ? (
+              <strong className="m-hero-haftarah-source">– {shabbat.haftarah.source}</strong>
+            ) : null}
+          </p>
+        ) : null}
         {shabbat.isChag && shabbat.isShabbatWeekend ? <p className="m-hero-date">שבת</p> : null}
         {shabbat.mevarchimText ? <p className="m-hero-date">{shabbat.mevarchimText}</p> : null}
       </div>

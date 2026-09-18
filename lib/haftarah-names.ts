@@ -93,6 +93,10 @@ const HAFTARAH_NAME_BY_CITE: Record<string, string> = {
   "malachi 1:1-2:7": "משא דבר ה'",
   "malachi 3:4-24": "והערבה לה'",
   "micah 5:6-6:8": "והיה שארית יעקב",
+  "micah 7:18-20": "מי אל כמוך",
+  "joel 2:15-27": "תקעו שופר בציון",
+  "hosea 14:2-10; micah 7:18-20": "שובה ישראל",
+  "hosea 14:2-10; joel 2:15-27": "שובה ישראל",
   "obadiah 1:1-21": "חזון עובדיה",
   "zechariah 2:14-4:7": "רני ושמחי",
   "zechariah 14:1-21": "הנה יום בא לה'"
@@ -106,8 +110,14 @@ export function lookupHaftarahName(
   theme?: { consolation?: number | string; admonition?: number }
 ): string | null {
   if (citation?.trim()) {
-    const named = HAFTARAH_NAME_BY_CITE[normalizeCitation(citation)];
+    const normalized = normalizeCitation(citation);
+    const named = HAFTARAH_NAME_BY_CITE[normalized];
     if (named) return named;
+    const firstBook = normalized.split(";")[0]?.trim();
+    if (firstBook && firstBook !== normalized) {
+      const fromFirst = HAFTARAH_NAME_BY_CITE[firstBook];
+      if (fromFirst) return fromFirst;
+    }
   }
   if (typeof theme?.admonition === "number" && theme.admonition >= 1 && theme.admonition <= 3) {
     return ADMONITION_NAMES[theme.admonition - 1] ?? null;

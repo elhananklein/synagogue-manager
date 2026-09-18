@@ -841,16 +841,17 @@
 
 .display.display--veryBold .display-shabbat-hero {
   flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: clamp(0.4rem, 1.2vmin, 0.85rem) clamp(0.7rem, 2vmin, 1.4rem);
+  gap: clamp(0.45rem, 1.4vmin, 1rem);
   width: 100%;
 }
 
 .display.display--veryBold .display-shabbat-heading {
-  align-items: flex-start;
-  text-align: start;
+  align-items: center;
+  text-align: center;
+  width: 100%;
   min-width: 0;
 }
 
@@ -861,33 +862,39 @@
 .display.display--veryBold .display-shabbat-parasha,
 .display.display--veryBold .display-shabbat-mevarchim {
   color: var(--vb-ink, #152238);
-  text-align: start;
+  text-align: center;
   font-weight: 800;
-  font-size: clamp(1.35rem, 3.2vmin, 2.35rem);
+  font-size: clamp(2.15rem, 5.4vmin, 4.1rem);
 }
 
 .display.display--veryBold .display-shabbat-haftarah {
-  justify-content: flex-start;
+  justify-content: center;
   color: var(--vb-ink, #152238);
+  font-size: clamp(1.85rem, 4.7vmin, 3.45rem);
+  font-weight: 800;
 }
 
 .display.display--veryBold .display-shabbat-haftarah-name {
-  font-size: clamp(1.05rem, 2.4vmin, 1.7rem);
+  color: inherit;
+  font-size: 1em;
   font-weight: 800;
+  opacity: 1;
 }
 
 .display.display--veryBold .display-shabbat-haftarah-source {
   color: var(--vb-ink-soft, #2a3b58);
-  font-size: clamp(0.85rem, 1.8vmin, 1.2rem);
+  font-size: 1em;
+  font-weight: 800;
+  opacity: 1;
 }
 
 .display.display--veryBold .display-shabbat-zmanim {
   display: grid;
   grid-template-columns: repeat(2, minmax(8.5rem, 1fr));
   gap: clamp(0.5rem, 1.4vmin, 0.9rem);
-  width: auto;
-  min-width: 20rem;
-  max-width: 30rem;
+  width: min(100%, 36rem);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .display.display--veryBold .display-shabbat-zman-card {
@@ -1275,8 +1282,7 @@
 
 @media (max-width: 700px), (orientation: portrait) {
   .display.display--veryBold .display-shabbat-hero {
-    grid-template-columns: 1fr;
-    justify-items: center;
+    align-items: center;
   }
   .display.display--veryBold .display-shabbat-heading,
   .display.display--veryBold .display-shabbat-parasha,
