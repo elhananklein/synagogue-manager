@@ -58,7 +58,7 @@ export default async function MobileHomePage({
 
           <main className="m-main">
             <h1 className="m-title">ברוכים הבאים</h1>
-            <p className="m-lead">בחרו בית כנסת כדי לצפות בזמני התפילה והלימוד.</p>
+            <p className="m-lead">מצאו מניין קרוב לפי המיקום שלכם, או בחרו בית כנסת לפי שם.</p>
             <PwaInstallBanner className="mb-5" />
             <MobileSynagogueSelector synagogues={synagogues} />
           </main>

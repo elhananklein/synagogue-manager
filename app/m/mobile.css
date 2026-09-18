@@ -718,6 +718,109 @@
   font-size: 0.9rem;
 }
 
+.m-nearby {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.m-nearby-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  height: 3.15rem;
+  width: 100%;
+  border: 0;
+  border-radius: 1.05rem;
+  background: linear-gradient(180deg, var(--m-burgundy) 0%, var(--m-burgundy-deep) 100%);
+  color: var(--m-cream);
+  font-size: 1.05rem;
+  font-weight: 800;
+  box-shadow: 0 10px 20px rgb(58 21 32 / 0.16);
+}
+
+.m-nearby-btn:disabled {
+  opacity: 0.72;
+}
+
+.m-nearby-spin {
+  animation: m-nearby-spin 0.9s linear infinite;
+}
+
+@keyframes m-nearby-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.m-nearby-filters {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.m-nearby-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.m-nearby-filter-label {
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--m-muted);
+}
+
+.m-nearby-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.m-nearby-option {
+  min-width: 4.4rem;
+  padding: 0.38rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--m-line);
+  background: var(--m-card);
+  color: var(--m-ink);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.m-nearby-option.is-on {
+  border-color: var(--m-burgundy);
+  background: var(--m-burgundy);
+  color: var(--m-cream);
+}
+
+.m-nearby-or {
+  margin: 0.15rem 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--m-muted);
+}
+
+.m-nearby-hit-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--m-muted);
+}
+
+.m-nearby-prayer {
+  display: block;
+  margin-top: 0.28rem;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--m-ink-soft);
+}
+
 .m-contact-row {
   display: flex;
   align-items: center;

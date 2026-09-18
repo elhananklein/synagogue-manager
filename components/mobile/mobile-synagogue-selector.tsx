@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronLeft, Search } from "lucide-react";
+import { MobileNearbyMinyanSearch } from "@/components/mobile/mobile-nearby-minyan-search";
 import { setPreferredSynagogue } from "@/lib/mobile-synagogue-preference";
 import { setSynagogueIdCookie } from "@/lib/synagogue-id";
 
@@ -22,6 +23,8 @@ export function MobileSynagogueSelector({ synagogues }: { synagogues: SynagogueO
 
   return (
     <section className="space-y-4">
+      <MobileNearbyMinyanSearch />
+      <p className="m-nearby-or">או חיפוש לפי שם</p>
       <div className="m-search">
         <Search className="m-search-icon" />
         <input type="text" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="חיפוש בית כנסת..." />
