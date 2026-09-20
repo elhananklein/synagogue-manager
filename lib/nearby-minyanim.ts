@@ -318,9 +318,9 @@ export async function findNearbyMinyanim(query: NearbyMinyanimQuery): Promise<Ne
         todaySnap?.parashaCatalogKey ?? null,
         (todaySundaySnap ?? todaySnap)?.zmanimSourceTimes ?? {},
         catalog,
-        { treatAsErev: todayIsErev, isChag: todayErevIsChag }
+        { treatAsErev: todayIsErev, isChag: todayErevIsChag, isChagDay: isChagOnDate(todayIso) }
       ),
-      todayJs,
+      todayIsErev,
       fridayAgendaMincha,
       todayErevIsChag
     );
@@ -335,9 +335,9 @@ export async function findNearbyMinyanim(query: NearbyMinyanimQuery): Promise<Ne
             tomorrowSnap?.parashaCatalogKey ?? null,
             (tomorrowSundaySnap ?? tomorrowSnap)?.zmanimSourceTimes ?? {},
             catalog,
-            { treatAsErev: tomorrowIsErev, isChag: tomorrowErevIsChag }
+            { treatAsErev: tomorrowIsErev, isChag: tomorrowErevIsChag, isChagDay: isChagOnDate(tomorrowIso) }
           ),
-          tomorrowJs,
+          tomorrowIsErev,
           fridayAgendaMincha,
           tomorrowErevIsChag
         )

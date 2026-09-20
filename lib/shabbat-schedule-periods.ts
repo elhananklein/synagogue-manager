@@ -97,6 +97,7 @@ function assignPeriod(row: ShabbatScheduleRow, seenMorning: boolean, seenAfterno
   const band = clockBand(parseClockMinutes(row.time));
 
   if (hint === "motzaei") return "afternoon";
+  if (hint === "erev") return "erev";
   if (hint === "morning" || band === "morning") return "morning";
 
   // מנחה/ערבית של ערב החג (אחרי כניסת החג, לפני שחרית) — לא עמודת מנחה של היום.

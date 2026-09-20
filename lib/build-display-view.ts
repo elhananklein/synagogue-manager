@@ -16,8 +16,8 @@ import {
 import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
 import { erevMinchaTimeFromShabbatAgenda } from "@/lib/shabbat-schedule-periods";
 import { filterDailyLearningByKeys } from "@/lib/daily-learning-catalog";
-import { hebrewWeekdayLong, resolveViewIsoDate } from "@/lib/view-date";
-import { erevOccasionTitle, isChagOnDate, isErevShabbatonDate, isOccasionScreenDay, preferredOccasionDayIndex, resolveOccasionCluster, resolveOccasionLabel } from "@/lib/sacred-occasion";
+import { resolveViewIsoDate } from "@/lib/view-date";
+import { dayOccasionCaption, erevOccasionTitle, isChagOnDate, isErevShabbatonDate, isOccasionScreenDay, preferredOccasionDayIndex, resolveOccasionCluster, resolveOccasionLabel } from "@/lib/sacred-occasion";
 import type { HaftarahMinhag } from "@/lib/haftarah-minhag";
 
 export type DisplayViewParams = {
@@ -246,12 +246,13 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       snapshot.parashaCatalogKey,
       zmanimByIso(todaySundayIso),
       displayConfig.parashaCatalog,
-      {
-        treatAsErev: isErevShabbatonDate(todayIsoDate),
-        isChag: isChagOnDate(tomorrowIsoDate)
-      }
+    {
+      treatAsErev: isErevShabbatonDate(todayIsoDate),
+      isChag: isChagOnDate(tomorrowIsoDate),
+      isChagDay: isChagOnDate(todayIsoDate)
+    }
     ),
-    todayJsDay,
+    isErevShabbatonDate(todayIsoDate),
     fridayAgendaMinchaTime,
     isChagOnDate(tomorrowIsoDate)
   );
@@ -264,12 +265,13 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       tomorrowSnapshot.parashaCatalogKey,
       zmanimByIso(tomorrowSundayIso),
       displayConfig.parashaCatalog,
-      {
-        treatAsErev: isErevShabbatonDate(tomorrowIsoDate),
-        isChag: isChagOnDate(addDaysIsoDate(tomorrowIsoDate, 1))
-      }
+    {
+      treatAsErev: isErevShabbatonDate(tomorrowIsoDate),
+      isChag: isChagOnDate(addDaysIsoDate(tomorrowIsoDate, 1)),
+      isChagDay: isChagOnDate(tomorrowIsoDate)
+    }
     ),
-    tomorrowJsDay,
+    isErevShabbatonDate(tomorrowIsoDate),
     fridayAgendaMinchaTime,
     isChagOnDate(addDaysIsoDate(tomorrowIsoDate, 1))
   );
@@ -382,7 +384,19 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     const isShabbatWeekend = todayJsDay === 5 || todayJsDay === 6 || cluster.days.some((day) => day.isSaturday);
     const firstDayIsChag = cluster.days[0] ? isChagOnDate(cluster.days[0].iso) : isChag;
     const lastDayIsSaturday = Boolean(cluster.days[cluster.days.length - 1]?.isSaturday);
-    const clusterIsWeekdayChag = cluster.days.some((day) => day.isChag) && !cluster.days.some((day) => day.isSaturday);
+    const firstDayIso = cluster.days[0]?.iso ?? saturdayIso;
+    const firstDaySnapshot =
+      firstDayIso === todayIsoDate
+        ? snapshot
+        : firstDayIso === tomorrowIsoDate
+          ? tomorrowSnapshot
+          : firstDayIso === saturdayIso
+            ? saturdaySnapshot
+            : firstDayIso === fridayIso
+              ? fridaySnapshot
+              : firstDayIso === lastClusterIso
+                ? lastDaySnapshot
+                : saturdaySnapshot;
     const publishedAgenda = shabbatAgendaItems.filter((item) => item.content.trim());
     const maxFilled = Math.max(0, ...publishedAgenda.map((item) => item.occasionDay));
     const maxDay = Math.min(3, Math.max(cluster.days.length, maxFilled));
@@ -410,16 +424,14 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       havdalah: (lastDaySnapshot ?? saturdaySnapshot ?? displaySnapshot).havdalah,
       candleLabel: firstDayIsChag ? "כניסת החג" : "כניסת שבת",
       havdalahLabel: lastDayIsSaturday ? "צאת שבת" : "צאת החג",
-      prayers: todayIsWeekdayChag || clusterIsWeekdayChag
-        ? prayerSchedule.map((row) => ({ label: row.label, time: row.time }))
-        : fridaySnapshot && saturdaySnapshot
-          ? buildShabbatPrayerSchedule(
-              displayConfig.prayerSettings,
-              fridaySnapshot.zmanimSourceTimes,
-              saturdaySnapshot.zmanimSourceTimes,
-              firstDayIsChag
-            )
-          : [],
+      prayers: (erevSnapshot ?? fridaySnapshot) && (firstDaySnapshot ?? saturdaySnapshot)
+        ? buildShabbatPrayerSchedule(
+            displayConfig.prayerSettings,
+            (erevSnapshot ?? fridaySnapshot)!.zmanimSourceTimes,
+            (firstDaySnapshot ?? saturdaySnapshot)!.zmanimSourceTimes,
+            firstDayIsChag
+          )
+        : [],
       mevarchimText: weekMevarchimText,
       agenda: publishedAgenda.map((item) => ({
         itemTime: item.itemTime,
@@ -468,11 +480,11 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const includeZmanimInTimesList = displayConfig.scheduleTimesListMode !== "prayers_only";
   const timeSectionsAll: DisplayTimeSection[] = [
     {
-      title: `היום (${hebrewWeekdayLong(todayIsoDate)})`,
+      title: `היום (${dayOccasionCaption(todayIsoDate)})`,
       items: [...todayZmanimItems, ...todayPrayerItems]
     },
     {
-      title: `מחר (${hebrewWeekdayLong(tomorrowIsoDate)})`,
+      title: `מחר (${dayOccasionCaption(tomorrowIsoDate)})`,
       items: [...tomorrowZmanimItems, ...tomorrowPrayerItems]
     }
   ];

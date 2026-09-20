@@ -22,14 +22,31 @@ export type BuiltPrayerRow = {
   prayerType: string;
 };
 
-function displayLabelForPrayerType(prayerType: PrayerType | string, erevIsChag = false): string {
-  if (prayerType !== "מנחה ערב שבת") return prayerType;
-  return erevIsChag ? EREV_CHAG_DISPLAY_LABEL : EREV_SHABBAT_DISPLAY_LABEL;
+function displayLabelForPrayerType(
+  prayerType: PrayerType | string,
+  erevIsChag = false,
+  weekdayChag = false
+): string {
+  if (prayerType === "מנחה ערב שבת") {
+    return erevIsChag ? EREV_CHAG_DISPLAY_LABEL : EREV_SHABBAT_DISPLAY_LABEL;
+  }
+  if (weekdayChag) {
+    if (prayerType === "שחרית שבת") return "שחרית";
+    if (prayerType === "מנחה שבת") return "מנחה";
+    if (prayerType === "ערבית מוצ'ש") return "ערבית";
+  }
+  return prayerType;
 }
 
-function builtRow(setting: PrayerSetting, time: string, details = "", erevIsChag = false): BuiltPrayerRow {
+function builtRow(
+  setting: PrayerSetting,
+  time: string,
+  details = "",
+  erevIsChag = false,
+  weekdayChag = false
+): BuiltPrayerRow {
   return {
-    label: displayLabelForPrayerType(setting.prayerType, erevIsChag),
+    label: displayLabelForPrayerType(setting.prayerType, erevIsChag, weekdayChag),
     time,
     details,
     prayerType: setting.prayerType
@@ -217,10 +234,11 @@ function resolveFixedOrRelativeRow(
   setting: PrayerSetting,
   zmanimSourceTimes: Record<string, string>,
   sundayZmanimSourceTimes?: Record<string, string> | null,
-  erevIsChag = false
+  erevIsChag = false,
+  weekdayChag = false
 ): BuiltPrayerRow | null {
   if (setting.mode === "fixed" && setting.fixedTime) {
-    return builtRow(setting, setting.fixedTime.slice(0, 5), "", erevIsChag);
+    return builtRow(setting, setting.fixedTime.slice(0, 5), "", erevIsChag, weekdayChag);
   }
   if (setting.mode === "relative" && setting.zmanAnchor) {
     const times =
@@ -232,7 +250,8 @@ function resolveFixedOrRelativeRow(
         setting,
         formatWithOffset(times[setting.zmanAnchor], setting.offsetMinutes ?? 0, setting.roundMode ?? "none"),
         "",
-        erevIsChag
+        erevIsChag,
+        weekdayChag
       );
     }
   }
@@ -254,9 +273,11 @@ export function buildPrayerScheduleForDay(
   parashaKeyForDay: string | null,
   sundayZmanimSourceTimes?: Record<string, string> | null,
   parashaCatalog?: ParashaPrayerCatalogRow[] | null,
-  erevOccasion?: { treatAsErev?: boolean; isChag?: boolean }
+  erevOccasion?: { treatAsErev?: boolean; isChag?: boolean; isChagDay?: boolean }
 ): BuiltPrayerRow[] {
   const erevIsChag = Boolean(erevOccasion?.isChag);
+  const isChagDay = Boolean(erevOccasion?.isChagDay);
+  const weekdayChag = isChagDay && jsDay !== 6;
   const treatAsErev = Boolean(erevOccasion?.treatAsErev) || jsDay === 5;
   const weekdaySettings = prayerSettings.filter((setting) => setting.category === "weekday");
   const shabbatSettings = prayerSettings.filter((setting) => setting.category === "shabbat");
@@ -266,8 +287,8 @@ export function buildPrayerScheduleForDay(
   const erevShabbatSettings = shabbatSettings.filter((setting) => setting.prayerType === "מנחה ערב שבת");
   const saturdayShabbatSettings = shabbatSettings.filter((setting) => setting.prayerType !== "מנחה ערב שבת");
 
-  if (isShabbat || jsDay === 6) {
-    // בשבת — רק תפילות שבת (בלי מנחה ערב שבת, ובלי נפילה חזרה לתפילות חול).
+  if (isShabbat || jsDay === 6 || isChagDay) {
+    // שבת או יום טוב — רק תפילות שבת (בלי מנחה ערב שבת, ובלי נפילה חזרה לתפילות חול).
     const minchaShabbatTime = firstShabbatMinchaClockTime(saturdayShabbatSettings, zmanimSourceTimes);
     return saturdayShabbatSettings
       .map((setting) => {
@@ -275,9 +296,15 @@ export function buildPrayerScheduleForDay(
           const time = minchaShabbatTime
             ? formatClockWithOffset(minchaShabbatTime, setting.offsetMinutes ?? 0, setting.roundMode ?? "none")
             : null;
-          return time ? builtRow(setting, time, "", erevIsChag) : null;
+          return time ? builtRow(setting, time, "", erevIsChag, weekdayChag) : null;
         }
-        return resolveFixedOrRelativeRow(setting, zmanimSourceTimes, sundayZmanimSourceTimes, erevIsChag);
+        return resolveFixedOrRelativeRow(
+          setting,
+          zmanimSourceTimes,
+          sundayZmanimSourceTimes,
+          erevIsChag,
+          weekdayChag
+        );
       })
       .filter((item): item is BuiltPrayerRow => item !== null);
   }
@@ -372,16 +399,16 @@ export function buildPrayerScheduleForDay(
 }
 
 /**
- * ביום שישי בלבד: אם בלוח השבת יש מנחה של ערב עם שעה — היא מחליפה את זמן המנחה בלוח המרכזי.
- * שבת ומנחה של חול בימים אחרים לא משתנים.
+ * בערב שבתון: אם בלוח השבת יש מנחה של ערב עם שעה — היא מחליפה את זמן המנחה בלוח המרכזי (הטור של היום).
+ * בשבת/חג עצמם ובחול רגיל הזמן לא משתנה.
  */
 export function applyFridayAgendaMinchaTime(
   rows: BuiltPrayerRow[],
-  jsDay: number,
+  isErev: boolean,
   agendaMinchaTime: string | null | undefined,
   erevIsChag = false
 ): BuiltPrayerRow[] {
-  if (jsDay !== 5) return rows;
+  if (!isErev) return rows;
   const time = agendaMinchaTime?.trim().slice(0, 5) ?? "";
   if (!/^\d{2}:\d{2}$/.test(time)) return rows;
 

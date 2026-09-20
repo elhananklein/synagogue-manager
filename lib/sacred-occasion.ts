@@ -126,6 +126,16 @@ export function resolveOccasionLabel(isoDate: string): string {
   return cleanOccasionLabel(parashaOrChagLabel(isoDate));
 }
 
+/** כיתוב ליום בלוח: ערב שבת/חג, שם החג, שבת, או יום חול. */
+export function dayOccasionCaption(isoDate: string): string {
+  if (isErevShabbatonDate(isoDate)) return erevOccasionTitle(isoDate);
+  if (isChagOnDate(isoDate)) {
+    const holiday = resolveOccasionLabel(isoDate);
+    if (holiday) return holiday;
+  }
+  return weekdayLong(isoDate);
+}
+
 /** כותרת לערב שבתון: «ערב יום כיפור», «ערב סוכות», או «ערב שבת». */
 export function erevOccasionTitle(erevIso: string): string {
   const nextIso = addDaysIso(erevIso, 1);
