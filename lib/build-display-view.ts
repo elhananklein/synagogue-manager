@@ -17,7 +17,7 @@ import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
 import { erevMinchaTimeFromShabbatAgenda } from "@/lib/shabbat-schedule-periods";
 import { filterDailyLearningByKeys } from "@/lib/daily-learning-catalog";
 import { hebrewWeekdayLong, resolveViewIsoDate } from "@/lib/view-date";
-import { isChagOnDate, isErevShabbatonDate, isOccasionScreenDay, preferredOccasionDayIndex, resolveOccasionCluster, resolveOccasionLabel } from "@/lib/sacred-occasion";
+import { erevOccasionTitle, isChagOnDate, isErevShabbatonDate, isOccasionScreenDay, preferredOccasionDayIndex, resolveOccasionCluster, resolveOccasionLabel } from "@/lib/sacred-occasion";
 import type { HaftarahMinhag } from "@/lib/haftarah-minhag";
 
 export type DisplayViewParams = {
@@ -372,14 +372,17 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
 
   let shabbat: DisplayShabbat | null = null;
   if (shabbatScreenEnabled && occasionScreenActive) {
-    const occasionLabel =
-      resolveOccasionLabel(occasionIso) ||
-      (todayIsWeekdayChag ? displaySnapshot.parasha : saturdaySnapshot?.parasha) ||
-      displaySnapshot.parasha;
+    const viewingErev = isErevShabbatonDate(todayIsoDate);
+    const occasionLabel = viewingErev
+      ? erevOccasionTitle(todayIsoDate)
+      : resolveOccasionLabel(occasionIso) ||
+        (todayIsWeekdayChag ? displaySnapshot.parasha : saturdaySnapshot?.parasha) ||
+        displaySnapshot.parasha;
     const isChag = cluster.days.some((day) => isChagOnDate(day.iso)) || isChagOnDate(occasionIso);
     const isShabbatWeekend = todayJsDay === 5 || todayJsDay === 6 || cluster.days.some((day) => day.isSaturday);
     const firstDayIsChag = cluster.days[0] ? isChagOnDate(cluster.days[0].iso) : isChag;
     const lastDayIsSaturday = Boolean(cluster.days[cluster.days.length - 1]?.isSaturday);
+    const clusterIsWeekdayChag = cluster.days.some((day) => day.isChag) && !cluster.days.some((day) => day.isSaturday);
     const publishedAgenda = shabbatAgendaItems.filter((item) => item.content.trim());
     const maxFilled = Math.max(0, ...publishedAgenda.map((item) => item.occasionDay));
     const maxDay = Math.min(3, Math.max(cluster.days.length, maxFilled));
@@ -407,7 +410,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       havdalah: (lastDaySnapshot ?? saturdaySnapshot ?? displaySnapshot).havdalah,
       candleLabel: firstDayIsChag ? "כניסת החג" : "כניסת שבת",
       havdalahLabel: lastDayIsSaturday ? "צאת שבת" : "צאת החג",
-      prayers: todayIsWeekdayChag
+      prayers: todayIsWeekdayChag || clusterIsWeekdayChag
         ? prayerSchedule.map((row) => ({ label: row.label, time: row.time }))
         : fridaySnapshot && saturdaySnapshot
           ? buildShabbatPrayerSchedule(

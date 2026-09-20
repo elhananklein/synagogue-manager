@@ -28,6 +28,11 @@ import { SiddurReader } from "@/components/mobile/siddur-reader";
 import { DEFAULT_HAFTARAH_MINHAG, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 import { siddurPrayerFromLabel, type SiddurPrayer } from "@/lib/siddur";
 
+function occasionKicker(label: string | null | undefined, isChag?: boolean) {
+  if (!label || label.startsWith("ערב ")) return null;
+  return isChag ? "החג" : "פרשת השבוע";
+}
+
 type ScreenKey =
   | "main"
   | "mainInfo"
@@ -793,11 +798,12 @@ function MainScreen({
   onOpenSiddur: (prayer: SiddurPrayer) => void;
 }) {
   const parasha = snapshot.parasha && snapshot.parasha !== "לא נמצא" ? snapshot.parasha : null;
+  const kicker = occasionKicker(parasha, snapshot.occasionIsChag);
   return (
     <div className="space-y-4">
       {parasha ? (
         <div className="m-hero">
-          <p className="m-hero-kicker">{snapshot.occasionIsChag ? "החג" : "פרשת השבוע"}</p>
+          {kicker ? <p className="m-hero-kicker">{kicker}</p> : null}
           <p className="m-hero-title">{parasha}</p>
           <p className="m-hero-date">{snapshot.gregorianDate}</p>
         </div>
@@ -877,12 +883,13 @@ function MainInfoScreen({
   onOpenSiddur: (prayer: SiddurPrayer) => void;
 }) {
   const parasha = snapshot.parasha && snapshot.parasha !== "לא נמצא" ? snapshot.parasha : null;
+  const kicker = occasionKicker(parasha, snapshot.occasionIsChag);
   const nextSiddur = nextPrayer ? siddurPrayerFromLabel(nextPrayer.label) : null;
   return (
     <div className="space-y-3">
       {parasha ? (
         <div className="m-hero">
-          <p className="m-hero-kicker">{snapshot.occasionIsChag ? "החג" : "פרשת השבוע"}</p>
+          {kicker ? <p className="m-hero-kicker">{kicker}</p> : null}
           <p className="m-hero-title">{parasha}</p>
           <p className="m-hero-date">{snapshot.hebrewDate}</p>
         </div>
@@ -1214,10 +1221,11 @@ function ShabbatScreen({
         .sort((a, b) => a.totalMinutes - b.totalMinutes)
         .find((row) => row.totalMinutes >= nowMinutes) ?? null
     : null;
+  const kicker = occasionKicker(shabbat.parasha, shabbat.isChag);
   return (
     <div className="space-y-3">
       <div className="m-hero">
-        <p className="m-hero-kicker">{shabbat.isChag ? "החג" : "פרשת השבוע"}</p>
+        {kicker ? <p className="m-hero-kicker">{kicker}</p> : null}
         <p className="m-hero-title">{shabbat.parasha}</p>
         {shabbat.haftarah?.name || shabbat.haftarah?.source ? (
           <p className="m-hero-haftarah">

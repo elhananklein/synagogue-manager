@@ -1568,8 +1568,11 @@ export function DisplayRotator({
                       {(() => {
                         const occasion = shabbat?.parasha || snapshot.parasha;
                         const isChag = Boolean(shabbat?.isChag);
+                        const weekdayChag = isChag && !shabbat?.isShabbatWeekend;
                         const title = isVeryBold
-                          ? "שבת"
+                          ? weekdayChag
+                            ? occasion || "יום טוב"
+                            : "שבת"
                           : isChag
                             ? occasion || "יום טוב"
                             : "שבת קודש";

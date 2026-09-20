@@ -359,8 +359,35 @@
 }
 
 .display.display--veryBold .display-main-grid--info-only .display-main-primary {
-  max-width: min(90%, 96rem);
-  margin-inline: auto;
+  max-width: none;
+  width: 100%;
+  margin-inline: 0;
+  padding-inline: clamp(0.35rem, 1vw, 1rem);
+}
+
+.display.display--veryBold .display-main-grid--info-only .display-parasha,
+.display.display--veryBold .display-main-grid--info-only .display-main-primary-stack .display-parasha {
+  font-size: clamp(3.8rem, 9.2vh, 7.6rem);
+}
+
+.display.display--veryBold .display-main-grid--info-only .display-addition-text {
+  font-size: clamp(3.7rem, 8.8vh, 7.1rem);
+}
+
+.display.display--veryBold .display-main-grid--info-only .display-main-additions[data-addition-count="3"] .display-addition-text {
+  font-size: clamp(3rem, 7.1vh, 5.6rem);
+}
+
+.display.display--veryBold .display-main-grid--info-only .display-main-additions[data-addition-count="4"] .display-addition-text {
+  font-size: clamp(2.55rem, 6.1vh, 4.7rem);
+}
+
+.display.display--veryBold .display-main-grid--info-only .display-daf-yomi {
+  font-size: clamp(2.45rem, 5.8vh, 4.5rem);
+}
+
+.display.display--veryBold .display-main-grid--info-only .display-gregorian-date {
+  font-size: clamp(2rem, 4.4vh, 3.35rem);
 }
 
 .display.display--veryBold .display-screen-stage > .display-main-grid {

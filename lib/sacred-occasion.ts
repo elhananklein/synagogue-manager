@@ -101,8 +101,14 @@ export function isOccasionScreenDay(isoDate: string): boolean {
   return isChagOnDate(isoDate) || isErevShabbatonDate(isoDate);
 }
 
+/** המועד הקרוב לתצוגה: חג שחל לפני השבת — החג; אחרת השבת הקרובה. */
 export function weeklyOccasionIso(fromIso: string) {
-  return saturdayOnOrAfter(fromIso);
+  const cluster = resolveOccasionCluster(fromIso);
+  return (
+    cluster.days.find((day) => day.isChag)?.iso ??
+    cluster.days.find((day) => day.isSaturday)?.iso ??
+    saturdayOnOrAfter(fromIso)
+  );
 }
 
 function cleanOccasionLabel(raw: string): string {
@@ -118,6 +124,17 @@ function cleanOccasionLabel(raw: string): string {
 /** שם לתצוגה: פרשת השבוע, או שם החג כשאין קריאה שבועית. */
 export function resolveOccasionLabel(isoDate: string): string {
   return cleanOccasionLabel(parashaOrChagLabel(isoDate));
+}
+
+/** כותרת לערב שבתון: «ערב יום כיפור», «ערב סוכות», או «ערב שבת». */
+export function erevOccasionTitle(erevIso: string): string {
+  const nextIso = addDaysIso(erevIso, 1);
+  if (isChagOnDate(nextIso)) {
+    const holiday = resolveOccasionLabel(nextIso);
+    if (!holiday) return "ערב חג";
+    return /^ערב\s/.test(holiday) ? holiday : `ערב ${holiday}`;
+  }
+  return "ערב שבת";
 }
 
 export function applyOccasionDisplayLabel(weeklyParashaFromApi: string | null | undefined, occasionIso: string): string {

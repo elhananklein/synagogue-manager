@@ -354,8 +354,39 @@ optgroup {
   }
 
   .display-main-grid--info-only .display-main-primary {
-    max-width: min(86%, 80rem);
-    margin-inline: auto;
+    max-width: none;
+    width: 100%;
+    margin-inline: 0;
+    padding-inline: clamp(0.4rem, 1.2vw, 1.2rem);
+  }
+
+  .display-main-grid--info-only .display-main-primary-stack .display-parasha {
+    font-size: clamp(3.3rem, 7.4vmin, 6.4rem);
+  }
+  .display-main-grid--info-only .display-main-primary-stack .display-hebrew-date {
+    font-size: clamp(2.5rem, 5.4vmin, 4.6rem);
+  }
+  .display-main-grid--info-only .display-main-primary-stack .display-gregorian-date {
+    font-size: clamp(1.75rem, 3.6vmin, 3rem);
+  }
+  .display-main-grid--info-only .display-main-primary-stack .display-addition-text {
+    font-size: clamp(2.15rem, 4.8vmin, 4rem);
+  }
+  .display-main-grid--info-only .display-main-primary-stack .display-main-additions--many .display-addition-text {
+    font-size: clamp(1.45rem, 3.4vmin, 2.7rem);
+  }
+  .display-main-grid--info-only .display-main-primary-stack .display-daf-yomi {
+    font-size: clamp(2.15rem, 4.8vmin, 4rem);
+  }
+  .display-main-grid--info-only .display-main-grid .display-main-date-content,
+  .display-main-grid--info-only .display-main-date-content {
+    min-height: clamp(10rem, 28vh, 20rem);
+  }
+  .display-main-grid--info-only .display-addition-content {
+    min-height: clamp(5.4rem, 13vh, 10rem);
+  }
+  .display-main-grid--info-only .display-daf-content {
+    min-height: clamp(5.1rem, 12vh, 9.2rem);
   }
 
   .display-main-primary {

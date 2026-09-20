@@ -3,7 +3,7 @@ import type { HebcalLeyningItem } from "@/lib/haftarah";
 import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
 import { publicFastKind, resolveLiturgicalTiles, resolvePublicFastName } from "@/lib/liturgical-additions";
 import { FAST_CATALOG_KEY } from "@/lib/parasha-prayer-catalog";
-import { applyOccasionDisplayLabel, isChagOnDate, weeklyOccasionIso } from "@/lib/sacred-occasion";
+import { applyOccasionDisplayLabel, erevOccasionTitle, isChagOnDate, isErevShabbatonDate, weeklyOccasionIso } from "@/lib/sacred-occasion";
 import { birkatHashanimLabel, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, resolveScheduleZmanimKeys, zmanLabelForKey } from "@/lib/zmanim-catalog";
 import type { SynagogueZmanimLocation } from "@/lib/display-config";
@@ -645,10 +645,14 @@ export async function getDisplaySnapshot(
   const holidayItem = (shabbat.items ?? []).find((item) => item.category === "holiday" && item.hebrew?.trim());
   const todayIsChag = isChagOnDate(halachicIso);
   const occasionIso = todayIsChag ? halachicIso : weeklyOccasionIso(halachicIso);
-  const parasha =
-    (todayIsChag ? applyOccasionDisplayLabel(null, occasionIso) : applyOccasionDisplayLabel(weeklyParasha, occasionIso)) ||
-    holidayItem?.hebrew?.trim() ||
-    "";
+  const viewingErev = !todayIsChag && isErevShabbatonDate(halachicIso);
+  const parasha = viewingErev
+    ? erevOccasionTitle(halachicIso)
+    : (todayIsChag
+        ? applyOccasionDisplayLabel(null, occasionIso)
+        : applyOccasionDisplayLabel(weeklyParasha, occasionIso)) ||
+      holidayItem?.hebrew?.trim() ||
+      "";
   const candleItem = shabbat.items?.find((item) => item.category === "candles");
   const havdalahItem = shabbat.items?.find((item) => item.category === "havdalah");
 

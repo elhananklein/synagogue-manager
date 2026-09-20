@@ -6,9 +6,8 @@ import {
   MAIN_TIMES_YIELD_TO_SHABBAT_SCREEN,
   shouldHideMainPrayerTimes
 } from "@/lib/main-times-on-shabbat";
-import { jsWeekdayFromIso } from "@/lib/sacred-occasion";
 
-/** מסתיר זמני תפילה בראשי כשמסך השבת פעיל; בשישי — רק מחצות. מפעיל מחדש בדיוק בחצות. */
+/** מסתיר זמני תפילה בראשי כשמסך השבת/החג פעיל — רק מחצות היום. מפעיל מחדש בדיוק בחצות. */
 export function useHideMainPrayerTimes(input: {
   shabbatScreenActive: boolean;
   viewIso: string | null | undefined;
@@ -27,7 +26,6 @@ export function useHideMainPrayerTimes(input: {
   useEffect(() => {
     if (!MAIN_TIMES_YIELD_TO_SHABBAT_SCREEN) return;
     if (!input.shabbatScreenActive) return;
-    if (jsWeekdayFromIso(viewIso) !== 5) return;
     if (viewIso !== toIsoDateJerusalem()) return;
     if (!input.chatzotIso) return;
     const chatzotMs = new Date(input.chatzotIso).getTime();
