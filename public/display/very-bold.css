@@ -869,16 +869,18 @@
 .display.display--veryBold .display-shabbat-hero {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: clamp(0.45rem, 1.4vmin, 1rem);
+  justify-content: space-between;
+  gap: clamp(0.7rem, 2vmin, 1.4rem);
   width: 100%;
 }
 
 .display.display--veryBold .display-shabbat-heading {
-  align-items: center;
-  text-align: center;
-  width: 100%;
+  align-items: flex-start;
+  text-align: start;
+  flex: 1 1 auto;
+  width: auto;
   min-width: 0;
 }
 
@@ -889,13 +891,13 @@
 .display.display--veryBold .display-shabbat-parasha,
 .display.display--veryBold .display-shabbat-mevarchim {
   color: var(--vb-ink, #152238);
-  text-align: center;
+  text-align: start;
   font-weight: 800;
   font-size: clamp(2.15rem, 5.4vmin, 4.1rem);
 }
 
 .display.display--veryBold .display-shabbat-haftarah {
-  justify-content: center;
+  justify-content: flex-start;
   color: var(--vb-ink, #152238);
   font-size: clamp(1.85rem, 4.7vmin, 3.45rem);
   font-weight: 800;
@@ -917,11 +919,12 @@
 
 .display.display--veryBold .display-shabbat-zmanim {
   display: grid;
+  flex: 0 1 auto;
   grid-template-columns: repeat(2, minmax(8.5rem, 1fr));
   gap: clamp(0.5rem, 1.4vmin, 0.9rem);
-  width: min(100%, 36rem);
-  min-width: 0;
-  max-width: 100%;
+  width: auto;
+  min-width: min(100%, 22rem);
+  max-width: min(48%, 32rem);
 }
 
 .display.display--veryBold .display-shabbat-zman-card {
@@ -934,20 +937,21 @@
 
 .display.display--veryBold .display-shabbat-zman-content {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 0.2rem;
+  justify-content: space-between;
+  gap: 0.55em;
   min-height: 0;
-  padding: clamp(0.5rem, 1.4vmin, 0.85rem) clamp(0.55rem, 1.5vmin, 1rem);
-  text-align: center;
+  padding: clamp(0.45rem, 1.2vmin, 0.75rem) clamp(0.55rem, 1.5vmin, 1rem);
+  text-align: start;
 }
 
 .display.display--veryBold .display-shabbat-zman-heading {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.35em;
+  min-width: 0;
 }
 
 .display.display--veryBold .display-shabbat-zman-icon {
@@ -962,9 +966,8 @@
   display: block;
   width: auto;
   max-width: 100%;
-  align-self: center;
-  margin-inline: auto;
-  text-align: center;
+  margin-inline: 0;
+  text-align: start;
   color: var(--vb-on-panel, #fff8ea);
   font-weight: 800;
 }
@@ -974,8 +977,10 @@
 }
 
 .display.display--veryBold .display-shabbat-zman-time {
+  flex-shrink: 0;
   font-size: clamp(2.25rem, 5.6vmin, 3.7rem);
   line-height: 1.05;
+  white-space: nowrap;
 }
 
 .display.display--veryBold .display-shabbat-day-title {
@@ -1211,12 +1216,12 @@
 .display.display--veryBold .display-shabbat-period-label {
   max-width: 100%;
   color: var(--vb-on-panel, #fff8ea);
-  font-size: 0.56em;
+  font-size: 0.86em;
   font-weight: 800;
-  line-height: 1.28;
+  line-height: 1.22;
   text-align: center;
   overflow-wrap: anywhere;
-  padding-block: 0.08em;
+  padding-block: 0.06em;
 }
 
 .display.display--veryBold .display-shabbat-period-time {
@@ -1309,6 +1314,7 @@
 
 @media (max-width: 700px), (orientation: portrait) {
   .display.display--veryBold .display-shabbat-hero {
+    flex-direction: column;
     align-items: center;
   }
   .display.display--veryBold .display-shabbat-heading,
@@ -1319,9 +1325,24 @@
     justify-content: center;
     text-align: center;
   }
+  .display.display--veryBold .display-shabbat-heading {
+    width: 100%;
+  }
   .display.display--veryBold .display-shabbat-zmanim {
     width: min(100%, 22rem);
     max-width: 100%;
+  }
+  .display.display--veryBold .display-shabbat-zman-content {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+  .display.display--veryBold .display-shabbat-zman-heading,
+  .display.display--veryBold .display-shabbat-zman-label,
+  .display.display--veryBold .display-shabbat-zman-time {
+    justify-content: center;
+    text-align: center;
+    margin-inline: auto;
   }
   .display.display--veryBold .display-shabbat-periods {
     grid-template-columns: 1fr;

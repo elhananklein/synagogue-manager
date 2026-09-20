@@ -2266,8 +2266,10 @@ optgroup {
 
   .display-shabbat-period-label {
     min-width: 0;
-    font-size: 0.55em;
+    font-size: 0.82em;
     font-weight: 700;
+    line-height: 1.22;
+    overflow-wrap: anywhere;
   }
 
   .display-shabbat-period-time {
@@ -2278,34 +2280,47 @@ optgroup {
     white-space: nowrap;
   }
 
-  /* מסכי טלוויזיה / רוחב — כותרת ממורכזת, זמנים ולוח מתחת */
+  /* מסכי טלוויזיה / רוחב — פרשה והפטרה מימין, כניסה/יציאה באותה שורה */
   @media (orientation: landscape) and (min-width: 700px) {
     .display-shabbat-inner {
       width: min(97vw, 104rem);
-      gap: clamp(0.75rem, 2.4vmin, 2rem);
+      gap: clamp(0.55rem, 1.6vmin, 1.25rem);
     }
     .display-shabbat-hero {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      gap: clamp(1rem, 3.2vmin, 2.75rem);
+      justify-content: space-between;
+      gap: clamp(0.85rem, 2.4vmin, 1.75rem);
     }
     .display-shabbat-heading {
-      align-items: center;
-      text-align: center;
-      width: 100%;
+      align-items: flex-start;
+      text-align: start;
+      flex: 1 1 auto;
+      min-width: 0;
+      width: auto;
     }
     .display-shabbat-parasha,
     .display-shabbat-mevarchim,
     .display-shabbat-haftarah {
-      text-align: center;
+      text-align: start;
     }
     .display-shabbat-haftarah {
-      justify-content: center;
+      justify-content: flex-start;
       font-size: clamp(2.45rem, 6.1vmin, 4.75rem);
     }
     .display-shabbat-zmanim {
-      max-width: none;
+      flex: 0 1 auto;
+      width: auto;
+      max-width: min(48%, 32rem);
+    }
+    .display-shabbat-zman-content {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65em;
+      min-height: 0;
+      padding: clamp(0.55rem, 1.5vmin, 1rem) clamp(0.7rem, 1.8vmin, 1.25rem);
     }
     .display-shabbat-title {
       font-size: clamp(1.7rem, 3.6vmin, 3rem);
