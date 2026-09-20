@@ -390,6 +390,70 @@
   font-size: clamp(2rem, 4.4vh, 3.35rem);
 }
 
+.display.display--veryBold .display-occasion-greeting {
+  display: none;
+}
+
+.display.display--veryBold .display-main-grid--info-only .display-occasion-greeting {
+  display: block;
+  font-size: clamp(2.6rem, 6.4vh, 5rem);
+  font-weight: 800;
+}
+
+@media (orientation: landscape) and (min-width: 700px) {
+  .display.display--veryBold .display-main-grid--info-only .display-main-primary-stack {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: clamp(0.65rem, 1.6vmin, 1.2rem);
+  }
+  .display.display--veryBold .display-main-grid--info-only .display-main-date-card {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
+    height: 100%;
+  }
+  .display.display--veryBold .display-main-grid--info-only .display-main-additions {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    grid-template-columns: 1fr;
+  }
+  .display.display--veryBold .display-main-grid--info-only .display-main-additions--four,
+  .display.display--veryBold .display-main-grid--info-only .display-main-additions--many,
+  .display.display--veryBold .display-main-grid--info-only .display-main-additions[data-addition-count="4"] {
+    grid-template-columns: 1fr 1fr;
+  }
+  .display.display--veryBold .display-main-grid--info-only .display-daf-card {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .display.display--veryBold .display-main-grid--info-only .display-parasha,
+  .display.display--veryBold .display-main-grid--info-only .display-main-primary-stack .display-parasha {
+    font-size: clamp(4.6rem, 12vh, 9.4rem);
+  }
+  .display.display--veryBold .display-main-grid--info-only .display-occasion-greeting {
+    display: block;
+    font-size: clamp(3.2rem, 8vh, 6.4rem);
+    font-weight: 800;
+  }
+  .display.display--veryBold .display-main-grid--info-only .display-addition-text {
+    font-size: clamp(4.2rem, 10.2vh, 8.2rem);
+  }
+  .display.display--veryBold .display-main-grid--info-only .display-main-additions[data-addition-count="3"] .display-addition-text {
+    font-size: clamp(3.5rem, 8.4vh, 6.6rem);
+  }
+  .display.display--veryBold .display-main-grid--info-only .display-main-additions[data-addition-count="4"] .display-addition-text,
+  .display.display--veryBold .display-main-grid--info-only .display-main-additions--many .display-addition-text {
+    font-size: clamp(2.8rem, 6.6vh, 5.2rem);
+  }
+  .display.display--veryBold .display-main-grid--info-only .display-daf-yomi {
+    font-size: clamp(2.7rem, 6.4vh, 5rem);
+  }
+  .display.display--veryBold .display-main-grid--info-only .display-gregorian-date {
+    font-size: clamp(2.15rem, 4.8vh, 3.6rem);
+  }
+}
+
 .display.display--veryBold .display-screen-stage > .display-main-grid {
   flex: 1;
 }
@@ -628,9 +692,11 @@
 .display.display--veryBold.display-palette--classicBurgundy .display-main-date-card .display-gregorian-date,
 .display.display--veryBold.display-palette--classicBurgundy .display-main-date-card .display-hebrew-date,
 .display.display--veryBold.display-palette--classicBurgundy .display-main-date-card .display-mevarchim,
+.display.display--veryBold.display-palette--classicBurgundy .display-main-date-card .display-occasion-greeting,
 .display.display--veryBold[data-display-palette="classicBurgundy"] .display-main-date-card .display-gregorian-date,
 .display.display--veryBold[data-display-palette="classicBurgundy"] .display-main-date-card .display-hebrew-date,
-.display.display--veryBold[data-display-palette="classicBurgundy"] .display-main-date-card .display-mevarchim {
+.display.display--veryBold[data-display-palette="classicBurgundy"] .display-main-date-card .display-mevarchim,
+.display.display--veryBold[data-display-palette="classicBurgundy"] .display-main-date-card .display-occasion-greeting {
   color: #f3d48a;
 }
 

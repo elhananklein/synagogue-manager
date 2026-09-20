@@ -3,7 +3,7 @@ import type { HebcalLeyningItem } from "@/lib/haftarah";
 import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
 import { publicFastKind, resolveLiturgicalTiles, resolvePublicFastName } from "@/lib/liturgical-additions";
 import { FAST_CATALOG_KEY } from "@/lib/parasha-prayer-catalog";
-import { applyOccasionDisplayLabel, erevOccasionTitle, isChagOnDate, isErevShabbatonDate, weeklyOccasionIso } from "@/lib/sacred-occasion";
+import { applyOccasionDisplayLabel, erevOccasionTitle, isChagOnDate, isErevShabbatonDate, occasionGreeting, weeklyOccasionIso } from "@/lib/sacred-occasion";
 import { birkatHashanimLabel, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, resolveScheduleZmanimKeys, zmanLabelForKey } from "@/lib/zmanim-catalog";
 import type { SynagogueZmanimLocation } from "@/lib/display-config";
@@ -45,6 +45,8 @@ export type DisplaySnapshot = {
   gregorianDate: string;
   /** פרשת השבת הקרובה, או שם החג כשאין קריאה שבועית */
   parasha: string;
+  /** ברכה לאריח במסך הראשי המצומצם: שבת שלום / חג שמח / שנה טובה וכו' */
+  occasionGreeting: string | null;
   /** השבת הקרובה היא יום טוב (ראש השנה, יום כיפור, רגל וכו') */
   occasionIsChag: boolean;
   candleLighting: string | null;
@@ -715,6 +717,7 @@ export async function getDisplaySnapshot(
       .format(now)
       .replace(/יום שבת/g, "שבת"),
     parasha,
+    occasionGreeting: occasionGreeting(halachicIso),
     occasionIsChag: todayIsChag || isChagOnDate(occasionIso),
     candleLighting,
     havdalah,

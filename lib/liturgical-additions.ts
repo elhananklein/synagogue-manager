@@ -188,12 +188,12 @@ export function resolveLiturgicalTiles(opts: {
   if (someEvent(events, isTishaBAvEvent)) {
     tiles.push("נחם");
   }
+  const weekdayChol = weekday !== 6 && !isChag;
   if (isAseretYemeiTeshuva(hebrewMonth, hebrewDay)) {
     tiles.push("המלך הקדוש");
-    tiles.push("המלך המשפט");
+    if (weekdayChol) tiles.push("המלך המשפט");
     tiles.push("עשרת ימי תשובה");
   }
-  const weekdayChol = weekday !== 6 && !isChag;
   if (weekdayChol && (isNoTachanunByDate(hebrewMonth, hebrewDay) || isNoTachanunByEvent(events))) {
     tiles.push("אין תחנון");
   }
@@ -202,6 +202,9 @@ export function resolveLiturgicalTiles(opts: {
 
   return tiles;
 }
+
+/** תוספות של תפילת חול — מוסתרות בלוח הראשי המצומצם אחרי חצות בערב שבת/חג. */
+export const WEEKDAY_ONLY_COMPACT_TILES = new Set(["המלך המשפט", "אין תחנון"]);
 
 export const PREVIEW_LITURGICAL_TILES = [
   "על הניסים",

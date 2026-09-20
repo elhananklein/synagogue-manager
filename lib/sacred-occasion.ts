@@ -136,6 +136,57 @@ export function dayOccasionCaption(isoDate: string): string {
   return weekdayLong(isoDate);
 }
 
+function holidaySearchText(isoDate: string): string {
+  const hd = hdateFromIso(isoDate);
+  if (!hd) return "";
+  return (getHolidaysOnDate(hd, true) ?? [])
+    .filter((ev) => !(ev.getFlags() & flags.EREV))
+    .map((ev) => {
+      let hebrew = "";
+      try {
+        hebrew = String(ev.render("he") ?? "");
+      } catch {
+        hebrew = "";
+      }
+      return `${ev.getDesc()} ${hebrew}`;
+    })
+    .join(" ");
+}
+
+function holidayFlagsOn(isoDate: string): number {
+  const hd = hdateFromIso(isoDate);
+  if (!hd) return 0;
+  return (getHolidaysOnDate(hd, true) ?? []).reduce((acc, ev) => {
+    const eventFlags = ev.getFlags();
+    if (eventFlags & flags.EREV) return acc;
+    return acc | eventFlags;
+  }, 0);
+}
+
+/**
+ * ברכה לאריח הפרשה במסך הראשי המצומצם (ערב שבת/חג, שבת, חג).
+ * ערב נמדד לפי היום הבא.
+ */
+export function occasionGreeting(isoDate: string): string | null {
+  const focusIso = isErevShabbatonDate(isoDate) ? addDaysIso(isoDate, 1) : isoDate;
+  const text = stripHebrewNiqqud(holidaySearchText(focusIso));
+  const eventFlags = holidayFlagsOn(focusIso);
+  const isSaturday = jsWeekdayFromIso(focusIso) === 6;
+  const isChag = Boolean(eventFlags & flags.CHAG);
+
+  if (isChag && eventFlags & flags.MAJOR_FAST) return "גמר חתימה טובה";
+  if (/Rosh\s*Hashan|ראש השנה/i.test(text)) return "שנה טובה";
+  if (/Pesach|פסח/i.test(text) && (isChag || eventFlags & flags.CHOL_HAMOED)) {
+    return "חג כשר ושמח";
+  }
+  if (isChag) return isSaturday ? "שבת שלום וחג שמח" : "חג שמח";
+  if (eventFlags & flags.CHOL_HAMOED) {
+    return isSaturday ? "שבת שלום וחג שמח" : "חג שמח";
+  }
+  if (isSaturday) return "שבת שלום";
+  return null;
+}
+
 /** כותרת לערב שבתון: «ערב יום כיפור», «ערב סוכות», או «ערב שבת». */
 export function erevOccasionTitle(erevIso: string): string {
   const nextIso = addDaysIso(erevIso, 1);

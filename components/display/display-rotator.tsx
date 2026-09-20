@@ -15,7 +15,7 @@ import { DEFAULT_DISPLAY_FONT, type DisplayFont } from "@/lib/display-font";
 import { pickDisplayLiveFields, useDisplayLiveRefresh, useHalachicDayLiveRefresh } from "@/lib/display-live-refresh";
 import { groupPrayersForDisplay, weekdayMinchaClockTimes, type PrayerDisplayGroupId } from "@/lib/prayer-display-groups";
 import { groupShabbatScheduleByPeriod, type ShabbatScheduleRow } from "@/lib/shabbat-schedule-periods";
-import { FAST_END_LABEL, FAST_START_LABEL } from "@/lib/liturgical-additions";
+import { FAST_END_LABEL, FAST_START_LABEL, WEEKDAY_ONLY_COMPACT_TILES } from "@/lib/liturgical-additions";
 import { useHideMainPrayerTimes } from "@/hooks/use-hide-main-prayer-times";
 
 type ScreenKey =
@@ -53,6 +53,7 @@ type Snapshot = {
   hebrewDate: string;
   gregorianDate: string;
   parasha: string;
+  occasionGreeting?: string | null;
   occasionIsChag?: boolean;
   candleLighting: string | null;
   havdalah: string | null;
@@ -1405,6 +1406,7 @@ export function DisplayRotator({
                   hideChromeDates={isWoodSilverRevolution || isVeryBold}
                   amidahAddition={amidahAddition}
                   mevarchimText={shabbatMevarchimText}
+                  omitWeekdayAdditions={hideMainTimes}
                 />
               </div>
             </div>
@@ -1707,19 +1709,23 @@ function PrimaryInfoStack({
   isWoodSilverRevolution,
   hideChromeDates = false,
   amidahAddition,
-  mevarchimText
+  mevarchimText,
+  omitWeekdayAdditions = false
 }: {
   snapshot: Snapshot;
   isWoodSilverRevolution: boolean;
   hideChromeDates?: boolean;
   amidahAddition: string | null;
   mevarchimText?: string | null;
+  /** אחרי חצות בערב שבת/חג — בלי תוספות של תפילת חול */
+  omitWeekdayAdditions?: boolean;
 }) {
   const omerTileText = snapshot.omerShortText ?? snapshot.omerText;
   const extraTiles = [omerTileText, amidahAddition, ...(snapshot.liturgicalTiles ?? [])]
     .filter((value): value is string => Boolean(value))
-    .flatMap((value) => value.split("\n").map((line) => line.trim()).filter(Boolean));
-  const additionTiles = [snapshot.rainText, snapshot.blessingText, ...extraTiles]
+    .flatMap((value) => value.split("\n").map((line) => line.trim()).filter(Boolean))
+    .filter((value) => !omitWeekdayAdditions || !WEEKDAY_ONLY_COMPACT_TILES.has(value));
+  const additionTiles = [snapshot.rainText, omitWeekdayAdditions ? "" : snapshot.blessingText, ...extraTiles]
     .map((value) => value?.trim() ?? "")
     .filter(Boolean);
   const lastExtraSpans = additionTiles.length % 2 === 1;
@@ -1738,6 +1744,9 @@ function PrimaryInfoStack({
       <Card className="display-card display-main-date-card">
         <CardContent className="display-main-date-content !p-0">
           <p className="display-parasha">{snapshot.parasha}</p>
+          {snapshot.occasionGreeting ? (
+            <p className="display-occasion-greeting">{snapshot.occasionGreeting}</p>
+          ) : null}
           {mevarchimText ? <p className="display-mevarchim">{mevarchimText}</p> : null}
           {hideChromeDates ? (
             <p className="display-gregorian-date">{snapshot.gregorianDate}</p>

@@ -22,7 +22,7 @@ import { DEFAULT_DISPLAY_PALETTE, styleUsesPalettes, type DisplayPalette, type D
 import { groupPrayersForDisplay, weekdayMinchaClockTimes } from "@/lib/prayer-display-groups";
 import { groupShabbatScheduleByPeriod } from "@/lib/shabbat-schedule-periods";
 import { setPreferredSynagogue } from "@/lib/mobile-synagogue-preference";
-import { FAST_END_LABEL, FAST_START_LABEL } from "@/lib/liturgical-additions";
+import { FAST_END_LABEL, FAST_START_LABEL, WEEKDAY_ONLY_COMPACT_TILES } from "@/lib/liturgical-additions";
 import { useHideMainPrayerTimes } from "@/hooks/use-hide-main-prayer-times";
 import { SiddurReader } from "@/components/mobile/siddur-reader";
 import { DEFAULT_HAFTARAH_MINHAG, type HaftarahMinhag } from "@/lib/haftarah-minhag";
@@ -423,6 +423,7 @@ export function MobileDisplayRotator({
             timeSections={hideMainTimes ? [] : visibleTimeSections}
             mevarchimText={shabbatMevarchimText}
             nextPrayer={hideMainTimes ? null : nextPrayer}
+            omitWeekdayAdditions={hideMainTimes}
             onOpenSiddur={setSiddurPrayer}
           />
         )}
@@ -731,13 +732,22 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
   return <div className={cn("m-card", className)}>{children}</div>;
 }
 
-function Badges({ snapshot }: { snapshot: Snapshot }) {
+function Badges({
+  snapshot,
+  omitWeekdayAdditions = false
+}: {
+  snapshot: Snapshot;
+  omitWeekdayAdditions?: boolean;
+}) {
+  const tiles = (snapshot.liturgicalTiles ?? [])
+    .map((text) => text.replace(/\n/g, " · "))
+    .filter((text) => !omitWeekdayAdditions || !WEEKDAY_ONLY_COMPACT_TILES.has(text));
   const badges = [
     snapshot.rainText,
-    snapshot.blessingText,
+    omitWeekdayAdditions ? "" : snapshot.blessingText,
     snapshot.omerText,
     snapshot.amidahAdditionText,
-    ...(snapshot.liturgicalTiles ?? []).map((text) => text.replace(/\n/g, " · "))
+    ...tiles
   ].filter(Boolean) as string[];
   if (!badges.length) return null;
   return (
@@ -789,12 +799,14 @@ function MainScreen({
   timeSections,
   mevarchimText,
   nextPrayer,
+  omitWeekdayAdditions = false,
   onOpenSiddur
 }: {
   snapshot: Snapshot;
   timeSections: DisplayTimeSection[];
   mevarchimText?: string | null;
   nextPrayer?: NextPrayerMark | null;
+  omitWeekdayAdditions?: boolean;
   onOpenSiddur: (prayer: SiddurPrayer) => void;
 }) {
   const parasha = snapshot.parasha && snapshot.parasha !== "לא נמצא" ? snapshot.parasha : null;
@@ -808,7 +820,7 @@ function MainScreen({
           <p className="m-hero-date">{snapshot.gregorianDate}</p>
         </div>
       ) : null}
-      <Badges snapshot={snapshot} />
+      <Badges snapshot={snapshot} omitWeekdayAdditions={omitWeekdayAdditions} />
       {mevarchimText ? <p className="m-center m-learn-title">{mevarchimText}</p> : null}
       {timeSections.map((section, sectionIndex) => {
         if (!section.items.length) return null;
