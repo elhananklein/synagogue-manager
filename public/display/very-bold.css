@@ -165,12 +165,12 @@
 .display.display--veryBold .display-datetime-digital-col {
   flex: 1 1 auto;
   min-width: 0;
-  transform: translateY(-1.7rem);
+  transform: none;
 }
 
 .display.display--veryBold .display-datetime-next-prayer {
   color: var(--vb-ink-soft, #2a3b58);
-  margin-top: 4.4rem;
+  margin-top: 2.6rem;
   font-size: clamp(3rem, 7vmin, 5rem);
   font-weight: 800;
 }

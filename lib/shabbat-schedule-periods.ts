@@ -165,3 +165,53 @@ export function groupShabbatScheduleByPeriod(
     rows: buckets[def.id]
   })).filter((column) => column.rows.length > 0);
 }
+
+export type AgendaDayForIso = {
+  day: number;
+  iso: string;
+  weekdayChag?: boolean;
+  isChag?: boolean;
+  isSaturday?: boolean;
+  isLastDay?: boolean;
+  items: Array<{ itemTime: string | null; content: string }>;
+};
+
+function timedAgendaRows(items: AgendaDayForIso["items"]): ShabbatScheduleRow[] {
+  return items
+    .map((item) => ({
+      label: item.content.trim(),
+      time: item.itemTime?.trim().slice(0, 5) ?? ""
+    }))
+    .filter((row) => row.label && /^\d{1,2}:\d{2}$/.test(row.time))
+    .map((row) => ({
+      label: row.label,
+      time: row.time.padStart(5, "0")
+    }));
+}
+
+/**
+ * שורות עם שעה מלוח שבת/חג שפורסם, לפי יום אזרחי:
+ * ערב המועד — עמודת ערב בלבד; יום החג/שבת — בלי עמודת הערב.
+ */
+export function agendaTimedRowsForIso(days: AgendaDayForIso[], erevIso: string, iso: string): ShabbatScheduleRow[] {
+  if (!days.length) return [];
+  const withRows = days.map((day) => ({ ...day, rows: timedAgendaRows(day.items) }));
+  const periodOptions = (day: AgendaDayForIso): ShabbatPeriodTitleOptions => ({
+    weekdayChag: Boolean(day.weekdayChag),
+    isChag: Boolean(day.isChag),
+    isLastDay: Boolean(day.isLastDay),
+    isSaturday: Boolean(day.isSaturday)
+  });
+
+  if (iso === erevIso) {
+    const day1 = withRows.find((day) => day.day === 1) ?? withRows[0];
+    if (!day1?.rows.length) return [];
+    return groupShabbatScheduleByPeriod(day1.rows, periodOptions(day1)).find((column) => column.id === "erev")?.rows ?? [];
+  }
+
+  const day = withRows.find((item) => item.iso === iso);
+  if (!day?.rows.length) return [];
+  return groupShabbatScheduleByPeriod(day.rows, periodOptions(day))
+    .filter((column) => column.id !== "erev")
+    .flatMap((column) => column.rows);
+}

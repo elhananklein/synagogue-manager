@@ -14,7 +14,7 @@ import {
   settingsNeedSundayZmanim
 } from "@/lib/build-prayer-schedule";
 import { getPublishedShabbatAgendaItems } from "@/lib/shabbat-agenda";
-import { erevMinchaTimeFromShabbatAgenda } from "@/lib/shabbat-schedule-periods";
+import { agendaTimedRowsForIso, erevMinchaTimeFromShabbatAgenda } from "@/lib/shabbat-schedule-periods";
 import { filterDailyLearningByKeys } from "@/lib/daily-learning-catalog";
 import { resolveViewIsoDate } from "@/lib/view-date";
 import { dayOccasionCaption, erevOccasionTitle, isChagOnDate, isErevShabbatonDate, isOccasionScreenDay, preferredOccasionDayIndex, resolveOccasionCluster, resolveOccasionLabel } from "@/lib/sacred-occasion";
@@ -113,6 +113,40 @@ export type DisplayView = {
   /** נוסח התפילה/הפטרה של המניין — לסידור במובייל */
   haftarahMinhag: HaftarahMinhag;
 };
+
+function slotsFromAgendaRows(rows: Array<{ label: string; time: string }>): DisplayPrayerSlot[] {
+  return rows.map((row) => ({
+    label: row.label,
+    time: row.time,
+    details: "",
+    prayerType: row.label
+  }));
+}
+
+function mergeAgendaIntoSlots(base: DisplayPrayerSlot[], extra: Array<{ label: string; time: string }>): DisplayPrayerSlot[] {
+  const out = [...base];
+  for (const row of extra) {
+    const duplicate = out.some(
+      (item) =>
+        item.time === row.time &&
+        (item.label === row.label || (/מנחה/.test(item.label) && /מנחה/.test(row.label)))
+    );
+    if (duplicate) continue;
+    out.push({ label: row.label, time: row.time, details: "", prayerType: row.label });
+  }
+  return out;
+}
+
+function applyPublishedAgendaToDaySlots(
+  settingsSlots: DisplayPrayerSlot[],
+  agendaDays: DisplayShabbatAgendaDay[],
+  erevIso: string,
+  iso: string
+): DisplayPrayerSlot[] {
+  const agendaRows = agendaTimedRowsForIso(agendaDays, erevIso, iso);
+  if (!agendaRows.length) return settingsSlots;
+  return iso === erevIso ? mergeAgendaIntoSlots(settingsSlots, agendaRows) : slotsFromAgendaRows(agendaRows);
+}
 
 function singleQueryParam(value: string | string[] | undefined | null): string | null {
   if (value == null) return null;
@@ -449,6 +483,15 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     }
   }
 
+  const todaySlots =
+    shabbat?.agendaDays.length
+      ? applyPublishedAgendaToDaySlots(prayerSchedule, shabbat.agendaDays, shabbat.erevIso, todayIsoDate)
+      : prayerSchedule;
+  const tomorrowSlots =
+    shabbat?.agendaDays.length
+      ? applyPublishedAgendaToDaySlots(tomorrowPrayerSchedule, shabbat.agendaDays, shabbat.erevIso, tomorrowIsoDate)
+      : tomorrowPrayerSchedule;
+
   const todayZmanimItems = [
     ...fastZmanItems(snapshot),
     ...buildZmanimRows(snapshot.zmanimSourceTimes, displayConfig.scheduleZmanimKeys).map((row) => ({
@@ -465,13 +508,13 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       kind: "zman" as const
     }))
   ];
-  const todayPrayerItems = prayerSchedule.map((row) => ({
+  const todayPrayerItems = todaySlots.map((row) => ({
     label: row.label,
     time: row.time,
     details: row.details,
     kind: "prayer" as const
   }));
-  const tomorrowPrayerItems = tomorrowPrayerSchedule.map((row) => ({
+  const tomorrowPrayerItems = tomorrowSlots.map((row) => ({
     label: row.label,
     time: row.time,
     details: row.details,
@@ -518,7 +561,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
           segments: publicData.halacha.segments
         }
       : null,
-    prayerSchedule,
+    prayerSchedule: todaySlots,
     timeSections,
     timeSectionsAll,
     viewDate: todayIsoDate,
