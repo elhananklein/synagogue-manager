@@ -930,16 +930,23 @@
   min-height: 0;
   justify-content: stretch;
   gap: clamp(0.45rem, 1.4vmin, 1rem);
+  overflow: hidden;
+}
+
+.display.display--veryBold .display-shabbat-inner > :last-child {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .display.display--veryBold .display-shabbat-hero {
   flex: 0 0 auto;
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: clamp(0.7rem, 2vmin, 1.4rem);
   width: 100%;
+  min-width: 0;
 }
 
 .display.display--veryBold .display-shabbat-heading {
@@ -948,6 +955,7 @@
   flex: 1 1 auto;
   width: auto;
   min-width: 0;
+  container-type: inline-size;
 }
 
 .display.display--veryBold .display-shabbat-title {
@@ -963,10 +971,24 @@
 }
 
 .display.display--veryBold .display-shabbat-haftarah {
+  flex-wrap: nowrap;
   justify-content: flex-start;
+  max-width: 100%;
   color: var(--vb-ink, #152238);
   font-size: clamp(1.85rem, 4.7vmin, 3.45rem);
   font-weight: 800;
+  white-space: nowrap;
+}
+
+.display.display--veryBold .display-shabbat-haftarah[data-has-mincha] {
+  font-size: clamp(1.15rem, 2.35vw, 2.55rem);
+  font-size: clamp(1.15rem, 3.15cqi, 2.55rem);
+}
+
+.display.display--veryBold .display-shabbat-haftarah-name,
+.display.display--veryBold .display-shabbat-haftarah-source {
+  flex: 0 1 auto;
+  white-space: nowrap;
 }
 
 .display.display--veryBold .display-shabbat-haftarah-name {
@@ -1185,7 +1207,7 @@
   grid-template-columns: repeat(var(--shabbat-period-cols, 3), minmax(0, 1fr));
   align-items: stretch;
   column-gap: clamp(1.35rem, 3vmin, 2.2rem);
-  overflow: visible;
+  overflow: hidden;
   flex: 1 1 0;
   min-height: 0;
   height: 100%;
@@ -1256,6 +1278,7 @@
   justify-content: flex-start;
   gap: 0.38em;
   min-height: 0;
+  overflow: hidden;
 }
 
 .display.display--veryBold .display-shabbat-period-item {

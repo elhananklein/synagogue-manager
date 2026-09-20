@@ -79,7 +79,7 @@ export type DisplaySnapshot = {
   /** מפתח לקטלוג תפילות: פרשה או חול המועד פסח/סוכות */
   parashaCatalogKey: string;
   /** הפטרת שבת הקרובה — ממולא ב־build-display-view לפי מנהג המניין */
-  haftarah?: { name: string | null; source: string } | null;
+  haftarah?: { name: string | null; source: string; mincha?: string | null } | null;
 };
 
 export type DisplaySnapshotOptions = {
@@ -761,9 +761,13 @@ export async function fetchHebcalLeyningForDate(isoDate: string): Promise<Hebcal
     if (!res.ok) return null;
     const payload = (await res.json()) as HebcalLeyningResponse;
     const items = Array.isArray(payload.items) ? payload.items : [];
+    const hasHaftara = (item: HebcalLeyningItem) => Boolean(item.haftara || item.haft);
+    const isMincha = (item: HebcalLeyningItem) =>
+      /mincha|מנחה/i.test(`${item.name?.en ?? ""} ${item.name?.he ?? ""}`);
     return (
-      items.find((item) => item.type === "shabbat" && (item.haftara || item.haft)) ??
-      items.find((item) => item.haftara || item.haft) ??
+      items.find((item) => item.type === "shabbat" && hasHaftara(item)) ??
+      items.find((item) => hasHaftara(item) && !isMincha(item)) ??
+      items.find(hasHaftara) ??
       null
     );
   } catch {

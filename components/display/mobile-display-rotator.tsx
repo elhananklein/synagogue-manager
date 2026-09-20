@@ -1245,6 +1245,7 @@ function ShabbatScreen({
             {shabbat.haftarah.source ? (
               <strong className="m-hero-haftarah-source">– {shabbat.haftarah.source}</strong>
             ) : null}
+            {shabbat.haftarah.mincha ? ` + ${shabbat.haftarah.mincha}` : null}
           </p>
         ) : null}
         {shabbat.isChag && shabbat.isShabbatWeekend ? <p className="m-hero-date">שבת</p> : null}

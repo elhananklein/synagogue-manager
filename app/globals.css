@@ -2372,6 +2372,7 @@ optgroup {
       flex: 1 1 auto;
       min-width: 0;
       width: auto;
+      container-type: inline-size;
     }
     .display-shabbat-parasha,
     .display-shabbat-mevarchim,
@@ -2380,7 +2381,13 @@ optgroup {
     }
     .display-shabbat-haftarah {
       justify-content: flex-start;
+      flex-wrap: nowrap;
+      max-width: 100%;
       font-size: clamp(2.45rem, 6.1vmin, 4.75rem);
+      white-space: nowrap;
+    }
+    .display-shabbat-haftarah[data-has-mincha] {
+      font-size: clamp(1.2rem, 3.15cqi, 2.7rem);
     }
     .display-shabbat-zmanim {
       flex: 0 1 auto;

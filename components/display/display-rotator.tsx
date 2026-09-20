@@ -70,7 +70,7 @@ type Snapshot = {
   fastName?: string | null;
   fastStart?: string | null;
   fastEnd?: string | null;
-  haftarah?: { name: string | null; source: string } | null;
+  haftarah?: { name: string | null; source: string; mincha?: string | null } | null;
 };
 
 /** Auto-scroll for "זמני היום ותפילות" — set here so deploys always pick up pace changes (inline beats stale CSS). */
@@ -333,7 +333,11 @@ function ShabbatPeriodBoard({
 
     apply(true);
     frame = requestAnimationFrame(() => apply(false));
-    const box = el.parentElement ?? el;
+    const box =
+      el.closest(".display-shabbat-agenda-days") ??
+      el.closest(".display-shabbat-fit") ??
+      el.parentElement ??
+      el;
     const ro = new ResizeObserver(() => {
       cancelAnimationFrame(frame);
       extraPasses = 0;
@@ -593,7 +597,7 @@ export function DisplayRotator({
     agendaDays?: WallShabbatAgendaDay[];
     erevIso?: string;
     preferredDay?: 1 | 2 | 3;
-    haftarah?: { name: string | null; source: string } | null;
+    haftarah?: { name: string | null; source: string; mincha?: string | null } | null;
   } | null;
   bulletinItems?: BulletinItem[];
   viewDate?: string;
@@ -1599,12 +1603,18 @@ export function DisplayRotator({
                         const haftarah = shabbat?.haftarah ?? snapshot.haftarah;
                         if (!haftarah?.name && !haftarah?.source) return null;
                         return (
-                          <p className="display-shabbat-haftarah">
+                          <p
+                            className="display-shabbat-haftarah"
+                            data-has-mincha={haftarah.mincha ? "" : undefined}
+                          >
                             <span className="display-shabbat-haftarah-name">
                               {haftarah.name ? `הפטרת ${haftarah.name}` : "הפטרה"}
                             </span>
                             {haftarah.source ? (
                               <strong className="display-shabbat-haftarah-source">– {haftarah.source}</strong>
+                            ) : null}
+                            {haftarah.mincha ? (
+                              <span className="display-shabbat-haftarah-name">+ {haftarah.mincha}</span>
                             ) : null}
                           </p>
                         );

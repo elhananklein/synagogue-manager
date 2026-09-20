@@ -4,6 +4,8 @@ import { resolveHaftarahMinhag, type HaftarahMinhag } from "@/lib/haftarah-minha
 export type HaftarahDisplay = {
   name: string | null;
   source: string;
+  /** יום כיפור בלבד — מוצג אחרי + בפונט של שם ההפטרה. */
+  mincha?: string | null;
 };
 
 type LeyningPassage = {
@@ -14,6 +16,7 @@ type LeyningPassage = {
 
 export type HebcalLeyningItem = {
   type?: string;
+  name?: { en?: string; he?: string };
   haftara?: string;
   sephardic?: string;
   seph?: LeyningPassage | LeyningPassage[];
@@ -81,31 +84,14 @@ function chapMark(n: number) {
   return `${numberToHebrew(n)}׳`;
 }
 
-function formatRange(ch1: number, v1: number, ch2?: number, v2?: number) {
-  if (ch2 == null || v2 == null || (ch2 === ch1 && v2 === v1)) {
-    return `${chapMark(ch1)} ${numberToHebrew(v1)}`;
-  }
-  if (ch2 === ch1) {
-    return `${chapMark(ch1)} ${numberToHebrew(v1)}–${numberToHebrew(v2)}`;
-  }
-  return `${chapMark(ch1)} ${numberToHebrew(v1)} – ${chapMark(ch2)} ${numberToHebrew(v2)}`;
-}
-
-function parseEnglishRange(raw: string): string | null {
+/** במקור ההפטרה מציינים רק ספר ופרק התחלה — בלי פסוק ובלי סוף. */
+function startChapterHe(raw: string): string | null {
   const compact = raw.replace(/\u2013|\u2014/g, "-").replace(/\s+/g, "");
-  const same = compact.match(/^(\d+):(\d+)-(\d+)$/);
-  if (same) {
-    return formatRange(Number(same[1]), Number(same[2]), Number(same[1]), Number(same[3]));
-  }
-  const cross = compact.match(/^(\d+):(\d+)-(\d+):(\d+)$/);
-  if (cross) {
-    return formatRange(Number(cross[1]), Number(cross[2]), Number(cross[3]), Number(cross[4]));
-  }
-  const single = compact.match(/^(\d+):(\d+)$/);
-  if (single) {
-    return formatRange(Number(single[1]), Number(single[2]));
-  }
-  return null;
+  const match = compact.match(/^(\d+)/);
+  if (!match) return null;
+  const chapter = Number(match[1]);
+  if (!Number.isInteger(chapter) || chapter <= 0) return null;
+  return chapMark(chapter);
 }
 
 function bookKeyAtStart(text: string): string | undefined {
@@ -138,15 +124,16 @@ function formatSingleBookCitation(english: string): string {
   const bookHe = TANAKH_BOOK[bookKey];
   const rest = trimmed.slice(bookKey.length).trim();
   if (!rest) return bookHe;
-  const parts = rest.split(",").map((part) => part.trim()).filter(Boolean);
-  const heParts = parts.map((part) => parseEnglishRange(part) ?? part);
-  return `${bookHe} ${heParts.join(", ")}`;
+  const firstSpan = rest.split(",")[0]?.trim() ?? rest;
+  const chapter = startChapterHe(firstSpan);
+  return chapter ? `${bookHe} ${chapter}` : bookHe;
 }
 
 export function formatHaftarahSource(english: string): string {
   const trimmed = english.trim();
   if (!trimmed) return "";
-  return splitBookCitations(trimmed).map(formatSingleBookCitation).filter(Boolean).join("; ");
+  const first = splitBookCitations(trimmed)[0];
+  return first ? formatSingleBookCitation(first) : "";
 }
 
 function formatPassage(passage: LeyningPassage): string | null {
@@ -188,6 +175,11 @@ export function citationForMinhag(item: HebcalLeyningItem | null | undefined, mi
   return citationFromPassages(item.haftara) ?? citationFromPassages(item.haft);
 }
 
+function isYomKippurShacharitHaftarah(citation: string): boolean {
+  const normalized = citation.toLowerCase().replace(/\s+/g, " ").replace(/\u2013|\u2014/g, "-").trim();
+  return normalized.startsWith("isaiah 57:14");
+}
+
 export function resolveHaftarahDisplay(
   item: HebcalLeyningItem | null | undefined,
   minhagRaw?: string | null
@@ -195,11 +187,13 @@ export function resolveHaftarahDisplay(
   const minhag = resolveHaftarahMinhag(minhagRaw);
   const citation = citationForMinhag(item, minhag);
   if (!citation) return null;
-  return {
-    name: lookupHaftarahName(citation, {
-      consolation: item?.consolation,
-      admonition: item?.admonition
-    }),
-    source: formatHaftarahSource(citation)
-  };
+  const name = lookupHaftarahName(citation, {
+    consolation: item?.consolation,
+    admonition: item?.admonition
+  });
+  const source = formatHaftarahSource(citation);
+  if (!isYomKippurShacharitHaftarah(citation)) {
+    return { name, source };
+  }
+  return { name, source, mincha: "מפטיר יונה במנחה" };
 }
