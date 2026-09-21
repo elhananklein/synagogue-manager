@@ -210,13 +210,18 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const minyanSelector = singleQueryParam(params.minyan) ?? singleQueryParam(params.minyanId);
 
   const jerusalemTodayIso = toIsoDateJerusalem();
-  const todayIsoDate = resolveViewIsoDate(singleQueryParam(params.date), jerusalemTodayIso);
-  const tomorrowIsoDate = getTomorrowIsoDateFrom(todayIsoDate);
+  const requestedIso = resolveViewIsoDate(singleQueryParam(params.date), jerusalemTodayIso);
 
   // נשלף קודם את הגדרות בית הכנסת כדי לקבל את המיקום, ואז נחשב את הזמנים לפיו.
   const displayConfig = await getDisplayConfig(synagogueId, minyanSelector);
   const location = displayConfig.location;
   const snapshotOptions = { location, haftarahMinhag: displayConfig.haftarahMinhag };
+
+  const seedSnap = await getDisplaySnapshot(requestedIso, snapshotOptions);
+  /** אחרי צאת הכוכבים — היום בתצוגה מתגלגל ליום ההלכתי, לא נשארים על שם החג/הצום שנגמר. */
+  const todayIsoDate =
+    requestedIso === jerusalemTodayIso ? seedSnap.liturgicalIso || requestedIso : requestedIso;
+  const tomorrowIsoDate = getTomorrowIsoDateFrom(todayIsoDate);
 
   const todaySundayIso = addDaysIsoDate(todayIsoDate, -jsWeekdayFromIsoDate(todayIsoDate));
   const tomorrowSundayIso = addDaysIsoDate(tomorrowIsoDate, -jsWeekdayFromIsoDate(tomorrowIsoDate));
@@ -234,16 +239,19 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       ? Promise.resolve([] as DisplaySnapshot[])
       : Promise.all(extraSundayIsos.map((iso) => getDisplaySnapshot(iso, { omitDailyLearning: true, ...snapshotOptions })));
 
-  const [[snapshot, tomorrowSnapshot, publicData, bulletinItems, shabbatAgendaItems], sundaySnaps] = await Promise.all([
-    Promise.all([
-      getDisplaySnapshot(todayIsoDate, snapshotOptions),
-      getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, ...snapshotOptions }),
-      getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
-      getPublishedBulletinItems(synagogueId),
-      getPublishedShabbatAgendaItems(displayConfig.minyanId)
-    ]),
-    extraSundayPromise
-  ]);
+  const [[snapshot, tomorrowSnapshot, publicData, bulletinItems, shabbatAgendaItems], sundaySnaps] =
+    await Promise.all([
+      Promise.all([
+        seedSnap.liturgicalIso === todayIsoDate
+          ? Promise.resolve(seedSnap)
+          : getDisplaySnapshot(todayIsoDate, snapshotOptions),
+        getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, ...snapshotOptions }),
+        getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
+        getPublishedBulletinItems(synagogueId),
+        getPublishedShabbatAgendaItems(displayConfig.minyanId)
+      ]),
+      extraSundayPromise
+    ]);
 
   const styleOverrideRaw = singleQueryParam(params.style);
   const styleOverride = ALLOWED_STYLES.find((s) => s === styleOverrideRaw) ?? null;

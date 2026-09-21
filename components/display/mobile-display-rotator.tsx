@@ -1136,7 +1136,7 @@ function PrayerTimesScreen({
         {groups.map(({ group, title, rows: groupRows }) => {
           const siddur = siddurPrayerFromLabel(title, groupRows[0]?.prayerType);
           return (
-            <div key={group} className="m-prayer-group">
+            <div key={`${group}-${title}`} className="m-prayer-group">
               {siddur ? (
                 <button type="button" className="m-prayer-group-open" onClick={() => onOpenSiddur(siddur)}>
                   <span className={cn("m-prayer-group-title", title.length > 8 && "m-prayer-group-title--wide")}>

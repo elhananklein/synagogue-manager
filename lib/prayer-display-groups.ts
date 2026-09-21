@@ -8,7 +8,8 @@ export const PRAYER_DISPLAY_GROUP_TITLES: Record<PrayerDisplayGroupId, string> =
   שחרית: "שחרית",
   מנחה: "מנחה",
   ערבית: "ערבית",
-  אחר: "נוספות"
+  /** לא מוצג ככותרת גנרית — כל שורה בקבוצה זו מוצגת בשם שלה (נעילה, מוסף וכו'). */
+  אחר: ""
 };
 
 function normalizePrayerText(value: string) {
@@ -37,11 +38,15 @@ export function prayerDisplayGroupId(row: { label: string; prayerType?: string |
   }
   if (matchesGroup(haystack, "שחרית")) return "שחרית";
   if (matchesGroup(haystack, "מנחה")) return "מנחה";
-  if (matchesGroup(haystack, "ערבית")) return "ערבית";
+  if (matchesGroup(haystack, "ערבית") || matchesGroup(haystack, "מעריב")) return "ערבית";
   return "אחר";
 }
 
 export function prayerDisplayGroupTitle(group: PrayerDisplayGroupId, rows: Array<{ label: string }>): string {
+  if (group === "אחר") {
+    const labels = [...new Set(rows.map((row) => row.label.trim()).filter(Boolean))];
+    return labels[0] || "תפילה";
+  }
   if (group === "מנחה" && rows.length > 0 && rows.every((row) => /ערב שבת|ערב חג/.test(row.label))) {
     return rows[0]!.label;
   }
@@ -65,14 +70,30 @@ export function groupPrayersForDisplay<T extends { label: string; time: string; 
     list.push(row);
     byGroup.set(row.group, list);
   }
-  return PRAYER_DISPLAY_GROUP_ORDER.filter((group) => byGroup.has(group)).map((group) => {
-    const groupRows = byGroup.get(group)!;
-    return {
+  const result: Array<{ group: PrayerDisplayGroupId; title: string; rows: Array<GroupedPrayerRow<T>> }> = [];
+  for (const group of PRAYER_DISPLAY_GROUP_ORDER) {
+    const groupRows = byGroup.get(group);
+    if (!groupRows?.length) continue;
+    if (group === "אחר") {
+      const byLabel = new Map<string, Array<GroupedPrayerRow<T>>>();
+      for (const row of groupRows) {
+        const label = row.label.trim() || "תפילה";
+        const list = byLabel.get(label) ?? [];
+        list.push(row);
+        byLabel.set(label, list);
+      }
+      for (const [title, rows] of byLabel) {
+        result.push({ group, title, rows });
+      }
+      continue;
+    }
+    result.push({
       group,
       title: prayerDisplayGroupTitle(group, groupRows),
       rows: groupRows
-    };
-  });
+    });
+  }
+  return result;
 }
 
 /** מנחה של חול ליום צום — בלי מנחה ערב שבת/חג ומנחה שבת. */

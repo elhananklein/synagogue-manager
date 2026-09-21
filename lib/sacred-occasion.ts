@@ -208,6 +208,13 @@ export function applyOccasionDisplayLabel(weeklyParashaFromApi: string | null | 
   return resolveOccasionLabel(occasionIso);
 }
 
+/** פרשת השבוע ביום חול — בלי שם החג של השבת הקרובה. */
+export function weekdayParashaDisplayLabel(weeklyParashaFromApi: string | null | undefined): string {
+  const fromApi = weeklyParashaFromApi?.trim() ?? "";
+  if (!fromApi || fromApi === "לא נמצא") return "";
+  return cleanOccasionLabel(fromApi);
+}
+
 const DAY_ORDINALS = ["יום א׳", "יום ב׳", "יום ג׳"] as const;
 
 function occasionDayHeading(iso: string, day: OccasionDayIndex, totalDays: number): string {

@@ -129,7 +129,7 @@ function PrayerTimesGroupedRows({
   return (
     <div className="display-prayer-times-groups">
       {groups.map(({ group, title, rows }) => (
-        <div key={group} className="display-prayer-times-group">
+          <div key={`${group}-${title}`} className="display-prayer-times-group">
           <div className="display-time-section-title">{title}</div>
           <div className="display-prayer-times-row-line" dir="rtl">
             {rows.map((item, idx) => {

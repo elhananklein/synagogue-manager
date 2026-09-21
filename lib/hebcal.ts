@@ -3,7 +3,7 @@ import type { HebcalLeyningItem } from "@/lib/haftarah";
 import { toHebrewDailyLearningDetail } from "@/lib/hebcal-learning-detail-hebrew";
 import { publicFastKind, resolveLiturgicalTiles, resolvePublicFastName } from "@/lib/liturgical-additions";
 import { FAST_CATALOG_KEY } from "@/lib/parasha-prayer-catalog";
-import { applyOccasionDisplayLabel, erevOccasionTitle, isChagOnDate, isErevShabbatonDate, occasionGreeting, weeklyOccasionIso } from "@/lib/sacred-occasion";
+import { applyOccasionDisplayLabel, erevOccasionTitle, isChagOnDate, isErevShabbatonDate, occasionGreeting, weekdayParashaDisplayLabel, weeklyOccasionIso } from "@/lib/sacred-occasion";
 import { birkatHashanimLabel, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 import { DEFAULT_SCHEDULE_ZMANIM_KEYS, resolveScheduleZmanimKeys, zmanLabelForKey } from "@/lib/zmanim-catalog";
 import type { SynagogueZmanimLocation } from "@/lib/display-config";
@@ -47,7 +47,7 @@ export type DisplaySnapshot = {
   parasha: string;
   /** ברכה לאריח במסך הראשי המצומצם: שבת שלום / חג שמח / שנה טובה וכו' */
   occasionGreeting: string | null;
-  /** השבת הקרובה היא יום טוב (ראש השנה, יום כיפור, רגל וכו') */
+  /** היום הוא יום טוב */
   occasionIsChag: boolean;
   candleLighting: string | null;
   havdalah: string | null;
@@ -58,6 +58,8 @@ export type DisplaySnapshot = {
   zmanimSourceTimes: Record<string, string>;
   /** ISO של חצות היום — להסתרת זמני הראשי בשישי אחרי חצות. */
   chatzotIso: string | null;
+  /** יום הלכתי של התצוגה (מתגלגל בצאת הכוכבים). */
+  liturgicalIso: string;
   /** צאת הכוכבים ליום האזרחי של הזמנים — לרענון כשהיום העברי מתקדם (לא חצות). */
   halachicDayRollIso: string | null;
   rainText: string;
@@ -470,6 +472,19 @@ function gregorianYmdQuery(isoDate: string) {
   return `gy=${year}&gm=${month}&gd=${day}`;
 }
 
+function gregorianDateLabelForIso(isoDate: string) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Intl.DateTimeFormat("he-IL", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC"
+  })
+    .format(new Date(Date.UTC(year, month - 1, day, 12, 0, 0)))
+    .replace(/יום שבת/g, "שבת");
+}
+
 /** מפתח תצוגה לפרשה — זהה ללוגיקת המסך (Hebcal: hebrew או title). */
 export function parashaDisplayKeyFromHebcalParashatItem(item: { hebrew?: string; title: string }) {
   return item.hebrew ?? item.title ?? "לא נמצא";
@@ -617,7 +632,11 @@ export async function getDisplaySnapshot(
   }
   const zmanim = (await zmanimRes.json()) as HebcalZmanimResponse;
 
-  const halachicIso = halachicCivilIsoForConverter(civilIso, now, zmanim.times?.tzeit85deg);
+  const rolledIso = halachicCivilIsoForConverter(civilIso, now, zmanim.times?.tzeit85deg);
+  if (rolledIso !== civilIso) {
+    return getDisplaySnapshot(rolledIso, options);
+  }
+  const halachicIso = rolledIso;
   const shabbatUrl = `https://www.hebcal.com/shabbat?cfg=json&${geoQuery}&b=${candleMinutes}&${havdalahQuery}&${gregorianYmdQuery(halachicIso)}`;
   const [hy, hm, hd] = halachicIso.split("-").map(Number);
   const converterUrl = `https://www.hebcal.com/converter?cfg=json&g2h=1&gy=${hy}&gm=${hm}&gd=${hd}`;
@@ -644,17 +663,14 @@ export async function getDisplaySnapshot(
 
   const parashaItem = shabbat.items?.find((item) => item.category === "parashat");
   const weeklyParasha = parashaItem ? parashaDisplayKeyFromHebcalParashatItem(parashaItem) : "";
-  const holidayItem = (shabbat.items ?? []).find((item) => item.category === "holiday" && item.hebrew?.trim());
   const todayIsChag = isChagOnDate(halachicIso);
-  const occasionIso = todayIsChag ? halachicIso : weeklyOccasionIso(halachicIso);
   const viewingErev = !todayIsChag && isErevShabbatonDate(halachicIso);
+  const occasionIso = todayIsChag || viewingErev ? weeklyOccasionIso(halachicIso) : halachicIso;
   const parasha = viewingErev
     ? erevOccasionTitle(halachicIso)
-    : (todayIsChag
-        ? applyOccasionDisplayLabel(null, occasionIso)
-        : applyOccasionDisplayLabel(weeklyParasha, occasionIso)) ||
-      holidayItem?.hebrew?.trim() ||
-      "";
+    : todayIsChag
+      ? applyOccasionDisplayLabel(null, occasionIso)
+      : weekdayParashaDisplayLabel(weeklyParasha);
   const candleItem = shabbat.items?.find((item) => item.category === "candles");
   const havdalahItem = shabbat.items?.find((item) => item.category === "havdalah");
 
@@ -707,18 +723,10 @@ export async function getDisplaySnapshot(
 
   return {
     hebrewDate: stripHebrewNiqqud(converter.hebrew),
-    gregorianDate: new Intl.DateTimeFormat("he-IL", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      timeZone: "Asia/Jerusalem"
-    })
-      .format(now)
-      .replace(/יום שבת/g, "שבת"),
+    gregorianDate: gregorianDateLabelForIso(halachicIso),
     parasha,
     occasionGreeting: occasionGreeting(halachicIso),
-    occasionIsChag: todayIsChag || isChagOnDate(occasionIso),
+    occasionIsChag: todayIsChag,
     candleLighting,
     havdalah,
     dafYomi,
@@ -726,6 +734,7 @@ export async function getDisplaySnapshot(
     zmanim: zmanimRows,
     zmanimSourceTimes: times,
     chatzotIso: times.chatzot ?? null,
+    liturgicalIso: halachicIso,
     halachicDayRollIso: times.tzeit85deg ?? null,
     fastName: resolvePublicFastName(events),
     fastStart,
