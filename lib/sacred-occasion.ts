@@ -208,8 +208,18 @@ export function applyOccasionDisplayLabel(weeklyParashaFromApi: string | null | 
   return resolveOccasionLabel(occasionIso);
 }
 
-/** פרשת השבוע ביום חול — בלי שם החג של השבת הקרובה. */
-export function weekdayParashaDisplayLabel(weeklyParashaFromApi: string | null | undefined): string {
+/** פרשת השבוע / שבת חג ביום חול — לפי השבת הקרובה, לא לפי השבת שעברה. */
+export function weekdayParashaDisplayLabel(
+  weeklyParashaFromApi: string | null | undefined,
+  fromIso?: string
+): string {
+  if (fromIso) {
+    const saturdayIso = saturdayOnOrAfter(fromIso);
+    if (isChagOnDate(saturdayIso)) {
+      const holiday = resolveOccasionLabel(saturdayIso);
+      return holiday ? `שבת ${holiday}` : "שבת";
+    }
+  }
   const fromApi = weeklyParashaFromApi?.trim() ?? "";
   if (!fromApi || fromApi === "לא נמצא") return "";
   return cleanOccasionLabel(fromApi);

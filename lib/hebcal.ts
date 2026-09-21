@@ -670,7 +670,7 @@ export async function getDisplaySnapshot(
     ? erevOccasionTitle(halachicIso)
     : todayIsChag
       ? applyOccasionDisplayLabel(null, occasionIso)
-      : weekdayParashaDisplayLabel(weeklyParasha);
+      : weekdayParashaDisplayLabel(weeklyParasha, halachicIso);
   const candleItem = shabbat.items?.find((item) => item.category === "candles");
   const havdalahItem = shabbat.items?.find((item) => item.category === "havdalah");
 
