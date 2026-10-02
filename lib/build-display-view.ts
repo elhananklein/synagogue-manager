@@ -237,7 +237,11 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const extraSundayPromise =
     extraSundayIsos.length === 0
       ? Promise.resolve([] as DisplaySnapshot[])
-      : Promise.all(extraSundayIsos.map((iso) => getDisplaySnapshot(iso, { omitDailyLearning: true, ...snapshotOptions })));
+      : Promise.all(
+          extraSundayIsos.map((iso) =>
+            getDisplaySnapshot(iso, { omitDailyLearning: true, lockCivilIso: true, ...snapshotOptions })
+          )
+        );
 
   const [[snapshot, tomorrowSnapshot, publicData, bulletinItems, shabbatAgendaItems], sundaySnaps] =
     await Promise.all([
@@ -245,7 +249,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
         seedSnap.liturgicalIso === todayIsoDate
           ? Promise.resolve(seedSnap)
           : getDisplaySnapshot(todayIsoDate, snapshotOptions),
-        getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, ...snapshotOptions }),
+        getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, lockCivilIso: true, ...snapshotOptions }),
         getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
         getPublishedBulletinItems(synagogueId),
         getPublishedShabbatAgendaItems(displayConfig.minyanId)
@@ -385,9 +389,13 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     );
     const uniqueExtra = [...new Set(extraIsos)];
     const [friSnap, satSnap, extraSnaps] = await Promise.all([
-      getDisplaySnapshot(fridayIso, { omitDailyLearning: true, ...snapshotOptions }),
-      getDisplaySnapshot(saturdayIso, { omitDailyLearning: true, ...snapshotOptions }),
-      Promise.all(uniqueExtra.map((iso) => getDisplaySnapshot(iso, { omitDailyLearning: true, ...snapshotOptions })))
+      getDisplaySnapshot(fridayIso, { omitDailyLearning: true, lockCivilIso: true, ...snapshotOptions }),
+      getDisplaySnapshot(saturdayIso, { omitDailyLearning: true, lockCivilIso: true, ...snapshotOptions }),
+      Promise.all(
+        uniqueExtra.map((iso) =>
+          getDisplaySnapshot(iso, { omitDailyLearning: true, lockCivilIso: true, ...snapshotOptions })
+        )
+      )
     ]);
     fridaySnapshot = friSnap;
     saturdaySnapshot = satSnap;
@@ -458,14 +466,24 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
         items: dayItems.map((item) => ({ itemTime: item.itemTime, content: item.content }))
       });
     }
+    const lastDayIsChag = Boolean(cluster.days[cluster.days.length - 1]?.isChag);
+    const candleIsAlsoShabbat = isShabbatWeekend || jsWeekdayFromIsoDate(cluster.erevIso) === 5;
     shabbat = {
       parasha: occasionLabel,
       isChag,
       isShabbatWeekend,
       candleLighting: (erevSnapshot ?? fridaySnapshot ?? displaySnapshot).candleLighting,
       havdalah: (lastDaySnapshot ?? saturdaySnapshot ?? displaySnapshot).havdalah,
-      candleLabel: firstDayIsChag ? "כניסת החג" : "כניסת שבת",
-      havdalahLabel: lastDayIsSaturday ? "צאת שבת" : "צאת החג",
+      candleLabel: firstDayIsChag
+        ? candleIsAlsoShabbat
+          ? "כניסת שבת וחג"
+          : "כניסת החג"
+        : "כניסת שבת",
+      havdalahLabel: lastDayIsSaturday
+        ? lastDayIsChag
+          ? "צאת שבת וחג"
+          : "צאת שבת"
+        : "צאת החג",
       prayers: (erevSnapshot ?? fridaySnapshot) && (firstDaySnapshot ?? saturdaySnapshot)
         ? buildShabbatPrayerSchedule(
             displayConfig.prayerSettings,

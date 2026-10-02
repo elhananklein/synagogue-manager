@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/purge-bulletin",
       "schedule": "30 21 * * *"
+    },
+    {
+      "path": "/api/cron/aliyah-plan-email",
+      "schedule": "0 6 * * *"
     }
   ]
 }

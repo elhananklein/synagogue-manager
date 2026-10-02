@@ -109,6 +109,7 @@ export async function loadAliyahSheet(
       weekday: meta.weekday,
       kind: meta.kind,
       isKriahDay: meta.isKriahDay,
+      isSaved: Boolean(session),
       slots: mergeAliyahSlots(meta.slots, saved)
     }
   };

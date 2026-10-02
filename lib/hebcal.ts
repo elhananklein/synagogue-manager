@@ -87,6 +87,11 @@ export type DisplaySnapshot = {
 export type DisplaySnapshotOptions = {
   /** כשמושך צילום ליום אחר (למשל מחר) בלי צורך בלימוד יומי — חוסך בקשת רשת */
   omitDailyLearning?: boolean;
+  /**
+   * לנעילת התאריך האזרחי — בלי גלגול הלכתי אחרי צאת הכוכבים.
+   * לשימוש בשליפות עזר (שישי/שבת של הלוח, מחר, וכו') כדי לא לאבד כניסה/יציאה.
+   */
+  lockCivilIso?: boolean;
   /** מיקום ומנהג לחישוב זמנים; ריק => ירושלים (תאימות לאחור) */
   location?: SynagogueZmanimLocation;
   /** נוסח המניין — מניע הפטרה וברכת השנים */
@@ -472,6 +477,60 @@ function gregorianYmdQuery(isoDate: string) {
   return `gy=${year}&gm=${month}&gd=${day}`;
 }
 
+function isoDateFromHebcalItemDate(date: string | undefined): string | null {
+  if (!date || date.length < 10) return null;
+  return date.slice(0, 10);
+}
+
+function daysBetweenIsoDates(fromIso: string, toIso: string): number {
+  const [fy, fm, fd] = fromIso.split("-").map(Number);
+  const [ty, tm, td] = toIso.split("-").map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000);
+}
+
+function clockFromHebcalZmanTitle(title: string | undefined): string | null {
+  if (!title) return null;
+  const clock = title.split(": ").slice(1).join(": ").trim();
+  return clock || null;
+}
+
+/**
+ * Hebcal Shabbat API מחזיר את כל השבוע — לפעמים נרות של השבת הבאה.
+ * לוקחים רק כניסה/יציאה ששייכות לחלון של היום ההלכתי (ערב / שבת עצמה),
+ * כדי שלא יופיעו אחרי צאת שבת זמנים של השבוע הבא.
+ */
+function pickCandleAndHavdalahForIso(
+  items: HebcalShabbatResponse["items"],
+  halachicIso: string
+): { candleLighting: string | null; havdalah: string | null } {
+  const list = items ?? [];
+  const candles = list.filter((item) => item.category === "candles");
+  const havdalot = list.filter((item) => item.category === "havdalah");
+
+  const candleItem =
+    candles.find((item) => isoDateFromHebcalItemDate(item.date) === halachicIso) ??
+    candles.find((item) => {
+      const candleIso = isoDateFromHebcalItemDate(item.date);
+      if (!candleIso) return false;
+      const delta = daysBetweenIsoDates(candleIso, halachicIso);
+      return delta >= 0 && delta <= 1;
+    });
+
+  const havdalahItem =
+    havdalot.find((item) => isoDateFromHebcalItemDate(item.date) === halachicIso) ??
+    havdalot.find((item) => {
+      const havIso = isoDateFromHebcalItemDate(item.date);
+      if (!havIso) return false;
+      const delta = daysBetweenIsoDates(halachicIso, havIso);
+      return delta >= 0 && delta <= 1;
+    });
+
+  return {
+    candleLighting: clockFromHebcalZmanTitle(candleItem?.title),
+    havdalah: clockFromHebcalZmanTitle(havdalahItem?.title)
+  };
+}
+
 function gregorianDateLabelForIso(isoDate: string) {
   const [year, month, day] = isoDate.split("-").map(Number);
   return new Intl.DateTimeFormat("he-IL", {
@@ -632,7 +691,10 @@ export async function getDisplaySnapshot(
   }
   const zmanim = (await zmanimRes.json()) as HebcalZmanimResponse;
 
-  const rolledIso = halachicCivilIsoForConverter(civilIso, now, zmanim.times?.tzeit85deg);
+  const rolledIso =
+    options?.lockCivilIso === true
+      ? civilIso
+      : halachicCivilIsoForConverter(civilIso, now, zmanim.times?.tzeit85deg);
   if (rolledIso !== civilIso) {
     return getDisplaySnapshot(rolledIso, options);
   }
@@ -671,11 +733,7 @@ export async function getDisplaySnapshot(
     : todayIsChag
       ? applyOccasionDisplayLabel(null, occasionIso)
       : weekdayParashaDisplayLabel(weeklyParasha, halachicIso);
-  const candleItem = shabbat.items?.find((item) => item.category === "candles");
-  const havdalahItem = shabbat.items?.find((item) => item.category === "havdalah");
-
-  const candleLighting = candleItem?.title?.split(": ").slice(1).join(": ") ?? null;
-  const havdalah = havdalahItem?.title?.split(": ").slice(1).join(": ") ?? null;
+  const { candleLighting, havdalah } = pickCandleAndHavdalahForIso(shabbat.items, halachicIso);
 
   const zmanimRows = buildZmanimRows(zmanim.times ?? {}, DEFAULT_SCHEDULE_ZMANIM_KEYS);
   const times = zmanim.times ?? {};

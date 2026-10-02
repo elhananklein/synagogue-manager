@@ -858,11 +858,16 @@ export function DisplayRotator({
           weekday: "long",
           timeZone: "Asia/Jerusalem"
         }).format(nowJerusalem);
-  const headerCandleLighting = shabbat?.candleLighting ?? snapshot.candleLighting;
-  const headerHavdalah = shabbat?.havdalah ?? snapshot.havdalah;
+  const [viewYear, viewMonth, viewDay] = (viewDate || "").split("-").map(Number);
+  const viewJsDay =
+    Number.isFinite(viewYear) && Number.isFinite(viewMonth) && Number.isFinite(viewDay)
+      ? new Date(Date.UTC(viewYear, viewMonth - 1, viewDay, 12, 0, 0)).getUTCDay()
+      : jerusalemJsDay;
+  /** לפי היום ההלכתי (viewDate), לא לפי שעון אזרחי — אחרי צאת שבת לא מציגים זמני השבוע הבא. */
+  const headerCandleLighting = shabbat?.candleLighting ?? (viewJsDay === 5 || viewJsDay === 6 ? snapshot.candleLighting : null);
+  const headerHavdalah = shabbat?.havdalah ?? (viewJsDay === 5 || viewJsDay === 6 ? snapshot.havdalah : null);
   const showHeaderShabbatZmanim =
-    (jerusalemJsDay === 5 || jerusalemJsDay === 6) &&
-    Boolean(headerCandleLighting || headerHavdalah);
+    (viewJsDay === 5 || viewJsDay === 6) && Boolean(headerCandleLighting || headerHavdalah);
   const todaySectionItems = timeSections[0]?.items ?? [
     ...snapshot.zmanim.map((row) => ({ label: row.label, time: row.time, kind: "zman" as const })),
     ...prayerSchedule.map((row) => ({ label: row.label, time: row.time, details: row.details, kind: "prayer" as const }))
@@ -1081,7 +1086,7 @@ export function DisplayRotator({
               role="status"
               aria-label={
                 showHeaderShabbatZmanim
-                  ? `מסך ${index + 1} מתוך ${enabledScreens.length}: ${jerusalemWeekdayLong}, ${snapshot.hebrewDate}. כניסת שבת ${headerCandleLighting ?? ""}, צאת השבת ${headerHavdalah ?? ""}`
+                  ? `מסך ${index + 1} מתוך ${enabledScreens.length}: ${jerusalemWeekdayLong}, ${snapshot.hebrewDate}. ${shabbat?.candleLabel ?? "כניסת שבת"} ${headerCandleLighting ?? ""}, ${shabbat?.havdalahLabel ?? "צאת השבת"} ${headerHavdalah ?? ""}`
                   : `מסך ${index + 1} מתוך ${enabledScreens.length}: ${jerusalemWeekdayLong}, ${snapshot.hebrewDate}`
               }
             >
@@ -1090,7 +1095,9 @@ export function DisplayRotator({
                 {showHeaderShabbatZmanim && headerCandleLighting ? (
                   <div className="display-ws-shabbat-zman display-ws-shabbat-zman--in">
                     <Flame className="display-ws-shabbat-zman-icon" aria-hidden strokeWidth={2.25} />
-                    <span className="display-ws-shabbat-zman-label">כניסת שבת</span>
+                    <span className="display-ws-shabbat-zman-label">
+                      {shabbat?.candleLabel ?? "כניסת שבת"}
+                    </span>
                     <span className="display-ws-shabbat-zman-time">{headerCandleLighting}</span>
                   </div>
                 ) : null}
@@ -1131,7 +1138,9 @@ export function DisplayRotator({
                 {showHeaderShabbatZmanim && headerHavdalah ? (
                   <div className="display-ws-shabbat-zman display-ws-shabbat-zman--out">
                     <MoonStar className="display-ws-shabbat-zman-icon" aria-hidden strokeWidth={2.25} />
-                    <span className="display-ws-shabbat-zman-label">צאת השבת</span>
+                    <span className="display-ws-shabbat-zman-label">
+                      {shabbat?.havdalahLabel ?? "צאת השבת"}
+                    </span>
                     <span className="display-ws-shabbat-zman-time">{headerHavdalah}</span>
                   </div>
                 ) : null}

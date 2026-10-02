@@ -370,11 +370,12 @@ export function MobileDisplayRotator({
 
   const [viewYear, viewMonth, viewDay] = viewDate.split("-").map(Number);
   const viewJsDay = new Date(Date.UTC(viewYear, viewMonth - 1, viewDay, 12, 0, 0)).getUTCDay();
-  const headerCandleLighting = shabbat?.candleLighting ?? snapshot.candleLighting;
-  const headerHavdalah = shabbat?.havdalah ?? snapshot.havdalah;
+  const headerCandleLighting =
+    shabbat?.candleLighting ?? (viewJsDay === 5 || viewJsDay === 6 ? snapshot.candleLighting : null);
+  const headerHavdalah =
+    shabbat?.havdalah ?? (viewJsDay === 5 || viewJsDay === 6 ? snapshot.havdalah : null);
   const showHeaderShabbatZmanim =
-    (viewJsDay === 5 || viewJsDay === 6) &&
-    Boolean(headerCandleLighting || headerHavdalah);
+    (viewJsDay === 5 || viewJsDay === 6) && Boolean(headerCandleLighting || headerHavdalah);
   const todayPrayers = (prayerOnlySections[0]?.items ?? [])
     .map((item) => ({ ...item, totalMinutes: toMinutes(item.time) }))
     .sort((a, b) => a.totalMinutes - b.totalMinutes);

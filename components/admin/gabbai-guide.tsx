@@ -258,8 +258,13 @@ export function GabbaiGuide({ synagogueId }: { synagogueId: string }) {
       <section className="guide-section" id="aliyot">
         <h2>עליות</h2>
         <p>אחרי שבת או חג — מסמנים מי עלה לתורה. לפי מניין, ופרשה או חג (עם השנה).</p>
+        <p>
+          לפני שבת — «תכנון לשבת הקרובה» מציע עולה ומחליפים לכל עלייה: קודם חיובים (יארצייט, בר מצווה, חתן…), ואחר כך מי
+          שלא עלה הכי הרבה זמן. שומרים, מדפיסים דף לבימה, והדף נשלח גם במייל בבוקר ערב שבת או חג.
+        </p>
         <Where gabbai="גיליון עליות" none="לא על הקיר ולא בטלפון של הציבור" />
         <div className="guide-links">
+          <Link href={`${base}/aliyot/plan`}>תכנון לשבת הקרובה</Link>
           <Link href={`${base}/aliyot`}>פתיחת העליות</Link>
         </div>
         <Change

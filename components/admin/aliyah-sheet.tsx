@@ -10,12 +10,21 @@ import { GabbaiSaveBar } from "@/components/admin/gabbai-save-bar";
 import { Button } from "@/components/ui/button";
 import { mapAliyahApiError } from "@/lib/aliyah-errors";
 import {
+  extraAliyahSlot,
   formatAliyahCivilDate,
   listAliyahOccasionOptions,
   nextExtraAliyahSlot,
+  parseExtraSlotKey,
   withCurrentAliyahOccasion
 } from "@/lib/aliyah-slots";
-import { ALIYAH_DAY_KIND_LABELS, toAliyahCongregantOption, type AliyahCongregantOption, type AliyahSheet, type AliyahSlotState } from "@/lib/aliyah-types";
+import {
+  ALIYAH_DAY_KIND_LABELS,
+  toAliyahCongregantOption,
+  type AliyahCongregantOption,
+  type AliyahPlanPrefill,
+  type AliyahSheet,
+  type AliyahSlotState
+} from "@/lib/aliyah-types";
 import { CONGREGANT_TRIBE_LABELS, type CongregantMinyanOption, type CongregantRecord } from "@/lib/congregant-types";
 
 type WorkspacePayload = {
@@ -25,6 +34,7 @@ type WorkspacePayload = {
     minyanim: CongregantMinyanOption[];
     congregants: AliyahCongregantOption[];
     sheet: AliyahSheet | null;
+    planPrefill?: AliyahPlanPrefill | null;
     serviceDate: string;
   };
 };
@@ -53,6 +63,7 @@ export function AliyahSheetEditor({
   const [error, setError] = useState<string | null>(null);
   const [addForKey, setAddForKey] = useState<string | null>(null);
   const [addQuery, setAddQuery] = useState("");
+  const [planPrefill, setPlanPrefill] = useState<AliyahPlanPrefill | null>(null);
 
   const minyan = minyanim[Math.min(minyanIndex, Math.max(0, minyanim.length - 1))] ?? minyanim[0] ?? null;
 
@@ -79,6 +90,7 @@ export function AliyahSheetEditor({
         setCongregants(payload.data.congregants);
         setSheet(payload.data.sheet);
         setSlots(payload.data.sheet?.slots ?? []);
+        setPlanPrefill(payload.data.planPrefill ?? null);
         setDirty(false);
       })
       .catch(() => {
@@ -113,6 +125,32 @@ export function AliyahSheetEditor({
     setSlots((prev) => prev.map((slot) => (slot.key === key ? { ...slot, ...next } : slot)));
     setDirty(true);
     setMessage(null);
+  }
+
+  function applyPlanPrefill() {
+    if (!planPrefill) return;
+    const byKey = new Map(planPrefill.map((item) => [item.slotKey, item.congregantId]));
+    const resolve = (slotKey: string, congregantId: string | null) => {
+      const person = congregantId ? byId.get(congregantId) : null;
+      return slotKey === "kohen" && person && person.tribe !== "kohen" ? ("yisrael" as const) : null;
+    };
+    const filled = slots.map((slot) => {
+      const congregantId = byKey.get(slot.key) ?? slot.congregantId;
+      byKey.delete(slot.key);
+      return { ...slot, congregantId, noKohenResolution: resolve(slot.key, congregantId) };
+    });
+    const extras = [...byKey.entries()]
+      .filter(([key]) => parseExtraSlotKey(key) != null)
+      .map(([key, congregantId]) => ({
+        ...extraAliyahSlot(parseExtraSlotKey(key) ?? 1),
+        congregantId,
+        noKohenResolution: null,
+        notes: ""
+      }));
+    setSlots([...filled, ...extras]);
+    setPlanPrefill(null);
+    setDirty(true);
+    setMessage("מולא לפי התכנון — תקנו את מי שלא עלה בפועל ושמרו");
   }
 
   function assignCongregant(slotKey: string, congregantId: string | null) {
@@ -249,6 +287,15 @@ export function AliyahSheetEditor({
           </p>
         ) : null}
       </div>
+
+      {!loading && planPrefill && !slots.some((slot) => slot.congregantId) ? (
+        <div className="aliyah-prefill-banner">
+          <span>יש תכנון שמור ליום הזה. אפשר למלא ממנו ולתקן רק את מי שהתחלף.</span>
+          <Button type="button" onClick={applyPlanPrefill}>
+            מילוי מהתכנון
+          </Button>
+        </div>
+      ) : null}
 
       {loading ? <GabbaiLoadingPanel title="טוען עליות…" /> : null}
 

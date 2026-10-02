@@ -62,8 +62,12 @@ export type AliyahSheet = {
   weekday: string;
   kind: AliyahDayKind;
   isKriahDay: boolean;
+  /** האם כבר נשמר רישום ליום הזה */
+  isSaved: boolean;
   slots: AliyahSlotState[];
 };
+
+export type AliyahPlanPrefill = Array<{ slotKey: string; sortOrder: number; congregantId: string }>;
 
 export type AliyahAssignmentInput = {
   slotKey: string;

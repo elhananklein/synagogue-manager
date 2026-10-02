@@ -1,4 +1,5 @@
 import { AliyahSheetEditor } from "@/components/admin/aliyah-sheet";
+import { AliyahSubnav } from "@/components/admin/aliyah-subnav";
 import { loadAliyahWorkspace } from "@/lib/aliyah-db";
 import { mapAliyahApiError } from "@/lib/aliyah-errors";
 import { defaultAliyahServiceDate, jerusalemTodayIso } from "@/lib/aliyah-slots";
@@ -17,6 +18,7 @@ export default async function AliyotPage({
   return (
     <>
       <h1 className="gabbai-page-title">עליות</h1>
+      <AliyahSubnav synagogueId={synagogueId} active="record" />
       <p className="gabbai-page-desc">
         סמנו מי עלה לתורה בשבת או בחג, לפי הפרשה או שם החג. אם העולה לא ברשימת המתפללים, מוסיפים אותו מכאן וממשיכים ישר לעלייה.
       </p>
