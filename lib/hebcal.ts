@@ -181,10 +181,18 @@ export function buildZmanimRows(
     .filter((row): row is { label: string; time: string } => Boolean(row));
 }
 
-function isWinterSeason(hm: string, hd: number) {
+/** שאלת גשמים («ותן טל ומטר» / «ברך עלינו») — בארץ ישראל מז׳ חשוון עד פסח. */
+function isRainRequestSeason(hm: string, hd: number) {
   if (hm === "Cheshvan") return hd >= 7;
   if (hm === "Nisan") return hd < 15;
   return HEBREW_MONTHS_WINTER.has(hm);
+}
+
+/** הזכרת גשמים («משיב הרוח ומוריד הגשם») — משמיני עצרת עד פסח. */
+function isRainMentionSeason(hm: string, hd: number) {
+  if (hm === "Tishrei") return hd >= 22;
+  if (hm === "Cheshvan") return true;
+  return isRainRequestSeason(hm, hd);
 }
 
 function stripHebrewNiqqud(text: string) {
@@ -755,7 +763,8 @@ export async function getDisplaySnapshot(
     weekday: liturgicalWeekday,
     isChag: todayIsChag
   });
-  const winter = isWinterSeason(converter.hm, converter.hd);
+  const rainMention = isRainMentionSeason(converter.hm, converter.hd);
+  const rainRequest = isRainRequestSeason(converter.hm, converter.hd);
   const omerDay = extractOmerDayFromEvents(events);
   const omerText = omerDay == null ? null : `היום ${omerDay} ימים לעומר`;
   const omerShortText = omerDay == null ? null : formatOmerShortLabel(omerDay);
@@ -797,9 +806,9 @@ export async function getDisplaySnapshot(
     fastName: resolvePublicFastName(events),
     fastStart,
     fastEnd,
-    rainText: winter ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
+    rainText: rainMention ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
     blessingText:
-      liturgicalWeekday === 6 || todayIsChag ? "" : birkatHashanimLabel(winter, options?.haftarahMinhag),
+      liturgicalWeekday === 6 || todayIsChag ? "" : birkatHashanimLabel(rainRequest, options?.haftarahMinhag),
     omerText,
     omerShortText,
     amidahAdditionText: resolveAmidahAdditionText(events),
