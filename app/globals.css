@@ -692,6 +692,29 @@ optgroup {
     line-height: 1.2;
   }
 
+  .display-addition-fit {
+    display: inline-block;
+    max-width: 100%;
+    line-height: 1.12;
+    text-wrap: balance;
+  }
+
+  /* גופן הקיר נקבע לפי גובה המסך; בתא צר מגבילים גם לפי רוחב התא */
+  .display-addition-content > .display-addition-text:has(> .display-addition-fit) {
+    container-type: inline-size;
+    width: 100%;
+  }
+
+  .display-addition-fit--l {
+    font-size: 0.82em;
+    font-size: min(0.82em, 30cqi);
+  }
+
+  .display-addition-fit--xl {
+    font-size: 0.66em;
+    font-size: min(0.66em, 24cqi);
+  }
+
   .display-main-additions--many {
     gap: 0.55rem;
     grid-auto-rows: minmax(2.7rem, 1fr);

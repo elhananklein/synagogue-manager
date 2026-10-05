@@ -1723,6 +1723,17 @@ export function DisplayRotator({
   );
 }
 
+/** תוספת ארוכה («משיב הרוח ומוריד הגשם») מוקטנת יחסית לגופן של העיצוב, כדי שלא תצא מהתא. */
+function AdditionTileText({ text }: { text: string }) {
+  const length = text.replace(/\s+/g, "").length;
+  if (length < 12) return <>{text}</>;
+  return (
+    <span className={`display-addition-fit ${length >= 16 ? "display-addition-fit--xl" : "display-addition-fit--l"}`}>
+      {text}
+    </span>
+  );
+}
+
 function PrimaryInfoStack({
   snapshot,
   isWoodSilverRevolution,
@@ -1783,7 +1794,7 @@ function PrimaryInfoStack({
           <div className="display-ws-additions-inner">
             {additionTiles.map((text) => (
               <p key={text} className="display-addition-text">
-                {text}
+                <AdditionTileText text={text} />
               </p>
             ))}
           </div>
@@ -1796,7 +1807,9 @@ function PrimaryInfoStack({
               className={`display-card${lastExtraSpans && index === additionTiles.length - 1 ? " display-addition-single" : ""}`}
             >
               <CardContent className="display-addition-content !p-0">
-                <p className="display-addition-text">{text}</p>
+                <p className="display-addition-text">
+                  <AdditionTileText text={text} />
+                </p>
               </CardContent>
             </Card>
           ))}
