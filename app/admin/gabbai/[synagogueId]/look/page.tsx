@@ -33,6 +33,7 @@ const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "main", label: "מסך ראשי" },
   { key: "mainInfo", label: "מידע מרכזי (מוגדל)" },
   { key: "clock", label: "שעון" },
+  { key: "netz", label: "לוח הנץ — ספירה לאחור" },
   { key: "omer", label: "ספירת העומר" },
   { key: "fast", label: "צום" },
   { key: "halacha", label: "הלכה יומית" },

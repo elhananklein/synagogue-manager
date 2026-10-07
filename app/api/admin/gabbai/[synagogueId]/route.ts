@@ -54,7 +54,8 @@ type ScreenInput = {
     | "prayerTimes"
     | "shabbat"
     | "bulletin"
-    | "fullSchedule";
+    | "fullSchedule"
+    | "netz";
   sortOrder: number;
   durationSeconds: number;
   enabled: boolean;

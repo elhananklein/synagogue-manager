@@ -6,6 +6,7 @@ import { PwaInstallBanner } from "@/components/mobile/pwa-install";
 import { SaveSynagoguePreference } from "@/components/mobile/save-synagogue-preference";
 import { buildDisplayView, type DisplayViewParams } from "@/lib/build-display-view";
 import { listActiveMinyanim, resolveMinyanOrdinal } from "@/lib/display-config";
+import { parseNetzPreviewPhase } from "@/lib/netz-board";
 import { generateDisplayMetadata } from "@/lib/synagogue-public-title";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ function singleParam(value: string | string[] | undefined): string | null {
 export default async function MobileDisplayPage({
   searchParams
 }: {
-  searchParams: Promise<DisplayViewParams>;
+  searchParams: Promise<DisplayViewParams & { previewNetz?: string | string[] }>;
 }) {
   const params = await searchParams;
   const view = await buildDisplayView(params);
@@ -65,6 +66,7 @@ export default async function MobileDisplayPage({
       shabbat={view.shabbat}
       bulletinItems={view.bulletinItems}
       haftarahMinhag={view.haftarahMinhag}
+      previewNetz={parseNetzPreviewPhase(singleParam(params.previewNetz))}
     />
     </>
   );

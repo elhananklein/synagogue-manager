@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Sparkles, BookOpen, Clock, Sun, CalendarDays, ScrollText, Megaphone, Flame, MoonStar, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { Sparkles, BookOpen, Clock, Sun, Sunrise, CalendarDays, ScrollText, Megaphone, Flame, MoonStar, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { NetzBoard, useDisplayedNetzClock } from "@/components/display/netz-board";
+import type { NetzPhase } from "@/lib/netz-board";
 import { AnalogClock } from "@/components/display/analog-clock";
 import { LiveClock } from "@/components/display/live-clock";
 import { cn } from "@/lib/utils";
@@ -44,7 +46,8 @@ type ScreenKey =
   | "prayerTimes"
   | "shabbat"
   | "bulletin"
-  | "fullSchedule";
+  | "fullSchedule"
+  | "netz";
 
 type RotatorScreen = {
   screenKey: ScreenKey;
@@ -63,6 +66,7 @@ type Snapshot = {
   havdalah: string | null;
   dafYomi: string;
   zmanim: Array<{ label: string; time: string }>;
+  zmanimSourceTimes?: Record<string, string>;
   halachicDayRollIso: string | null;
   chatzotIso?: string | null;
   rainText: string;
@@ -107,6 +111,7 @@ type MobileDisplayRotatorProps = {
   shabbat?: DisplayShabbat | null;
   bulletinItems?: BulletinItem[];
   haftarahMinhag?: HaftarahMinhag;
+  previewNetz?: NetzPhase | null;
 };
 
 const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> = {
@@ -120,7 +125,8 @@ const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> =
   prayerTimes: { title: "זמני תפילות", Icon: CalendarDays },
   fullSchedule: { title: "לוח זמנים מלא", Icon: CalendarDays },
   shabbat: { title: "שבת וחג", Icon: Sun },
-  bulletin: { title: "לוח מודעות", Icon: Megaphone }
+  bulletin: { title: "לוח מודעות", Icon: Megaphone },
+  netz: { title: "לוח הנץ", Icon: Sunrise }
 };
 
 function nowJerusalemMinutes() {
@@ -174,7 +180,8 @@ export function MobileDisplayRotator({
   scheduleTimesListMode: scheduleTimesListModeProp = "all",
   shabbat: shabbatProp = null,
   bulletinItems: bulletinItemsProp = [],
-  haftarahMinhag: haftarahMinhagProp = DEFAULT_HAFTARAH_MINHAG
+  haftarahMinhag: haftarahMinhagProp = DEFAULT_HAFTARAH_MINHAG,
+  previewNetz = null
 }: MobileDisplayRotatorProps) {
   const [live, setLive] = useState(() => ({
     synagogueName: synagogueNameProp,
@@ -349,7 +356,12 @@ export function MobileDisplayRotator({
     [applyView, minyanIndex, synagogueId, viewDate]
   );
 
+  const netzConfigured = screens.some((s) => s.enabled && s.screenKey === "netz");
+  const netzClock = useDisplayedNetzClock(previewNetz, netzConfigured, snapshot.zmanimSourceTimes);
+  const netzVisible = netzClock != null;
+
   const enabledScreens = useMemo(() => {
+    if (previewNetz) return [{ screenKey: "netz" as const, durationSeconds: 600, enabled: true }];
     return dropMobileDuplicateScreens(
       screens.filter((s) => {
         if (!s.enabled) return false;
@@ -358,10 +370,11 @@ export function MobileDisplayRotator({
         if (s.screenKey === "omer" && !snapshot.omerText) return false;
         if (s.screenKey === "fast" && !snapshot.fastName) return false;
         if (s.screenKey === "bulletin" && bulletinItems.length === 0) return false;
+        if (s.screenKey === "netz" && !netzVisible) return false;
         return true;
       })
     );
-  }, [screens, snapshot.omerText, snapshot.fastName, shabbat, bulletinItems.length]);
+  }, [previewNetz, screens, snapshot.omerText, snapshot.fastName, shabbat, bulletinItems.length, netzVisible]);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -441,6 +454,7 @@ export function MobileDisplayRotator({
         {screenKey === "fast" && (
           <FastDayScreen snapshot={snapshot} prayerSchedule={prayerSchedule} onOpenSiddur={setSiddurPrayer} />
         )}
+        {screenKey === "netz" && netzClock ? <NetzBoard clock={netzClock} variant="mobile" /> : null}
         {screenKey === "dailyLearning" && <DailyLearningScreen lines={dailyLearning} />}
         {screenKey === "prayerTimes" && (
           <PrayerTimesScreen

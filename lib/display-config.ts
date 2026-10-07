@@ -88,7 +88,8 @@ export type ScreenKey =
   | "prayerTimes"
   | "shabbat"
   | "bulletin"
-  | "fullSchedule";
+  | "fullSchedule"
+  | "netz";
 
 export type HavdalahMode = "tzeit" | "minutes";
 

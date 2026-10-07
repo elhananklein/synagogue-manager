@@ -6,6 +6,7 @@ import { PersistDisplaySynagogueCookie } from "@/components/display/persist-disp
 import { WallPreviewFrame } from "@/components/display/wall-preview-frame";
 import { RedirectHandheldToMobile } from "@/components/mobile/redirect-handheld-to-mobile";
 import { buildDisplayView, type DisplayViewParams } from "@/lib/build-display-view";
+import { parseNetzPreviewPhase } from "@/lib/netz-board";
 import { generateDisplayMetadata } from "@/lib/synagogue-public-title";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export async function generateMetadata({
 export default async function DisplayPage({
   searchParams
 }: {
-  searchParams: Promise<DisplayViewParams & { preview?: string | string[]; embed?: string | string[] }>;
+  searchParams: Promise<DisplayViewParams & { preview?: string | string[]; embed?: string | string[]; previewNetz?: string | string[] }>;
 }) {
   const params = await searchParams;
   const previewWall = singleParam(params.preview) === "wall";
@@ -70,6 +71,7 @@ export default async function DisplayPage({
         bulletinItems={view.bulletinItems}
         viewDate={view.viewDate}
         disableFullscreen={previewWall}
+        previewNetz={parseNetzPreviewPhase(singleParam(params.previewNetz))}
       />
     </>
   );

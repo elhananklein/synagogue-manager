@@ -1038,6 +1038,44 @@ optgroup {
     height: 2.95rem;
   }
 
+  .display-netz-screen {
+    gap: clamp(0.7rem, 2vh, 1.5rem);
+  }
+
+  .display-netz-title {
+    margin: 0;
+    font-size: clamp(1.7rem, 3.4vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .display-netz-status {
+    margin: 0;
+    font-size: clamp(2.1rem, 4.6vw, 3.8rem);
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  .display-netz-clock {
+    margin: 0;
+    font-size: clamp(4.2rem, 12vw, 9.5rem);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 0.95;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .display-netz-times {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35rem 2.2rem;
+    font-size: clamp(1.25rem, 2.5vw, 2.15rem);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
   .display-clock-screen {
     border-radius: 1rem;
     flex: 1;

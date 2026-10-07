@@ -16,7 +16,9 @@ import { pickDisplayLiveFields, useDisplayLiveRefresh, useHalachicDayLiveRefresh
 import { groupPrayersForDisplay, weekdayMinchaClockTimes, type PrayerDisplayGroupId } from "@/lib/prayer-display-groups";
 import { groupShabbatScheduleByPeriod, type ShabbatScheduleRow } from "@/lib/shabbat-schedule-periods";
 import { FAST_END_LABEL, FAST_START_LABEL, WEEKDAY_ONLY_COMPACT_TILES } from "@/lib/liturgical-additions";
+import { NetzBoard, useDisplayedNetzClock } from "@/components/display/netz-board";
 import { useHideMainPrayerTimes } from "@/hooks/use-hide-main-prayer-times";
+import type { NetzPhase } from "@/lib/netz-board";
 
 type ScreenKey =
   | "main"
@@ -29,7 +31,8 @@ type ScreenKey =
   | "prayerTimes"
   | "shabbat"
   | "bulletin"
-  | "fullSchedule";
+  | "fullSchedule"
+  | "netz";
 
 type RotatorScreen = {
   screenKey: ScreenKey;
@@ -59,6 +62,7 @@ type Snapshot = {
   havdalah: string | null;
   dafYomi: string;
   zmanim: Array<{ label: string; time: string }>;
+  zmanimSourceTimes?: Record<string, string>;
   halachicDayRollIso: string | null;
   chatzotIso?: string | null;
   rainText: string;
@@ -556,7 +560,8 @@ export function DisplayRotator({
   shabbatMevarchimText: shabbatMevarchimTextProp = null,
   bulletinItems: bulletinItemsProp = [],
   viewDate: viewDateProp,
-  disableFullscreen = false
+  disableFullscreen = false,
+  previewNetz = null
 }: {
   style: DisplayStyle;
   palette?: DisplayPalette;
@@ -603,6 +608,8 @@ export function DisplayRotator({
   viewDate?: string;
   /** תצוגת קיר לגבאי — בלי מסך מלא אוטומטי */
   disableFullscreen?: boolean;
+  /** בדיקה ישירה: לפני הנץ או אחריו, בלי לחכות לחלון הזמן */
+  previewNetz?: NetzPhase | null;
 }) {
   const [live, setLive] = useState(() => ({
     synagogueId: synagogueIdProp,
@@ -655,16 +662,22 @@ export function DisplayRotator({
     chatzotIso: snapshot.chatzotIso
   });
 
+  const netzConfigured = screens.some((s) => s.enabled && s.screenKey === "netz");
+  const netzClock = useDisplayedNetzClock(previewNetz, netzConfigured, snapshot.zmanimSourceTimes);
+  const netzVisible = netzClock != null;
+
   const enabledScreens = useMemo(() => {
+    if (previewNetz) return [{ screenKey: "netz" as const, durationSeconds: 600, enabled: true }];
     return screens.filter((s) => {
       if (!s.enabled) return false;
       if (s.screenKey === "shabbat" && !shabbat) return false;
       if (s.screenKey === "omer" && !snapshot.omerText) return false;
       if (s.screenKey === "fast" && !snapshot.fastName) return false;
       if (s.screenKey === "bulletin" && bulletinItems.length === 0) return false;
+      if (s.screenKey === "netz" && !netzVisible) return false;
       return true;
     });
-  }, [screens, snapshot.omerText, snapshot.fastName, shabbat, bulletinItems.length, style]);
+  }, [previewNetz, screens, snapshot.omerText, snapshot.fastName, shabbat, bulletinItems.length, style, netzVisible]);
   const [index, setIndex] = useState(0);
   const [halachaSeifIndex, setHalachaSeifIndex] = useState(0);
   const timesScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1231,6 +1244,17 @@ export function DisplayRotator({
           />
         ) : null}
 
+        {currentScreen === "netz" && netzClock ? (
+          <NetzBoard
+            clock={netzClock}
+            variant="wall"
+            className={cn(
+              isWoodSilverRevolution && "display-clock-screen--ws-revolution",
+              style === "classic" && useCenterClockBand && "display-clock-screen--classic-band"
+            )}
+          />
+        ) : null}
+
         {currentScreen === "halacha" ? (
           <Card className="display-card">
             {halacha && halachaText ? (
@@ -1723,7 +1747,7 @@ export function DisplayRotator({
   );
 }
 
-/** תוספת ארוכה («משיב הרוח ומוריד הגשם») מוקטנת יחסית לגופן של העיצוב, כדי שלא תצא מהתא. */
+/** תוספת ארוכה מוקטנת יחסית לגופן של העיצוב, כדי שלא תצא מהתא. */
 function AdditionTileText({ text }: { text: string }) {
   const length = text.replace(/\s+/g, "").length;
   if (length < 12) return <>{text}</>;

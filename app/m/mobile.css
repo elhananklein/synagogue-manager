@@ -1128,6 +1128,42 @@
   color: var(--m-ink);
 }
 
+.m-netz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.m-netz-status {
+  margin: 0;
+  font-size: clamp(1.35rem, 5.4vw, 1.8rem);
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--m-ink);
+}
+
+.m-netz-clock {
+  margin: 0;
+  font-size: clamp(2.5rem, 12vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--m-ink);
+}
+
+.m-netz-times {
+  margin: 0.35rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 1.1rem;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--m-ink-soft);
+}
+
 .m-waiting {
   display: flex;
   min-height: 100dvh;

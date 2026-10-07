@@ -188,7 +188,7 @@ function isRainRequestSeason(hm: string, hd: number) {
   return HEBREW_MONTHS_WINTER.has(hm);
 }
 
-/** הזכרת גשמים («משיב הרוח ומוריד הגשם») — משמיני עצרת עד פסח. */
+/** הזכרת גשמים («משיב הרוח») — משמיני עצרת עד פסח. */
 function isRainMentionSeason(hm: string, hd: number) {
   if (hm === "Tishrei") return hd >= 22;
   if (hm === "Cheshvan") return true;
@@ -806,7 +806,7 @@ export async function getDisplaySnapshot(
     fastName: resolvePublicFastName(events),
     fastStart,
     fastEnd,
-    rainText: rainMention ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
+    rainText: rainMention ? "משיב הרוח" : "מוריד הטל",
     blessingText:
       liturgicalWeekday === 6 || todayIsChag ? "" : birkatHashanimLabel(rainRequest, options?.haftarahMinhag),
     omerText,
