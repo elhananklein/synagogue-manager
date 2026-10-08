@@ -40,13 +40,18 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     ...payload,
     isActive: true,
     notes: "",
-    registrationStatus: "pending"
+    registrationStatus: "pending",
+    messagesConsent: payload.messagesConsent === true
   };
   const validated = validateCongregantInput(input, minyanIds, { requirePhone: true });
   if (validated.errors.length) {
     return NextResponse.json({ ok: false, error: validated.errors[0], errors: validated.errors }, { status: 400 });
   }
-  const saved = await insertCongregant(synagogueId, { ...validated.next, registrationStatus: "pending", notes: "" });
+  const saved = await insertCongregant(
+    synagogueId,
+    { ...validated.next, registrationStatus: "pending", notes: "" },
+    "self_join"
+  );
   if (saved.error) {
     return NextResponse.json({ ok: false, error: saved.error }, { status: 400 });
   }

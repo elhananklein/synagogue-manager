@@ -22,6 +22,23 @@ export function resolveViewIsoDate(requested: string | null | undefined, todayIs
   return requested;
 }
 
+/**
+ * דקות «עכשיו» ביחס ליום שהלוח מציג כ«היום».
+ * אחרי צאת הכוכבים התצוגה כבר עברה ליום הבא, ואף זמן בו עוד לא עבר, ולכן מוחזר ‎-1.
+ * null = היום המוצג אינו היום החי (גלילה ידנית לתאריך אחר).
+ */
+export function scheduleNowMinutes(
+  viewIso: string,
+  nowMinutes: number,
+  afterHalachicRoll: boolean,
+  todayIso = toIsoDateJerusalem()
+): number | null {
+  const diff = daysBetweenIso(todayIso, viewIso);
+  if (diff === 0) return nowMinutes;
+  if (diff === 1 && afterHalachicRoll) return -1;
+  return null;
+}
+
 export function hebrewWeekdayLong(isoDate: string) {
   const [year, month, day] = isoDate.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));

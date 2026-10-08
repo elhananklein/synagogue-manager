@@ -474,6 +474,61 @@
   font-size: 0.8rem;
 }
 
+.congregant-check--consent {
+  align-items: flex-start;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.congregant-check--consent input {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+.congregant-consent-box {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.8rem;
+  border: 1px solid var(--c-border);
+  background: var(--c-panel);
+}
+
+.congregant-consent-box .congregant-check {
+  min-height: 0;
+}
+
+.congregant-consent-meta {
+  margin: 0.3rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--c-muted);
+}
+
+.congregant-consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.congregant-badge--consent {
+  background: #15803d;
+}
+
+.congregant-badges {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.3rem;
+}
+
+.messages-consent-state {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
 @media (min-width: 768px) {
   .congregant-join-page {
     display: flex;

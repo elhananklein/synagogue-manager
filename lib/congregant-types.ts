@@ -74,6 +74,19 @@ export type CongregantYahrzeit = {
 export type BirthDateSource = "gregorian" | "hebrew";
 export type CongregantRegistrationStatus = "pending" | "approved";
 
+export const MESSAGES_CONSENT_SOURCES = ["self_join", "gabbai", "link"] as const;
+export type MessagesConsentSource = (typeof MESSAGES_CONSENT_SOURCES)[number];
+
+export const MESSAGES_CONSENT_SOURCE_LABELS: Record<MessagesConsentSource, string> = {
+  self_join: "טופס ההרשמה",
+  gabbai: "הגבאי",
+  link: "הקישור האישי"
+};
+
+export function isMessagesConsentSource(value: string | null | undefined): value is MessagesConsentSource {
+  return MESSAGES_CONSENT_SOURCES.includes(value as MessagesConsentSource);
+}
+
 export type CongregantFamilyLink = {
   relatedId: string;
   relation: FamilyRelation;
@@ -107,12 +120,16 @@ export type CongregantInput = {
   registrationStatus: CongregantRegistrationStatus;
   notes: string;
   familyMembers: CongregantFamilyLink[];
+  messagesConsent: boolean;
 };
 
 export type CongregantRecord = CongregantInput & {
   id: string;
   synagogueId: string;
   minyanName: string | null;
+  messagesConsentAt: string | null;
+  messagesConsentSource: MessagesConsentSource | null;
+  messagesToken: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -195,7 +212,8 @@ export function emptyCongregantInput(minyanId: string | null = null): Congregant
     receivesAliyah: true,
     registrationStatus: "approved",
     notes: "",
-    familyMembers: []
+    familyMembers: [],
+    messagesConsent: false
   };
 }
 
@@ -457,7 +475,7 @@ export function validateCongregantInput(
     }
     seen.add(link.relatedId);
   }
-  return { errors, next: { ...death.next, familyMembers } };
+  return { errors, next: { ...death.next, familyMembers, messagesConsent: input.messagesConsent === true } };
 }
 
 export function normalizeFamilyMembers(raw: CongregantFamilyLink[] | null | undefined): CongregantFamilyLink[] {

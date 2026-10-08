@@ -7,27 +7,57 @@ import { Button } from "@/components/ui/button";
 import { CongregantThemeFrame } from "@/components/admin/congregant-theme-frame";
 import { CongregantFamilyFields, toFamilyOptions } from "@/components/admin/congregant-family-fields";
 import { CongregantFields } from "@/components/congregant/congregant-fields";
+import { messagesConsentPath, whatsappLink, whatsappPhone } from "@/lib/aliyah-message";
 import { mapCongregantApiError } from "@/lib/congregant-errors";
 import {
   applyBirthConversion,
+  MESSAGES_CONSENT_SOURCE_LABELS,
   type BirthDateSource,
   type CongregantInput,
   type CongregantMinyanOption,
-  type CongregantRecord
+  type CongregantRecord,
+  type MessagesConsentSource
 } from "@/lib/congregant-types";
+import { getPublicSiteUrl } from "@/lib/site-url";
+
+type ConsentMeta = {
+  at: string | null;
+  source: MessagesConsentSource | null;
+  token: string;
+};
+
+function formatConsentDate(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("he-IL", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    timeZone: "Asia/Jerusalem"
+  }).format(date);
+}
+
+function consentMetaText(consent: boolean, meta: ConsentMeta | undefined) {
+  if (!meta?.at) return consent ? "" : "עדיין לא אישר קבלת הודעות.";
+  const date = formatConsentDate(meta.at);
+  const via = meta.source ? ` דרך ${MESSAGES_CONSENT_SOURCE_LABELS[meta.source]}` : "";
+  return `${consent ? "אישר" : "ביטל"} ב-${date}${via}.`;
+}
 
 export function CongregantForm({
   synagogueId,
   minyanim,
   initial,
   congregantId,
-  familyPeople = []
+  familyPeople = [],
+  consentMeta
 }: {
   synagogueId: string;
   minyanim: CongregantMinyanOption[];
   initial: CongregantInput;
   congregantId?: string;
   familyPeople?: CongregantRecord[];
+  consentMeta?: ConsentMeta;
 }) {
   const router = useRouter();
   const [input, setInput] = useState<CongregantInput>(initial);
@@ -142,7 +172,18 @@ export function CongregantForm({
     }
   }
 
+  function sendConsentLink() {
+    const phone = whatsappPhone(input.phone);
+    if (!phone || !consentMeta?.token) return;
+    const url = `${getPublicSiteUrl()}${messagesConsentPath(consentMeta.token)}`;
+    const name = input.nickname.trim() || input.firstName.trim();
+    const text = `שלום${name ? ` ${name}` : ""}, כאן אפשר לאשר או לבטל קבלת הודעות מבית הכנסת: ${url}`;
+    window.open(whatsappLink(phone, text), "_blank", "noopener,noreferrer");
+  }
+
   const busy = saving || deleting || approving;
+  const consentChanged = input.messagesConsent !== initial.messagesConsent;
+  const canSendConsentLink = Boolean(congregantId && consentMeta?.token && whatsappPhone(input.phone));
 
   return (
     <CongregantThemeFrame minyan={selectedMinyan}>
@@ -197,6 +238,32 @@ export function CongregantForm({
               />
               עולה לתורה
             </label>
+          </div>
+
+          <div className="congregant-consent-box">
+            <label className="congregant-check">
+              <input
+                type="checkbox"
+                checked={input.messagesConsent}
+                onChange={(e) => patch({ messagesConsent: e.target.checked })}
+              />
+              מאשר לקבל הודעות (וואטסאפ / SMS)
+            </label>
+            <p className="congregant-consent-meta" suppressHydrationWarning>
+              {consentChanged
+                ? "השינוי יירשם בשמירת המתפלל, כאישור או ביטול דרך הגבאי."
+                : consentMetaText(input.messagesConsent, consentMeta)}
+            </p>
+            {congregantId ? (
+              <div className="congregant-consent-actions">
+                <Button type="button" variant="outline" size="sm" onClick={sendConsentLink} disabled={!canSendConsentLink}>
+                  שליחת קישור אישור בוואטסאפ
+                </Button>
+                {!canSendConsentLink ? (
+                  <span className="congregant-consent-meta">צריך מספר טלפון תקין כדי לשלוח.</span>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <label className="congregant-field" style={{ marginTop: "0.75rem" }}>

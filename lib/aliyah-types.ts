@@ -51,6 +51,17 @@ export type AliyahCongregantOption = {
   isActive: boolean;
   receivesAliyah: boolean;
   registrationStatus: CongregantRegistrationStatus;
+  messagesConsent: boolean;
+  messagesToken: string;
+};
+
+export type AliyahMessaging = {
+  ready: boolean;
+  synagogueName: string;
+  donationUrl: string;
+  template: string;
+  /** congregantId → מתי נפתחה ההודעה לאחרונה (ISO) */
+  sentAt: Record<string, string>;
 };
 
 export type AliyahSheet = {
@@ -91,6 +102,8 @@ export function toAliyahCongregantOption(row: CongregantRecord): AliyahCongregan
     phone: row.phone,
     isActive: row.isActive,
     receivesAliyah: row.receivesAliyah,
-    registrationStatus: row.registrationStatus
+    registrationStatus: row.registrationStatus,
+    messagesConsent: row.messagesConsent,
+    messagesToken: row.messagesToken
   };
 }

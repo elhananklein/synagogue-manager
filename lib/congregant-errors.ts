@@ -7,6 +7,9 @@ export function mapCongregantApiError(error?: string) {
   if (error === "missing_registration_status") {
     return "חסרה עמודת סטטוס הרשמה. הריצו ב-Supabase את הקובץ supabase/congregants-registration-status-migration.sql";
   }
+  if (error === "missing_messages_consent") {
+    return "חסרים שדות אישור הודעות. הריצו ב-Supabase את הקובץ supabase/aliyah-messages-migration.sql";
+  }
   if (error === "missing_family_yahrzeit") {
     return "חסרים שדות משפחה ויארצייט. הריצו ב-Supabase את הקובץ supabase/congregants-family-yahrzeit-migration.sql";
   }

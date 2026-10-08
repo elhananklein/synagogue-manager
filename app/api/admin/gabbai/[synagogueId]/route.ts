@@ -19,6 +19,11 @@ import {
 import { resolveDisplayFont, type DisplayFont } from "@/lib/display-font";
 import { resolveHaftarahMinhag } from "@/lib/haftarah-minhag";
 import { resolveHalachaSourceKey, type HalachaSourceKey } from "@/lib/halacha-source";
+import {
+  DEFAULT_ALIYAH_MESSAGE_TEMPLATE,
+  normalizeDonationUrl,
+  validateAliyahMessageTemplate
+} from "@/lib/aliyah-message";
 
 /** בודק שלמשתמש המחובר יש הרשאה לנהל את בית הכנסת. מחזיר NextResponse בדחייה. */
 async function requireSynagogueAccess(synagogueId: string): Promise<NextResponse | null> {
@@ -144,6 +149,33 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     .select("start_date, source_key, display_mode")
     .eq("synagogue_id", synagogueId)
     .maybeSingle();
+  const messagingRes = await supabase
+    .from("synagogues")
+    .select("donation_url, aliyah_message_template")
+    .eq("id", synagogueId)
+    .maybeSingle();
+  const messagingRow = messagingRes.error
+    ? null
+    : (messagingRes.data as { donation_url?: string | null; aliyah_message_template?: string | null } | null);
+  const minyanDonationRes = minyanIds.length
+    ? await supabase.from("minyanim").select("id, donation_url").in("id", minyanIds)
+    : { data: [] as Array<{ id: string; donation_url: string | null }>, error: null };
+  const minyanDonationUrls = new Map(
+    (minyanDonationRes.error ? [] : (minyanDonationRes.data ?? [])).map((row) => [
+      String(row.id),
+      typeof row.donation_url === "string" ? row.donation_url : ""
+    ])
+  );
+
+  const fullScheduleRes = minyanIds.length
+    ? await supabase.from("minyanim").select("id, full_schedule_zmanim_keys").in("id", minyanIds)
+    : { data: [] as Array<{ id: string; full_schedule_zmanim_keys: string[] | null }>, error: null };
+  const fullScheduleKeys = new Map(
+    (fullScheduleRes.error ? [] : (fullScheduleRes.data ?? [])).map((row) => [
+      String(row.id),
+      sanitizeScheduleZmanimKeys(row.full_schedule_zmanim_keys)
+    ])
+  );
 
   if (minyanRes.error || prayerRes.error || screensRes.error || halachaSettingsRes.error) {
     return NextResponse.json({ ok: false, error: "failed_loading_settings" }, { status: 500 });
@@ -152,6 +184,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
   const mappedMinyanim = (minyanRes.data ?? []).map((minyan) => ({
     id: minyan.id,
     name: minyan.name,
+    donationUrl: minyanDonationUrls.get(String(minyan.id)) ?? "",
     displayStyle: minyan.display_style,
     displayPalette: resolveDisplayPalette(
       isDisplayStyle(minyan.display_style) ? minyan.display_style : "classic",
@@ -170,6 +203,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     scheduleZmanimKeys: sanitizeScheduleZmanimKeys(
       (minyan as { schedule_zmanim_keys?: string[] | null }).schedule_zmanim_keys
     ),
+    fullScheduleZmanimKeys: fullScheduleKeys.get(String(minyan.id)) ?? null,
     dailyLearningKeys: sanitizeDailyLearningKeys(
       (minyan as { daily_learning_keys?: string[] | null }).daily_learning_keys
     ),
@@ -238,7 +272,12 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
         id: synagogueRow.id,
         name: synagogueRow.name,
         logoUrl: typeof synagogueRow.logo_url === "string" && synagogueRow.logo_url.trim() ? synagogueRow.logo_url.trim() : null,
-        logoUpdatedAt: typeof synagogueRow.logo_updated_at === "string" ? synagogueRow.logo_updated_at : null
+        logoUpdatedAt: typeof synagogueRow.logo_updated_at === "string" ? synagogueRow.logo_updated_at : null,
+        donationUrl: messagingRow?.donation_url ?? "",
+        aliyahMessageTemplate: messagingRow?.aliyah_message_template ?? "",
+        messagingReady: !messagingRes.error,
+        minyanDonationReady: !minyanDonationRes.error,
+        fullScheduleReady: !fullScheduleRes.error
       },
       minyanim: minyanimWithAgenda,
       halachaSettings,
@@ -263,10 +302,12 @@ export async function POST(request: Request, context: { params: Promise<{ synago
   const payload = (await request.json()) as {
     section?: string;
     synagogueName?: string;
+    donationUrl?: string | null;
+    aliyahMessageTemplate?: string | null;
     minyanim?: MinyanInput[];
     minyanId?: string;
     minyanName?: string;
-    minyanNames?: Array<{ id: string; name: string; haftarahMinhag?: string | null }>;
+    minyanNames?: Array<{ id: string; name: string; haftarahMinhag?: string | null; donationUrl?: string | null }>;
     prayerSettings?: PrayerSettingInput[];
     screens?: ScreenInput[];
     displayStyle?: DisplayStyle;
@@ -275,6 +316,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     haftarahMinhag?: string | null;
     scheduleTimesListMode?: "all" | "prayers_only";
     scheduleZmanimKeys?: string[] | null;
+    fullScheduleZmanimKeys?: string[] | null;
     dailyLearningKeys?: string[] | null;
     footerText?: string | null;
     shabbatAgendaItems?: ShabbatAgendaItemInput[];
@@ -379,6 +421,20 @@ export async function POST(request: Request, context: { params: Promise<{ synago
       .eq("id", minyanId)
       .eq("synagogue_id", synagogueId);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    if (payload.fullScheduleZmanimKeys !== undefined) {
+      const { error: fullScheduleError } = await supabase
+        .from("minyanim")
+        .update({ full_schedule_zmanim_keys: sanitizeScheduleZmanimKeys(payload.fullScheduleZmanimKeys) })
+        .eq("id", minyanId)
+        .eq("synagogue_id", synagogueId);
+      if (fullScheduleError) {
+        const missing = /full_schedule_zmanim_keys/i.test(fullScheduleError.message);
+        return NextResponse.json(
+          { ok: false, error: missing ? "missing_full_schedule_column" : fullScheduleError.message },
+          { status: 500 }
+        );
+      }
+    }
     const { error: deleteScreenError } = await supabase.from("minyan_display_screens").delete().eq("minyan_id", minyanId);
     if (deleteScreenError) return NextResponse.json({ ok: false, error: deleteScreenError.message }, { status: 500 });
     const screens = payload.screens ?? [];
@@ -402,12 +458,47 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     if (!synagogueName) {
       return NextResponse.json({ ok: false, error: "missing_synagogue_name" }, { status: 400 });
     }
+    const updatesMessaging = payload.donationUrl !== undefined || payload.aliyahMessageTemplate !== undefined;
+    const donationUrl = normalizeDonationUrl(payload.donationUrl);
+    const template = String(payload.aliyahMessageTemplate ?? "").trim();
+    if (updatesMessaging) {
+      if (donationUrl == null) {
+        return NextResponse.json({ ok: false, error: "invalid_donation_url" }, { status: 400 });
+      }
+      const templateError = validateAliyahMessageTemplate(template);
+      if (templateError) return NextResponse.json({ ok: false, error: templateError }, { status: 400 });
+    }
+    const minyanDonationUrls = new Map<string, string>();
+    for (const row of payload.minyanNames ?? []) {
+      if (!row.id || row.donationUrl === undefined) continue;
+      const normalized = normalizeDonationUrl(row.donationUrl);
+      if (normalized == null) {
+        return NextResponse.json({ ok: false, error: "invalid_minyan_donation_url" }, { status: 400 });
+      }
+      minyanDonationUrls.set(row.id, normalized);
+    }
     const { error: synagogueUpdateError } = await supabase
       .from("synagogues")
       .update({ name: synagogueName })
       .eq("id", synagogueId);
     if (synagogueUpdateError) {
       return NextResponse.json({ ok: false, error: synagogueUpdateError.message }, { status: 500 });
+    }
+    if (updatesMessaging) {
+      const { error: messagingError } = await supabase
+        .from("synagogues")
+        .update({
+          donation_url: donationUrl || null,
+          aliyah_message_template: template && template !== DEFAULT_ALIYAH_MESSAGE_TEMPLATE ? template : null
+        })
+        .eq("id", synagogueId);
+      if (messagingError) {
+        const missing = /donation_url|aliyah_message_template/i.test(messagingError.message);
+        return NextResponse.json(
+          { ok: false, error: missing ? "missing_messaging_columns" : messagingError.message },
+          { status: 500 }
+        );
+      }
     }
     if (payload.halachaSettings) {
       const { error: halachaSettingsError } = await supabase.from("synagogue_halacha_settings").upsert(
@@ -429,11 +520,18 @@ export async function POST(request: Request, context: { params: Promise<{ synago
         .from("minyanim")
         .update({
           name: row.name.trim(),
-          haftarah_minhag: resolveHaftarahMinhag(row.haftarahMinhag)
+          haftarah_minhag: resolveHaftarahMinhag(row.haftarahMinhag),
+          ...(minyanDonationUrls.has(row.id) ? { donation_url: minyanDonationUrls.get(row.id) || null } : {})
         })
         .eq("id", row.id)
         .eq("synagogue_id", synagogueId);
-      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      if (error) {
+        const missing = /donation_url/i.test(error.message);
+        return NextResponse.json(
+          { ok: false, error: missing ? "missing_minyan_donation_column" : error.message },
+          { status: 500 }
+        );
+      }
     }
     return NextResponse.json({ ok: true });
   }

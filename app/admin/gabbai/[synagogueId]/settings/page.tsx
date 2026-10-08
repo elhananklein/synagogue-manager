@@ -14,6 +14,12 @@ import {
   type HalachaSettingsModel
 } from "@/lib/gabbai-workspace";
 import { HAFTARAH_MINHAGIM, PRAYER_NUSACH_LABELS, type HaftarahMinhag } from "@/lib/haftarah-minhag";
+import {
+  ALIYAH_MESSAGE_PLACEHOLDERS,
+  ALIYAH_MESSAGE_TEMPLATE_MAX,
+  DEFAULT_ALIYAH_MESSAGE_TEMPLATE,
+  renderAliyahMessage
+} from "@/lib/aliyah-message";
 
 export default function GabbaiSettingsPage({
   params
@@ -28,6 +34,12 @@ export default function GabbaiSettingsPage({
     setLogoUrl,
     logoUpdatedAt,
     setLogoUpdatedAt,
+    donationUrl,
+    setDonationUrl,
+    aliyahMessageTemplate,
+    setAliyahMessageTemplate,
+    messagingReady,
+    minyanDonationReady,
     minyanim,
     setMinyanim,
     halachaSettings,
@@ -40,6 +52,7 @@ export default function GabbaiSettingsPage({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const messageTemplate = aliyahMessageTemplate;
 
   async function save() {
     setSaving(true);
@@ -48,10 +61,16 @@ export default function GabbaiSettingsPage({
     const payload = await saveGabbaiSection(synagogueId, {
       section: "settings",
       synagogueName,
+      ...(messagingReady ? { donationUrl, aliyahMessageTemplate: messageTemplate } : {}),
       halachaSettings,
       minyanNames: minyanim
         .filter((m) => m.id)
-        .map((m) => ({ id: m.id as string, name: m.name, haftarahMinhag: m.haftarahMinhag }))
+        .map((m) => ({
+          id: m.id as string,
+          name: m.name,
+          haftarahMinhag: m.haftarahMinhag,
+          ...(minyanDonationReady ? { donationUrl: m.donationUrl } : {})
+        }))
     });
     setSaving(false);
     if (!payload.ok) {
@@ -232,6 +251,117 @@ export default function GabbaiSettingsPage({
             </label>
           </div>
         )}
+      </section>
+
+      <section className="mb-6">
+        <h2 className="mb-1 text-base font-extrabold">הודעות לעולים</h2>
+        <p className="mb-3 text-sm text-muted-foreground">
+          בגיליון העליות יופיע כפתור «שליחה בוואטסאפ» ליד כל עולה שאישר לקבל הודעות. ההודעה נשלחת מהוואטסאפ שלכם.
+        </p>
+        {!messagingReady ? (
+          <p className="gabbai-err mb-3">
+            חסרים שדות במסד. הריצו ב-Supabase את הקובץ supabase/aliyah-messages-migration.sql ורעננו.
+          </p>
+        ) : null}
+        <label className="mb-3 block">
+          <span className="mb-1 block text-sm font-medium">קישור כללי לתרומה (JGive או אחר)</span>
+          <input
+            className="h-11 w-full rounded-md border border-border bg-background px-3"
+            dir="ltr"
+            type="url"
+            inputMode="url"
+            placeholder="https://www.jgive.com/..."
+            value={donationUrl}
+            disabled={!messagingReady}
+            onChange={(e) => {
+              setDonationUrl(e.target.value);
+              setMessage(null);
+            }}
+          />
+        </label>
+        <div className="mb-4 rounded-xl border border-border bg-white p-3">
+          <p className="mb-2 text-sm font-medium">קישור נפרד למניין (לא חובה)</p>
+          <p className="mb-2 text-xs text-muted-foreground">
+            מניין עם קישור משלו — ההודעות לעולים שלו ישתמשו בקישור הזה. ריק — הקישור הכללי.
+          </p>
+          {!minyanDonationReady ? (
+            <p className="gabbai-err mb-2 text-sm">
+              חסר שדה במסד. הריצו ב-Supabase את הקובץ supabase/minyan-donation-url-migration.sql ורעננו.
+            </p>
+          ) : null}
+          <div className="space-y-2">
+            {minyanim
+              .filter((m) => m.id)
+              .map((m, i) => (
+                <label key={m.id} className="block">
+                  <span className="mb-1 block text-xs font-bold text-muted-foreground">{m.name || `מניין ${i + 1}`}</span>
+                  <input
+                    className="h-11 w-full rounded-md border border-border bg-background px-3"
+                    dir="ltr"
+                    type="url"
+                    inputMode="url"
+                    placeholder={donationUrl.trim() || "https://..."}
+                    value={m.donationUrl}
+                    disabled={!minyanDonationReady}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setMinyanim((prev) => prev.map((row) => (row.id === m.id ? { ...row, donationUrl: next } : row)));
+                      setMessage(null);
+                    }}
+                  />
+                </label>
+              ))}
+          </div>
+        </div>
+        <label className="mb-2 block">
+          <span className="mb-1 block text-sm font-medium">נוסח ההודעה</span>
+          <textarea
+            className="min-h-[9rem] w-full rounded-md border border-border bg-background p-3 leading-relaxed"
+            maxLength={ALIYAH_MESSAGE_TEMPLATE_MAX}
+            value={messageTemplate}
+            disabled={!messagingReady}
+            onChange={(e) => {
+              setAliyahMessageTemplate(e.target.value);
+              setMessage(null);
+            }}
+          />
+        </label>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!messagingReady || messageTemplate === DEFAULT_ALIYAH_MESSAGE_TEMPLATE}
+            onClick={() => {
+              setAliyahMessageTemplate(DEFAULT_ALIYAH_MESSAGE_TEMPLATE);
+              setMessage(null);
+            }}
+          >
+            חזרה לנוסח המקורי
+          </Button>
+        </div>
+        <ul className="mb-3 space-y-1 text-xs text-muted-foreground">
+          {ALIYAH_MESSAGE_PLACEHOLDERS.map((item) => (
+            <li key={item.token}>
+              <code className="font-bold text-foreground">{item.token}</code> — {item.label}
+            </li>
+          ))}
+        </ul>
+        <div className="rounded-xl border border-border bg-white p-3">
+          <p className="mb-1 text-xs font-bold text-muted-foreground">כך תיראה ההודעה (דוגמה)</p>
+          <p className="whitespace-pre-line text-sm leading-relaxed">
+            {renderAliyahMessage(messageTemplate, {
+              firstName: "משה",
+              kind: "shabbat",
+              parashaLabel: "נח",
+              weekday: "שבת",
+              hebrewDate: "",
+              synagogueName,
+              donationUrl: donationUrl.trim() || "(קישור התרומה)",
+              optOutUrl: "(קישור אישי להסרה)"
+            })}
+          </p>
+        </div>
       </section>
 
       <GabbaiSaveBar label="שמירת ההגדרות" saving={saving} message={message} error={error} onSave={() => void save()} />

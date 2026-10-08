@@ -9,6 +9,7 @@ import { DisplayBulletinScreen } from "@/components/display/display-bulletin-scr
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { DailyLearningLine } from "@/lib/hebcal";
+import { isIsoDate, scheduleNowMinutes } from "@/lib/view-date";
 import type { BulletinItem } from "@/lib/bulletin-board";
 import type { DisplayPalette, DisplayStyle } from "@/lib/display-theme";
 import { DEFAULT_DISPLAY_FONT, type DisplayFont } from "@/lib/display-font";
@@ -554,6 +555,7 @@ export function DisplayRotator({
   halacha: halachaProp,
   prayerSchedule: prayerScheduleProp,
   timeSections: timeSectionsProp,
+  fullScheduleSections: fullScheduleSectionsProp = null,
   footerText: footerTextProp,
   scheduleTimesListMode: scheduleTimesListModeProp = "all",
   shabbat: shabbatProp = null,
@@ -582,6 +584,8 @@ export function DisplayRotator({
   } | null;
   prayerSchedule: PrayerSlot[];
   timeSections: TimeSection[];
+  /** מסך «לוח זמנים מלא» עם זמנים נפרדים. null = כמו timeSections */
+  fullScheduleSections?: TimeSection[] | null;
   footerText?: string | null;
   /** "prayers_only" — רשימת תפילות בלבד, נכנסת במלואה ולכן ללא גלילה אוטומטית */
   scheduleTimesListMode?: "all" | "prayers_only";
@@ -622,6 +626,7 @@ export function DisplayRotator({
     halacha: halachaProp,
     prayerSchedule: prayerScheduleProp,
     timeSections: timeSectionsProp,
+    fullScheduleSections: fullScheduleSectionsProp as TimeSection[] | null,
     footerText: footerTextProp ?? null,
     scheduleTimesListMode: scheduleTimesListModeProp,
     shabbat: shabbatProp,
@@ -640,6 +645,7 @@ export function DisplayRotator({
     halacha,
     prayerSchedule,
     timeSections,
+    fullScheduleSections,
     footerText,
     scheduleTimesListMode,
     shabbat,
@@ -863,6 +869,8 @@ export function DisplayRotator({
   const useCenterClockBand = !isVeryBold && (isWoodSilverRevolution || style === "classic" || style === "royalBlue");
   const nowJerusalem = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
   const nowMinutes = nowJerusalem.getHours() * 60 + nowJerusalem.getMinutes();
+  /** הקיר תמיד חי: אם הוא כבר על היום הבא, זה הגלגול של צאת הכוכבים */
+  const scheduleNow = (isIsoDate(viewDate) ? scheduleNowMinutes(viewDate, nowMinutes, true) : null) ?? nowMinutes;
   const jerusalemJsDay = nowJerusalem.getDay();
   const jerusalemWeekdayLong =
     jerusalemJsDay === 6
@@ -886,7 +894,7 @@ export function DisplayRotator({
     ...prayerSchedule.map((row) => ({ label: row.label, time: row.time, details: row.details, kind: "prayer" as const }))
   ];
   const todayMergedTimes = sortedSectionItemsWithMinutes(todaySectionItems);
-  const nextTodayIdx = todayMergedTimes.findIndex((item) => item.totalMinutes >= nowMinutes);
+  const nextTodayIdx = todayMergedTimes.findIndex((item) => item.totalMinutes >= scheduleNow);
   const pastAllTodaySlots = nextTodayIdx === -1;
 
   let nextSectionIndex = 0;
@@ -906,7 +914,7 @@ export function DisplayRotator({
     : [];
   const nextPrayer = (() => {
     if (todayPrayerTimes.length) {
-      const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= nowMinutes);
+      const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= scheduleNow);
       if (idx !== -1) return todayPrayerTimes[idx];
     }
     if (!tomorrowPrayerTimes.length) return null;
@@ -917,7 +925,7 @@ export function DisplayRotator({
     todayPrayerTimes.length === 0
       ? null
       : (() => {
-          const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= nowMinutes);
+          const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= scheduleNow);
           if (idx === -1) return null;
           const p = todayPrayerTimes[idx];
           return { label: p.label, time: p.time };
@@ -1360,13 +1368,14 @@ export function DisplayRotator({
             </CardHeader>
             <CardContent className="display-full-schedule-body">
               {(() => {
+                const sections = fullScheduleSections ?? timeSections;
                 const timeline = [
-                  ...sortedSectionItemsWithMinutes(timeSections[0]?.items ?? []).map((row) => ({
+                  ...sortedSectionItemsWithMinutes(sections[0]?.items ?? []).map((row) => ({
                     ...row,
                     dayOffset: 0 as const,
                     dayTag: null as string | null
                   })),
-                  ...sortedSectionItemsWithMinutes(timeSections[1]?.items ?? []).map((row) => ({
+                  ...sortedSectionItemsWithMinutes(sections[1]?.items ?? []).map((row) => ({
                     ...row,
                     dayOffset: 1 as const,
                     dayTag: "מחר" as string | null
@@ -1375,7 +1384,7 @@ export function DisplayRotator({
                 if (!timeline.length) {
                   return <p className="display-daily-learning-empty">אין זמנים להצגה.</p>;
                 }
-                const { visible, nextLocalIdx } = fullScheduleWindow(timeline, nowMinutes, 10);
+                const { visible, nextLocalIdx } = fullScheduleWindow(timeline, scheduleNow, 10);
                 return (
                   <AutoFit
                     className="display-full-schedule-fit"

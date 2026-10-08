@@ -19,5 +19,5 @@ export async function requireGabbaiSynagogue(rawId: string) {
   if (!supabase) {
     return { error: NextResponse.json({ ok: false, error: "missing_service_role_key" }, { status: 500 }) };
   }
-  return { synagogueId, supabase };
+  return { synagogueId, supabase, ctx };
 }

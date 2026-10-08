@@ -31,6 +31,11 @@ export default async function EditCongregantPage({
         initial={found.row}
         congregantId={congregantId}
         familyPeople={(listed.rows ?? []).filter((row) => row.id !== congregantId)}
+        consentMeta={{
+          at: found.row.messagesConsentAt,
+          source: found.row.messagesConsentSource,
+          token: found.row.messagesToken
+        }}
       />
     </>
   );

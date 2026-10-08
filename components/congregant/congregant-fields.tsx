@@ -241,6 +241,20 @@ export function CongregantFields({
           מעוניין לעלות לתורה
         </label>
       ) : null}
+
+      {self ? (
+        <label className="congregant-check congregant-check--consent" style={{ marginTop: "0.35rem" }}>
+          <input
+            type="checkbox"
+            checked={input.messagesConsent}
+            onChange={(e) => onPatch({ messagesConsent: e.target.checked })}
+          />
+          <span>
+            אני מאשר/ת לקבל מבית הכנסת הודעות בוואטסאפ או ב-SMS, למשל אחרי עלייה לתורה, כולל בקשות לתרומה. אפשר לבטל
+            בכל עת דרך הקישור שבהודעה.
+          </span>
+        </label>
+      ) : null}
     </>
   );
 }

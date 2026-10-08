@@ -31,6 +31,7 @@ export function pickDisplayLiveFields(view: DisplayView) {
     prayerSchedule: view.prayerSchedule,
     timeSections: view.timeSections,
     timeSectionsAll: view.timeSectionsAll,
+    fullScheduleSections: view.fullScheduleSections ?? null,
     viewDate: view.viewDate,
     shabbat: view.shabbat,
     bulletinItems: view.bulletinItems,

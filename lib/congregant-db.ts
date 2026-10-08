@@ -7,6 +7,7 @@ import {
   isCongregantGender,
   isCongregantTribe,
   isFamilyRelation,
+  isMessagesConsentSource,
   isYahrzeitRelation,
   normalizeFamilyMembers,
   normalizePhone,
@@ -16,7 +17,8 @@ import {
   type CongregantInput,
   type CongregantMinyanOption,
   type CongregantRecord,
-  type CongregantYahrzeit
+  type CongregantYahrzeit,
+  type MessagesConsentSource
 } from "@/lib/congregant-types";
 import { isIsoDate } from "@/lib/hebrew-civil-date";
 
@@ -52,6 +54,10 @@ type CongregantRow = {
   is_active: boolean;
   receives_aliyah: boolean;
   registration_status?: string | null;
+  messages_consent?: boolean | null;
+  messages_consent_at?: string | null;
+  messages_consent_source?: string | null;
+  messages_token?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -129,6 +135,10 @@ export function rowToRecord(row: CongregantRow): CongregantRecord {
     receivesAliyah: row.receives_aliyah,
     registrationStatus: row.registration_status === "pending" ? "pending" : "approved",
     notes: row.notes ?? "",
+    messagesConsent: Boolean(row.messages_consent),
+    messagesConsentAt: row.messages_consent_at ?? null,
+    messagesConsentSource: isMessagesConsentSource(row.messages_consent_source) ? row.messages_consent_source : null,
+    messagesToken: row.messages_token ?? "",
     minyanName: minyanName ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -155,10 +165,23 @@ export async function listSynagogueMinyanOptions(synagogueId: string): Promise<C
 
 const SELECT_BASE =
   "id, synagogue_id, minyan_id, first_name, middle_name, last_name, nickname, father_name, mother_name, gender, tribe, gregorian_birth_date, hebrew_birth_year, hebrew_birth_month, hebrew_birth_day, born_after_sunset, father_died_gregorian_date, father_died_hebrew_year, father_died_hebrew_month, father_died_hebrew_day, father_died_after_sunset, mother_died_gregorian_date, mother_died_hebrew_year, mother_died_hebrew_month, mother_died_hebrew_day, mother_died_after_sunset, phone, email, is_active, receives_aliyah, notes, created_at, updated_at, minyanim(name)";
-const SELECT_FIELDS = `${SELECT_BASE}, registration_status`;
+const SELECT_NO_CONSENT = `${SELECT_BASE}, registration_status`;
+const SELECT_FIELDS = `${SELECT_NO_CONSENT}, messages_consent, messages_consent_at, messages_consent_source, messages_token`;
 
 function missingStatusColumn(message: string) {
   return /registration_status/i.test(message) && (/does not exist|schema cache|could not find/i.test(message) || /column/i.test(message));
+}
+
+function missingConsentColumns(message: string) {
+  return /messages_consent|messages_token/i.test(message) && /does not exist|schema cache|could not find|column/i.test(message);
+}
+
+function consentColumns(consent: boolean, source: MessagesConsentSource) {
+  return {
+    messages_consent: consent,
+    messages_consent_at: new Date().toISOString(),
+    messages_consent_source: source
+  };
 }
 
 export async function getPublicJoinContext(synagogueId: string) {
@@ -192,12 +215,15 @@ export async function getPublicJoinContext(synagogueId: string) {
 export async function listCongregants(synagogueId: string): Promise<{ rows: CongregantRecord[]; error?: string }> {
   const supabase = getSupabaseAdminClient();
   if (!supabase) return { rows: [], error: "missing_service_role_key" };
-  const res = await supabase
-    .from("congregants")
-    .select(SELECT_FIELDS)
-    .eq("synagogue_id", synagogueId)
-    .order("last_name", { ascending: true })
-    .order("first_name", { ascending: true });
+  const listQuery = (fields: string) =>
+    supabase
+      .from("congregants")
+      .select(fields)
+      .eq("synagogue_id", synagogueId)
+      .order("last_name", { ascending: true })
+      .order("first_name", { ascending: true });
+  let res = await listQuery(SELECT_FIELDS);
+  if (res.error && missingConsentColumns(res.error.message)) res = await listQuery(SELECT_NO_CONSENT);
   if (res.error && missingStatusColumn(res.error.message)) {
     const fallback = await supabase
       .from("congregants")
@@ -210,21 +236,19 @@ export async function listCongregants(synagogueId: string): Promise<{ rows: Cong
     return { rows: sortListedCongregants(rows) };
   }
   if (res.error) return { rows: [], error: mapDbError(res.error.message) };
-  return { rows: sortListedCongregants(((res.data ?? []) as CongregantRow[]).map(rowToRecord)) };
+  return { rows: sortListedCongregants(((res.data ?? []) as unknown as CongregantRow[]).map(rowToRecord)) };
 }
 
 export async function getCongregant(synagogueId: string, congregantId: string) {
   const supabase = getSupabaseAdminClient();
   if (!supabase) return { row: null, error: "missing_service_role_key" };
-  const res = await supabase
-    .from("congregants")
-    .select(SELECT_FIELDS)
-    .eq("synagogue_id", synagogueId)
-    .eq("id", congregantId)
-    .maybeSingle();
+  const getQuery = (fields: string) =>
+    supabase.from("congregants").select(fields).eq("synagogue_id", synagogueId).eq("id", congregantId).maybeSingle();
+  let res = await getQuery(SELECT_FIELDS);
+  if (res.error && missingConsentColumns(res.error.message)) res = await getQuery(SELECT_NO_CONSENT);
   if (res.error) return { row: null, error: mapDbError(res.error.message) };
   if (!res.data) return { row: null, error: "not_found" };
-  const record = rowToRecord(res.data as CongregantRow);
+  const record = rowToRecord(res.data as unknown as CongregantRow);
   const relations = await listCongregantRelations(synagogueId, congregantId);
   if (relations.error) return { row: { ...record, familyMembers: [] }, error: relations.error };
   const yahrzeits = await listCongregantYahrzeits(synagogueId, congregantId, record);
@@ -232,10 +256,17 @@ export async function getCongregant(synagogueId: string, congregantId: string) {
   return { row: { ...record, familyMembers: relations.links, yahrzeits: yahrzeits.rows } };
 }
 
-export async function insertCongregant(synagogueId: string, input: CongregantInput) {
+export async function insertCongregant(
+  synagogueId: string,
+  input: CongregantInput,
+  consentSource: MessagesConsentSource = "gabbai"
+) {
   const supabase = getSupabaseAdminClient();
   if (!supabase) return { row: null, error: "missing_service_role_key" };
-  const payload = inputToRow(synagogueId, input);
+  const payload = {
+    ...inputToRow(synagogueId, input),
+    ...(input.messagesConsent ? consentColumns(true, consentSource) : {})
+  };
   const res = await supabase.from("congregants").insert(payload).select(SELECT_FIELDS).single();
   if (res.error && missingStatusColumn(res.error.message) && payload.registration_status === "approved") {
     const withoutStatus = Object.fromEntries(
@@ -281,9 +312,21 @@ export async function insertCongregants(synagogueId: string, inputs: CongregantI
 export async function updateCongregant(synagogueId: string, congregantId: string, input: CongregantInput) {
   const supabase = getSupabaseAdminClient();
   if (!supabase) return { row: null, error: "missing_service_role_key" };
+  const current = await supabase
+    .from("congregants")
+    .select("messages_consent")
+    .eq("synagogue_id", synagogueId)
+    .eq("id", congregantId)
+    .maybeSingle();
+  if (current.error) return { row: null, error: mapDbError(current.error.message, input) };
+  if (!current.data) return { row: null, error: "not_found" };
+  const consentChanged = Boolean(current.data.messages_consent) !== input.messagesConsent;
   const res = await supabase
     .from("congregants")
-    .update(inputToRow(synagogueId, input))
+    .update({
+      ...inputToRow(synagogueId, input),
+      ...(consentChanged ? consentColumns(input.messagesConsent, "gabbai") : {})
+    })
     .eq("synagogue_id", synagogueId)
     .eq("id", congregantId)
     .select(SELECT_FIELDS)
@@ -338,6 +381,7 @@ export function mapDbError(message: string, input?: CongregantInput) {
   if (lower.includes("registration_status") && (lower.includes("does not exist") || lower.includes("schema cache") || lower.includes("could not find"))) {
     return "missing_registration_status";
   }
+  if (missingConsentColumns(message)) return "missing_messages_consent";
   if (
     lower.includes("congregant_yahrzeits") &&
     (lower.includes("does not exist") || lower.includes("schema cache") || lower.includes("could not find"))

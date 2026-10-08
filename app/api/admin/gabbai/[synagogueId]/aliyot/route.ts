@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireGabbaiSynagogue } from "@/lib/congregant-access";
 import { loadAliyahSheet, loadAliyahWorkspace, saveAliyahSheet } from "@/lib/aliyah-db";
+import { loadAliyahMessaging } from "@/lib/aliyah-message-db";
 import { loadSavedPlanPrimaries } from "@/lib/aliyah-plan-db";
 import { defaultAliyahServiceDate, jerusalemTodayIso } from "@/lib/aliyah-slots";
 import type { AliyahAssignmentInput, AliyahNoKohenResolution } from "@/lib/aliyah-types";
@@ -66,10 +67,12 @@ export async function GET(request: Request, context: { params: Promise<{ synagog
     return NextResponse.json({ ok: false, error: loaded.error }, { status });
   }
 
-  const planPrefill =
+  const [planPrefill, messaging] = await Promise.all([
     loaded.sheet && !loaded.sheet.isSaved
-      ? await loadSavedPlanPrimaries(access.synagogueId, selectedMinyan, serviceDate)
-      : null;
+      ? loadSavedPlanPrimaries(access.synagogueId, selectedMinyan, serviceDate)
+      : Promise.resolve(null),
+    loadAliyahMessaging(access.synagogueId, selectedMinyan, serviceDate)
+  ]);
 
   return NextResponse.json({
     ok: true,
@@ -78,6 +81,7 @@ export async function GET(request: Request, context: { params: Promise<{ synagog
       congregants: workspace.congregants ?? [],
       sheet: loaded.sheet,
       planPrefill,
+      messaging,
       serviceDate
     }
   });

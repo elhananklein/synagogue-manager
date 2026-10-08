@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { CongregantThemeFrame } from "@/components/admin/congregant-theme-frame";
 import { CongregantQuickAddDialog } from "@/components/admin/congregant-quick-add-dialog";
-import { AliyahCongregantPicker } from "@/components/admin/aliyah-congregant-picker";
+import { AliyahCongregantPicker, preferredTribeForSlot } from "@/components/admin/aliyah-congregant-picker";
+import { AliyahMessagesPanel } from "@/components/admin/aliyah-messages-panel";
 import { GabbaiLoadingPanel } from "@/components/admin/gabbai-loading";
 import { GabbaiMinyanSwitch } from "@/components/admin/gabbai-minyan-switch";
 import { GabbaiSaveBar } from "@/components/admin/gabbai-save-bar";
@@ -21,6 +22,7 @@ import {
   ALIYAH_DAY_KIND_LABELS,
   toAliyahCongregantOption,
   type AliyahCongregantOption,
+  type AliyahMessaging,
   type AliyahPlanPrefill,
   type AliyahSheet,
   type AliyahSlotState
@@ -35,6 +37,7 @@ type WorkspacePayload = {
     congregants: AliyahCongregantOption[];
     sheet: AliyahSheet | null;
     planPrefill?: AliyahPlanPrefill | null;
+    messaging?: AliyahMessaging | null;
     serviceDate: string;
   };
 };
@@ -64,6 +67,7 @@ export function AliyahSheetEditor({
   const [addForKey, setAddForKey] = useState<string | null>(null);
   const [addQuery, setAddQuery] = useState("");
   const [planPrefill, setPlanPrefill] = useState<AliyahPlanPrefill | null>(null);
+  const [messaging, setMessaging] = useState<AliyahMessaging | null>(null);
 
   const minyan = minyanim[Math.min(minyanIndex, Math.max(0, minyanim.length - 1))] ?? minyanim[0] ?? null;
 
@@ -91,6 +95,7 @@ export function AliyahSheetEditor({
         setSheet(payload.data.sheet);
         setSlots(payload.data.sheet?.slots ?? []);
         setPlanPrefill(payload.data.planPrefill ?? null);
+        setMessaging(payload.data.messaging ?? null);
         setDirty(false);
       })
       .catch(() => {
@@ -331,6 +336,7 @@ export function AliyahSheetEditor({
                   minyanId={minyan.id}
                   selectedId={slot.congregantId}
                   usedIds={usedIds}
+                  preferTribe={preferredTribeForSlot(slot.key)}
                   onSelect={(id) => assignCongregant(slot.key, id)}
                   onAddNew={(query) => {
                     setAddForKey(slot.key);
@@ -368,6 +374,21 @@ export function AliyahSheetEditor({
             הוספת עלייה
           </Button>
         </div>
+      ) : null}
+
+      {!loading && sheet ? (
+        <AliyahMessagesPanel
+          synagogueId={synagogueId}
+          minyanId={minyan.id}
+          sheet={sheet}
+          slots={slots}
+          byId={byId}
+          messaging={messaging}
+          dirty={dirty}
+          onSent={(congregantId, openedAt) =>
+            setMessaging((prev) => (prev ? { ...prev, sentAt: { ...prev.sentAt, [congregantId]: openedAt } } : prev))
+          }
+        />
       ) : null}
 
       <GabbaiSaveBar

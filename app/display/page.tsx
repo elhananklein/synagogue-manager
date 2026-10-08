@@ -67,6 +67,7 @@ export default async function DisplayPage({
         halacha={view.halacha}
         prayerSchedule={view.prayerSchedule}
         timeSections={view.timeSections}
+        fullScheduleSections={view.fullScheduleSections}
         shabbat={view.shabbat}
         bulletinItems={view.bulletinItems}
         viewDate={view.viewDate}

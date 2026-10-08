@@ -61,6 +61,7 @@ export default async function MobileDisplayPage({
       prayerSchedule={view.prayerSchedule}
       timeSections={view.timeSections}
       timeSectionsAll={view.timeSectionsAll}
+      fullScheduleSections={view.fullScheduleSections}
       viewDate={view.viewDate}
       scheduleTimesListMode={view.scheduleTimesListMode}
       shabbat={view.shabbat}

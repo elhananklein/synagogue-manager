@@ -371,7 +371,14 @@ export function CongregantsManager({
                       {row.phone ? ` · ${row.phone}` : ""}
                     </p>
                   </span>
-                  <span className="congregant-badge">{CONGREGANT_TRIBE_LABELS[row.tribe]}</span>
+                  <span className="congregant-badges">
+                    {row.messagesConsent ? (
+                      <span className="congregant-badge congregant-badge--consent" title="אישר לקבל הודעות">
+                        הודעות
+                      </span>
+                    ) : null}
+                    <span className="congregant-badge">{CONGREGANT_TRIBE_LABELS[row.tribe]}</span>
+                  </span>
                 </Link>
               ))}
             </div>

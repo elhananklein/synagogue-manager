@@ -17,7 +17,7 @@ import type {
 } from "@/lib/build-display-view";
 import { fetchDisplayLiveView, pickDisplayLiveFields, useDisplayLiveRefresh, useHalachicDayLiveRefresh } from "@/lib/display-live-refresh";
 import { addDaysIsoDate, toIsoDateJerusalem } from "@/lib/hebcal";
-import { daysBetweenIso, relativeDayLabel, VIEW_DATE_RANGE_DAYS } from "@/lib/view-date";
+import { daysBetweenIso, relativeDayLabel, scheduleNowMinutes, VIEW_DATE_RANGE_DAYS } from "@/lib/view-date";
 import type { MobileMinyanOption, ScheduleTimesListMode } from "@/lib/display-config";
 import { DEFAULT_DISPLAY_FONT, type DisplayFont } from "@/lib/display-font";
 import { DEFAULT_DISPLAY_PALETTE, styleUsesPalettes, type DisplayPalette, type DisplayStyle } from "@/lib/display-theme";
@@ -106,6 +106,7 @@ type MobileDisplayRotatorProps = {
   prayerSchedule: DisplayPrayerSlot[];
   timeSections: DisplayTimeSection[];
   timeSectionsAll?: DisplayTimeSection[];
+  fullScheduleSections?: DisplayTimeSection[] | null;
   viewDate?: string;
   scheduleTimesListMode?: ScheduleTimesListMode;
   shabbat?: DisplayShabbat | null;
@@ -132,6 +133,14 @@ const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> =
 function nowJerusalemMinutes() {
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
   return now.getHours() * 60 + now.getMinutes();
+}
+
+function jerusalemMinutesOfIso(iso: string | null): number | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const local = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
+  return local.getHours() * 60 + local.getMinutes();
 }
 
 function toMinutes(time: string) {
@@ -176,6 +185,7 @@ export function MobileDisplayRotator({
   prayerSchedule: prayerScheduleProp,
   timeSections: timeSectionsProp,
   timeSectionsAll: timeSectionsAllProp,
+  fullScheduleSections: fullScheduleSectionsProp = null,
   viewDate: viewDateProp,
   scheduleTimesListMode: scheduleTimesListModeProp = "all",
   shabbat: shabbatProp = null,
@@ -198,6 +208,7 @@ export function MobileDisplayRotator({
     prayerSchedule: prayerScheduleProp,
     timeSections: timeSectionsProp,
     timeSectionsAll: timeSectionsAllProp ?? timeSectionsProp,
+    fullScheduleSections: fullScheduleSectionsProp,
     viewDate: viewDateProp ?? toIsoDateJerusalem(),
     scheduleTimesListMode: scheduleTimesListModeProp,
     shabbat: shabbatProp,
@@ -219,6 +230,7 @@ export function MobileDisplayRotator({
     prayerSchedule,
     timeSections,
     timeSectionsAll,
+    fullScheduleSections,
     viewDate,
     shabbat,
     bulletinItems,
@@ -248,6 +260,7 @@ export function MobileDisplayRotator({
       prayerSchedule: next.prayerSchedule,
       timeSections: next.timeSections,
       timeSectionsAll: next.timeSectionsAll ?? next.timeSections,
+      fullScheduleSections: next.fullScheduleSections,
       viewDate: next.viewDate ?? toIsoDateJerusalem(),
       scheduleTimesListMode: next.scheduleTimesListMode,
       shabbat: next.shabbat,
@@ -294,7 +307,11 @@ export function MobileDisplayRotator({
   }, [style, palette]);
 
   const jerusalemTodayIso = toIsoDateJerusalem();
-  const isViewingToday = viewDate === jerusalemTodayIso;
+  /** צאת הכוכבים של היום המוצג קרוב בדקה-שתיים לזה של אתמול; מרווח קטן לביטחון */
+  const rollMinutes = jerusalemMinutesOfIso(snapshot.halachicDayRollIso);
+  const afterHalachicRoll = rollMinutes != null && nowMinutes >= rollMinutes - 5;
+  const scheduleNow = scheduleNowMinutes(viewDate, nowMinutes, afterHalachicRoll, jerusalemTodayIso);
+  const isViewingToday = scheduleNow != null;
   const prayerOnlySections = useMemo(
     () =>
       (timeSectionsAll ?? timeSections).map((section) => ({
@@ -303,7 +320,8 @@ export function MobileDisplayRotator({
       })),
     [timeSections, timeSectionsAll]
   );
-  const visibleTimeSections = showFullSchedule ? timeSectionsAll : prayerOnlySections;
+  const fullToggleSections = fullScheduleSections ?? timeSectionsAll;
+  const visibleTimeSections = showFullSchedule ? fullToggleSections : prayerOnlySections;
   const dayOffset = daysBetweenIso(jerusalemTodayIso, viewDate);
   const canGoPrev = dayOffset > -VIEW_DATE_RANGE_DAYS;
   const canGoNext = dayOffset < VIEW_DATE_RANGE_DAYS;
@@ -395,7 +413,7 @@ export function MobileDisplayRotator({
   const tomorrowPrayers = (prayerOnlySections[1]?.items ?? [])
     .map((item) => ({ ...item, totalMinutes: toMinutes(item.time) }))
     .sort((a, b) => a.totalMinutes - b.totalMinutes);
-  const nextToday = todayPrayers.find((item) => item.totalMinutes >= nowMinutes) ?? null;
+  const nextToday = todayPrayers.find((item) => item.totalMinutes >= (scheduleNow ?? nowMinutes)) ?? null;
   const nextPrayer: NextPrayerMark | null = !isViewingToday
     ? null
     : nextToday
@@ -404,7 +422,7 @@ export function MobileDisplayRotator({
         ? { label: tomorrowPrayers[0].label, time: tomorrowPrayers[0].time, dayOffset: 1 }
         : null;
   const nextSiddur = nextPrayer ? siddurPrayerFromLabel(nextPrayer.label) : null;
-  const zmanimForToggle = (timeSectionsAll[0]?.items ?? []).filter((item) => item.kind === "zman");
+  const zmanimForToggle = (fullToggleSections[0]?.items ?? []).filter((item) => item.kind === "zman");
   const dayTitle = relativeDayLabel(viewDate, jerusalemTodayIso);
 
   const shiftViewDate = (delta: number) => {
@@ -459,7 +477,7 @@ export function MobileDisplayRotator({
         {screenKey === "prayerTimes" && (
           <PrayerTimesScreen
             prayerSchedule={prayerSchedule}
-            nowMinutes={nowMinutes}
+            nowMinutes={scheduleNow ?? nowMinutes}
             highlightNow={isViewingToday}
             zmanim={showFullSchedule ? zmanimForToggle : []}
             onOpenSiddur={setSiddurPrayer}
@@ -468,13 +486,13 @@ export function MobileDisplayRotator({
         {screenKey === "fullSchedule" && (
           <FullScheduleScreen
             timeSections={visibleTimeSections}
-            nowMinutes={nowMinutes}
+            nowMinutes={scheduleNow ?? nowMinutes}
             highlightNow={isViewingToday}
             onOpenSiddur={setSiddurPrayer}
           />
         )}
         {screenKey === "shabbat" && (
-          <ShabbatScreen shabbat={shabbat} nowMinutes={nowMinutes} highlightNow={isViewingToday} />
+          <ShabbatScreen shabbat={shabbat} nowMinutes={nowMinutes} highlightNow={viewDate === jerusalemTodayIso} />
         )}
         {screenKey === "bulletin" && <BulletinScreen items={bulletinItems} />}
       </div>

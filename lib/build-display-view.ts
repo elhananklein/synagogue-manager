@@ -106,6 +106,8 @@ export type DisplayView = {
   timeSections: DisplayTimeSection[];
   /** תמיד כולל זמנים הלכתיים — למתג המובייל, בלי לשנות את הגדרת הגבאי לקיר */
   timeSectionsAll: DisplayTimeSection[];
+  /** מסך «לוח זמנים מלא» עם בחירת זמנים נפרדת. null = לא הוגדרה, משתמשים בזמני המסך הראשי */
+  fullScheduleSections: DisplayTimeSection[] | null;
   /** היום האזרחי לפיו נבנתה התצוגה */
   viewDate: string;
   shabbat: DisplayShabbat | null;
@@ -563,6 +565,35 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
         { title: timeSectionsAll[0].title, items: [...fastZmanItems(snapshot), ...todayPrayerItems] },
         { title: timeSectionsAll[1].title, items: [...fastZmanItems(tomorrowSnapshot), ...tomorrowPrayerItems] }
       ];
+  const fullScheduleKeys = displayConfig.fullScheduleZmanimKeys;
+  const fullScheduleSections: DisplayTimeSection[] | null = fullScheduleKeys
+    ? [
+        {
+          title: timeSectionsAll[0].title,
+          items: [
+            ...fastZmanItems(snapshot),
+            ...buildZmanimRows(snapshot.zmanimSourceTimes, fullScheduleKeys).map((row) => ({
+              label: row.label,
+              time: row.time,
+              kind: "zman" as const
+            })),
+            ...todayPrayerItems
+          ]
+        },
+        {
+          title: timeSectionsAll[1].title,
+          items: [
+            ...fastZmanItems(tomorrowSnapshot),
+            ...buildZmanimRows(tomorrowSnapshot.zmanimSourceTimes, fullScheduleKeys).map((row) => ({
+              label: row.label,
+              time: row.time,
+              kind: "zman" as const
+            })),
+            ...tomorrowPrayerItems
+          ]
+        }
+      ]
+    : null;
 
   return {
     style: effectiveStyle,
@@ -590,6 +621,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     prayerSchedule: todaySlots,
     timeSections,
     timeSectionsAll,
+    fullScheduleSections,
     viewDate: todayIsoDate,
     shabbat,
     bulletinItems,

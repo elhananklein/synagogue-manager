@@ -177,6 +177,30 @@
   outline: none;
 }
 
+.aliyah-picker-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--c-muted);
+}
+
+.aliyah-picker-scope input {
+  width: 1rem;
+  height: 1rem;
+}
+
+.aliyah-picker-divider {
+  margin: 0.3rem 0 0.1rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--c-muted);
+  border-bottom: 1px solid var(--c-border);
+}
+
 .aliyah-picker-item small,
 .aliyah-empty {
   display: block;
@@ -547,6 +571,65 @@
   background: rgb(212 166 72 / 0.1);
   font-size: 0.9rem;
   font-weight: 650;
+}
+
+.aliyah-messages {
+  margin: 0.25rem 0 1rem;
+  padding: 0.85rem 0.9rem 0.6rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--c-border);
+  background: var(--c-panel);
+}
+
+.aliyah-message-list {
+  margin: 0.55rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aliyah-message-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--c-border);
+}
+
+.aliyah-message-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.aliyah-message-who strong {
+  font-weight: 800;
+}
+
+.aliyah-message-who span,
+.aliyah-message-reason {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--c-muted);
+}
+
+.aliyah-wa-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: #128c4b;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.aliyah-wa-btn:disabled {
+  opacity: 0.4;
 }
 
 @media (min-width: 768px) {

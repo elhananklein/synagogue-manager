@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CongregantThemeFrame } from "@/components/admin/congregant-theme-frame";
 import { CongregantQuickAddDialog } from "@/components/admin/congregant-quick-add-dialog";
-import { AliyahCongregantPicker } from "@/components/admin/aliyah-congregant-picker";
+import { AliyahCongregantPicker, preferredTribeForSlot } from "@/components/admin/aliyah-congregant-picker";
 import { GabbaiLoadingPanel } from "@/components/admin/gabbai-loading";
 import { GabbaiMinyanSwitch } from "@/components/admin/gabbai-minyan-switch";
 import { GabbaiSaveBar } from "@/components/admin/gabbai-save-bar";
@@ -578,6 +578,7 @@ export function AliyahPlanner({
                   minyanId={minyan.id}
                   selectedId={slot.primary?.congregantId ?? null}
                   usedIds={usedIds}
+                  preferTribe={preferredTribeForSlot(slot.key)}
                   onSelect={(id) => setPrimary(slot.key, id)}
                   onAddNew={(query) => {
                     setAddTarget({ kind: "slot", key: slot.key });

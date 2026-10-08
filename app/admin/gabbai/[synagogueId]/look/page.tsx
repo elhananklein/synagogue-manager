@@ -48,6 +48,13 @@ function renumberScreens(screens: ScreenSetting[]): ScreenSetting[] {
   return screens.map((screen, index) => ({ ...screen, sortOrder: index + 1 }));
 }
 
+/** מסכים חדשים מוצגים בראש הרשימה (החדש ביותר למעלה), אבל נשמרים בסוף הסבב לפי סדר ההוספה */
+function screensForSave(screens: ScreenSetting[]): ScreenSetting[] {
+  const saved = screens.filter((s) => !s.unsaved);
+  const added = screens.filter((s) => s.unsaved).reverse();
+  return renumberScreens([...saved, ...added]);
+}
+
 function moveScreen(screens: ScreenSetting[], index: number, direction: -1 | 1): ScreenSetting[] {
   const next = index + direction;
   if (next < 0 || next >= screens.length) return screens;
@@ -63,7 +70,8 @@ export default function GabbaiLookPage({
   params: Promise<{ synagogueId: string }>;
 }) {
   const { synagogueId } = use(params);
-  const { minyanim, setMinyanim, isLoading, error: loadError, reload } = useGabbaiWorkspace(synagogueId);
+  const { minyanim, setMinyanim, fullScheduleReady, isLoading, error: loadError, reload } =
+    useGabbaiWorkspace(synagogueId);
   const [minyanIndex, setMinyanIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -102,9 +110,10 @@ export default function GabbaiLookPage({
       displayFont: minyan.displayFont,
       scheduleTimesListMode: minyan.scheduleTimesListMode,
       scheduleZmanimKeys: minyan.scheduleZmanimKeys,
+      ...(fullScheduleReady ? { fullScheduleZmanimKeys: minyan.fullScheduleZmanimKeys } : {}),
       dailyLearningKeys: minyan.dailyLearningKeys,
       footerText: minyan.footerText,
-      screens: minyan.screens
+      screens: screensForSave(minyan.screens)
     });
     setSaving(false);
     if (!payload.ok) {
@@ -242,6 +251,67 @@ export default function GabbaiLookPage({
       </div>
 
       <div className="mt-8">
+        <h2 className="mb-1 text-base font-extrabold">מה מוצג בלוח זמנים מלא</h2>
+        <p className="mb-3 text-sm text-muted-foreground">
+          מסך «לוח זמנים מלא» על הקיר, וגם «לוח מלא» בטלפון. אפשר להציג בו זמנים אחרים מאשר במסך הראשי.
+        </p>
+        {fullScheduleReady ? (
+          <>
+            <select
+              className="h-11 w-full max-w-md rounded-md border border-border bg-background px-3"
+              value={minyan.fullScheduleZmanimKeys == null ? "same" : "custom"}
+              onChange={(e) =>
+                update({
+                  fullScheduleZmanimKeys:
+                    e.target.value === "custom"
+                      ? minyan.scheduleTimesListMode === "prayers_only"
+                        ? []
+                        : [...minyan.scheduleZmanimKeys]
+                      : null
+                })
+              }
+            >
+              <option value="same">כמו במסך הראשי</option>
+              <option value="custom">בחירה נפרדת</option>
+            </select>
+            {minyan.fullScheduleZmanimKeys != null ? (
+              <>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {ZMANIM_CATALOG.map((zman) => {
+                    const keys = minyan.fullScheduleZmanimKeys ?? [];
+                    return (
+                      <label
+                        key={zman.key}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={keys.includes(zman.key)}
+                          onChange={(e) =>
+                            update({
+                              fullScheduleZmanimKeys: e.target.checked
+                                ? [...keys, zman.key]
+                                : keys.filter((k) => k !== zman.key)
+                            })
+                          }
+                        />
+                        {zman.label}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">בלי סימון — יוצגו רק זמני התפילות.</p>
+              </>
+            ) : null}
+          </>
+        ) : (
+          <p className="gabbai-hint">
+            כדי להפעיל, הריצו ב-Supabase את הקובץ supabase/full-schedule-zmanim-keys-migration.sql
+          </p>
+        )}
+      </div>
+
+      <div className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-base font-extrabold">לימוד יומי</h2>
@@ -303,16 +373,16 @@ export default function GabbaiLookPage({
             onClick={() => {
               update((m) => ({
                 ...m,
-                screens: [
-                  ...m.screens,
+                screens: renumberScreens([
                   {
                     screenKey: "",
-                    sortOrder: m.screens.length + 1,
+                    sortOrder: 0,
                     durationSeconds: 20,
                     enabled: true,
                     unsaved: true
-                  }
-                ]
+                  },
+                  ...m.screens
+                ])
               }));
             }}
           >
@@ -332,7 +402,9 @@ export default function GabbaiLookPage({
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-bold">
-                  {screen.unsaved ? "מסך חדש — עדיין לא נשמר" : `מסך ${screenIndex + 1}`}
+                  {screen.unsaved
+                    ? "מסך חדש — עדיין לא נשמר, ייכנס בסוף הסבב"
+                    : `מסך ${minyan.screens.slice(0, screenIndex).filter((s) => !s.unsaved).length + 1}`}
                 </span>
                 <div className="flex flex-wrap gap-2">
                   <Button
