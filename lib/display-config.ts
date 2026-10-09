@@ -168,6 +168,8 @@ export type DisplayConfig = {
   scheduleZmanimKeys: string[];
   /** זמני היום למסך «לוח זמנים מלא». null = כמו במסך הראשי */
   fullScheduleZmanimKeys: string[] | null;
+  /** מסך «לוח זמנים מלא» מציג גם תפילות. false = רק זמני היום */
+  fullScheduleShowPrayers: boolean;
   /** אילו ספרי לימוד יומי להציג במסך הלימוד היומי */
   dailyLearningKeys: string[];
   /** הודעת גבאי בת שורה אחת המוצגת בתחתית כל המסכים, בכל הסגנונות */
@@ -189,6 +191,7 @@ const DEFAULT_CONFIG: DisplayConfig = {
   scheduleTimesListMode: "all",
   scheduleZmanimKeys: DEFAULT_SCHEDULE_ZMANIM_KEYS,
   fullScheduleZmanimKeys: null,
+  fullScheduleShowPrayers: true,
   dailyLearningKeys: DEFAULT_DAILY_LEARNING_KEYS,
   footerText: null,
   screens: [{ screenKey: "main", sortOrder: 1, durationSeconds: 25, enabled: true }],
@@ -292,7 +295,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
       location
     };
   }
-  const [screensRes, prayerRes, fullScheduleRes] = await Promise.all([
+  const [screensRes, prayerRes, fullScheduleRes, fullSchedulePrayersRes] = await Promise.all([
     supabase
       .from("minyan_display_screens")
       .select("screen_key, sort_order, duration_seconds, enabled")
@@ -303,8 +306,13 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
         "category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order, parasha_key, lock_to_sunday"
       )
       .eq("minyan_id", chosenMinyan.id),
-    supabase.from("minyanim").select("full_schedule_zmanim_keys").eq("id", chosenMinyan.id).maybeSingle()
+    supabase.from("minyanim").select("full_schedule_zmanim_keys").eq("id", chosenMinyan.id).maybeSingle(),
+    supabase.from("minyanim").select("full_schedule_show_prayers").eq("id", chosenMinyan.id).maybeSingle()
   ]);
+  const fullScheduleShowPrayers =
+    Boolean(fullSchedulePrayersRes.error) ||
+    (fullSchedulePrayersRes.data as { full_schedule_show_prayers?: boolean | null } | null)?.full_schedule_show_prayers !==
+      false;
   const fullScheduleZmanimKeys = fullScheduleRes.error
     ? null
     : sanitizeScheduleZmanimKeys(
@@ -363,6 +371,7 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
     scheduleTimesListMode: normalizeScheduleTimesListMode(chosenMinyan.schedule_times_list),
     scheduleZmanimKeys: sanitizeScheduleZmanimKeys(chosenMinyan.schedule_zmanim_keys) ?? DEFAULT_SCHEDULE_ZMANIM_KEYS,
     fullScheduleZmanimKeys,
+    fullScheduleShowPrayers,
     dailyLearningKeys: resolveDailyLearningKeys(chosenMinyan.daily_learning_keys),
     footerText,
     screens,

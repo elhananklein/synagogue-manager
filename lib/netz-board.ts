@@ -49,6 +49,16 @@ function parseIso(value: string | null | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
+/** גבולות החלון: חצי שעה לפני עלות השחר עד עשר דקות אחרי הנץ. null = אין זמנים תקינים. */
+export function netzWindowBounds(
+  sourceTimes: Record<string, string> | null | undefined
+): { startMs: number; endMs: number } | null {
+  const alotMs = parseIso(sourceTimes?.alotHaShachar);
+  const sunriseMs = parseIso(sourceTimes?.sunrise);
+  if (alotMs == null || sunriseMs == null || sunriseMs <= alotMs) return null;
+  return { startMs: alotMs - NETZ_LEAD_MS, endMs: sunriseMs + NETZ_TAIL_MS };
+}
+
 /**
  * חלון לוח הנץ לפי זמני Hebcal שכבר נטענו.
  * לפני הנץ — ספירה לאחור. מהנץ ועד עשר דקות אחריו — ספירה קדימה.

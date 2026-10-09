@@ -565,33 +565,23 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
         { title: timeSectionsAll[0].title, items: [...fastZmanItems(snapshot), ...todayPrayerItems] },
         { title: timeSectionsAll[1].title, items: [...fastZmanItems(tomorrowSnapshot), ...tomorrowPrayerItems] }
       ];
-  const fullScheduleKeys = displayConfig.fullScheduleZmanimKeys;
+  const fullShowPrayers = displayConfig.fullScheduleShowPrayers;
+  /** «רק זמנים» בלי בחירה נפרדת — לוקחים את הזמנים שסומנו למסך הראשי */
+  const fullScheduleKeys =
+    displayConfig.fullScheduleZmanimKeys ?? (fullShowPrayers ? null : displayConfig.scheduleZmanimKeys);
+  const fullScheduleDay = (daySnapshot: DisplaySnapshot, prayerItems: typeof todayPrayerItems, keys: string[]) => [
+    ...fastZmanItems(daySnapshot),
+    ...buildZmanimRows(daySnapshot.zmanimSourceTimes, keys).map((row) => ({
+      label: row.label,
+      time: row.time,
+      kind: "zman" as const
+    })),
+    ...(fullShowPrayers ? prayerItems : [])
+  ];
   const fullScheduleSections: DisplayTimeSection[] | null = fullScheduleKeys
     ? [
-        {
-          title: timeSectionsAll[0].title,
-          items: [
-            ...fastZmanItems(snapshot),
-            ...buildZmanimRows(snapshot.zmanimSourceTimes, fullScheduleKeys).map((row) => ({
-              label: row.label,
-              time: row.time,
-              kind: "zman" as const
-            })),
-            ...todayPrayerItems
-          ]
-        },
-        {
-          title: timeSectionsAll[1].title,
-          items: [
-            ...fastZmanItems(tomorrowSnapshot),
-            ...buildZmanimRows(tomorrowSnapshot.zmanimSourceTimes, fullScheduleKeys).map((row) => ({
-              label: row.label,
-              time: row.time,
-              kind: "zman" as const
-            })),
-            ...tomorrowPrayerItems
-          ]
-        }
+        { title: timeSectionsAll[0].title, items: fullScheduleDay(snapshot, todayPrayerItems, fullScheduleKeys) },
+        { title: timeSectionsAll[1].title, items: fullScheduleDay(tomorrowSnapshot, tomorrowPrayerItems, fullScheduleKeys) }
       ]
     : null;
 

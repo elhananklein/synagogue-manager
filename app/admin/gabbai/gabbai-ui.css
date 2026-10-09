@@ -197,6 +197,69 @@
   color: #6b4e3e;
 }
 
+.gabbai-section {
+  margin-bottom: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(107 26 46 / 0.14);
+  background: #fffdf8;
+  box-shadow: 0 6px 16px rgb(58 21 32 / 0.05);
+}
+
+.gabbai-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.gabbai-section-head::-webkit-details-marker {
+  display: none;
+}
+
+.gabbai-section-titles {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.gabbai-section-title {
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: #3a1520;
+}
+
+.gabbai-section-summary {
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: #7a5a48;
+}
+
+.gabbai-section-chevron {
+  height: 1.25rem;
+  width: 1.25rem;
+  flex-shrink: 0;
+  color: #6b1a2e;
+  transition: transform 0.15s ease;
+}
+
+.gabbai-section[open] > .gabbai-section-head .gabbai-section-chevron {
+  transform: rotate(180deg);
+}
+
+.gabbai-section[open] > .gabbai-section-head {
+  border-bottom: 1px solid rgb(107 26 46 / 0.1);
+}
+
+.gabbai-section-body {
+  padding: 1rem;
+}
+
 .gabbai-logo-preview {
   display: flex;
   height: 5.5rem;

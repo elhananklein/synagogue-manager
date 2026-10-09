@@ -17,7 +17,7 @@ import { pickDisplayLiveFields, useDisplayLiveRefresh, useHalachicDayLiveRefresh
 import { groupPrayersForDisplay, weekdayMinchaClockTimes, type PrayerDisplayGroupId } from "@/lib/prayer-display-groups";
 import { groupShabbatScheduleByPeriod, type ShabbatScheduleRow } from "@/lib/shabbat-schedule-periods";
 import { FAST_END_LABEL, FAST_START_LABEL, WEEKDAY_ONLY_COMPACT_TILES } from "@/lib/liturgical-additions";
-import { NetzBoard, useDisplayedNetzClock } from "@/components/display/netz-board";
+import { NetzBoard, useNetzWindowOpen } from "@/components/display/netz-board";
 import { useHideMainPrayerTimes } from "@/hooks/use-hide-main-prayer-times";
 import type { NetzPhase } from "@/lib/netz-board";
 
@@ -669,8 +669,7 @@ export function DisplayRotator({
   });
 
   const netzConfigured = screens.some((s) => s.enabled && s.screenKey === "netz");
-  const netzClock = useDisplayedNetzClock(previewNetz, netzConfigured, snapshot.zmanimSourceTimes);
-  const netzVisible = netzClock != null;
+  const netzVisible = useNetzWindowOpen(previewNetz, netzConfigured, snapshot.zmanimSourceTimes);
 
   const enabledScreens = useMemo(() => {
     if (previewNetz) return [{ screenKey: "netz" as const, durationSeconds: 600, enabled: true }];
@@ -889,6 +888,18 @@ export function DisplayRotator({
   const headerHavdalah = shabbat?.havdalah ?? (viewJsDay === 5 || viewJsDay === 6 ? snapshot.havdalah : null);
   const showHeaderShabbatZmanim =
     (viewJsDay === 5 || viewJsDay === 6) && Boolean(headerCandleLighting || headerHavdalah);
+  /** בשבת, ובערב שבת מחצות (כשזמני התפילה מוסתרים). בכותרת עם שעון באמצע הזמנים כבר מוצגים. */
+  const mainShabbatZmanim =
+    (viewJsDay === 6 || (viewJsDay === 5 && hideMainTimes)) &&
+    !useCenterClockBand &&
+    (headerCandleLighting || headerHavdalah)
+      ? {
+          candle: headerCandleLighting,
+          havdalah: headerHavdalah,
+          candleLabel: shabbat?.candleLabel ?? "כניסת שבת",
+          havdalahLabel: shabbat?.havdalahLabel ?? "צאת שבת"
+        }
+      : null;
   const todaySectionItems = timeSections[0]?.items ?? [
     ...snapshot.zmanim.map((row) => ({ label: row.label, time: row.time, kind: "zman" as const })),
     ...prayerSchedule.map((row) => ({ label: row.label, time: row.time, details: row.details, kind: "prayer" as const }))
@@ -912,6 +923,10 @@ export function DisplayRotator({
   const tomorrowPrayerTimes = timeSections[1]?.items?.length
     ? sortedSectionItemsWithMinutes(timeSections[1].items).filter((item) => item.kind === "prayer")
     : [];
+  const fullScheduleShown = fullScheduleSections ?? timeSections;
+  const fullScheduleHasPrayers = fullScheduleShown.some((section) =>
+    section.items.some((item) => item.kind === "prayer")
+  );
   const nextPrayer = (() => {
     if (todayPrayerTimes.length) {
       const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= scheduleNow);
@@ -1252,9 +1267,10 @@ export function DisplayRotator({
           />
         ) : null}
 
-        {currentScreen === "netz" && netzClock ? (
+        {currentScreen === "netz" ? (
           <NetzBoard
-            clock={netzClock}
+            previewPhase={previewNetz}
+            sourceTimes={snapshot.zmanimSourceTimes}
             variant="wall"
             className={cn(
               isWoodSilverRevolution && "display-clock-screen--ws-revolution",
@@ -1360,7 +1376,7 @@ export function DisplayRotator({
           <Card className="display-card display-full-schedule-card">
             <CardHeader className="display-full-schedule-header">
               <CardTitle className="display-times-title">לוח זמנים</CardTitle>
-              {nextPrayer ? (
+              {nextPrayer && fullScheduleHasPrayers ? (
                 <p className="display-next-prayer">
                   התפילה הבאה: {nextPrayer.label} - {nextPrayer.time}
                 </p>
@@ -1368,7 +1384,7 @@ export function DisplayRotator({
             </CardHeader>
             <CardContent className="display-full-schedule-body">
               {(() => {
-                const sections = fullScheduleSections ?? timeSections;
+                const sections = fullScheduleShown;
                 const timeline = [
                   ...sortedSectionItemsWithMinutes(sections[0]?.items ?? []).map((row) => ({
                     ...row,
@@ -1453,6 +1469,7 @@ export function DisplayRotator({
                   amidahAddition={amidahAddition}
                   mevarchimText={shabbatMevarchimText}
                   omitWeekdayAdditions={hideMainTimes}
+                  shabbatZmanim={mainShabbatZmanim}
                 />
               </div>
             </div>
@@ -1773,7 +1790,8 @@ function PrimaryInfoStack({
   hideChromeDates = false,
   amidahAddition,
   mevarchimText,
-  omitWeekdayAdditions = false
+  omitWeekdayAdditions = false,
+  shabbatZmanim = null
 }: {
   snapshot: Snapshot;
   isWoodSilverRevolution: boolean;
@@ -1782,6 +1800,8 @@ function PrimaryInfoStack({
   mevarchimText?: string | null;
   /** אחרי חצות בערב שבת/חג — בלי תוספות של תפילת חול */
   omitWeekdayAdditions?: boolean;
+  /** בשבת עם תוספת אחת בלבד — כניסה ויציאה מתחת לתוספת, כדי שהאזור לא יישאר ריק */
+  shabbatZmanim?: { candle: string | null; havdalah: string | null; candleLabel: string; havdalahLabel: string } | null;
 }) {
   const omerTileText = snapshot.omerShortText ?? snapshot.omerText;
   const extraTiles = [omerTileText, amidahAddition, ...(snapshot.liturgicalTiles ?? [])]
@@ -1793,6 +1813,13 @@ function PrimaryInfoStack({
     .filter(Boolean);
   const lastExtraSpans = additionTiles.length % 2 === 1;
   const additionTileCount = additionTiles.length;
+  const shabbatZmanimTiles =
+    !isWoodSilverRevolution && additionTileCount === 1 && shabbatZmanim
+      ? [
+          { key: "in", Icon: Flame, label: shabbatZmanim.candleLabel, time: shabbatZmanim.candle },
+          { key: "out", Icon: MoonStar, label: shabbatZmanim.havdalahLabel, time: shabbatZmanim.havdalah }
+        ]
+      : null;
   const additionsClass =
     additionTileCount >= 5
       ? "display-main-additions display-main-additions--many"
@@ -1833,7 +1860,10 @@ function PrimaryInfoStack({
           </div>
         </div>
       ) : (
-        <div className={additionsClass} data-addition-count={additionTileCount}>
+        <div
+          className={cn(additionsClass, shabbatZmanimTiles && "display-main-additions--shabbat-zmanim")}
+          data-addition-count={additionTileCount}
+        >
           {additionTiles.map((text, index) => (
             <Card
               key={text}
@@ -1843,6 +1873,17 @@ function PrimaryInfoStack({
                 <p className="display-addition-text">
                   <AdditionTileText text={text} />
                 </p>
+              </CardContent>
+            </Card>
+          ))}
+          {shabbatZmanimTiles?.map(({ key, Icon, label, time }) => (
+            <Card key={key} className="display-card display-main-shabbat-zman">
+              <CardContent className="display-addition-content display-main-shabbat-zman-content !p-0">
+                <span className="display-main-shabbat-zman-heading">
+                  <Icon className="display-main-shabbat-zman-icon" aria-hidden strokeWidth={2.25} />
+                  <span>{label}</span>
+                </span>
+                <span className="display-main-shabbat-zman-time display-accent">{time ?? "—"}</span>
               </CardContent>
             </Card>
           ))}

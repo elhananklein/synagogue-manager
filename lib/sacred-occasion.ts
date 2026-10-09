@@ -112,7 +112,7 @@ export function weeklyOccasionIso(fromIso: string) {
 }
 
 function cleanOccasionLabel(raw: string): string {
-  return stripHebrewNiqqud(raw)
+  return stripHebrewNiqqud(raw.replace(/\u05BE/g, "-"))
     .replace(/\s+\d{3,4}\s*$/g, "")
     .replace(/^[א-ב]['׳]?\s+/u, "")
     .replace(/\s+[א-ב]['׳]?$/u, "")

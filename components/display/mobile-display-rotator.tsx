@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Sparkles, BookOpen, Clock, Sun, Sunrise, CalendarDays, ScrollText, Megaphone, Flame, MoonStar, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
-import { NetzBoard, useDisplayedNetzClock } from "@/components/display/netz-board";
+import { NetzBoard, useNetzWindowOpen } from "@/components/display/netz-board";
 import type { NetzPhase } from "@/lib/netz-board";
 import { AnalogClock } from "@/components/display/analog-clock";
 import { LiveClock } from "@/components/display/live-clock";
@@ -320,7 +320,18 @@ export function MobileDisplayRotator({
       })),
     [timeSections, timeSectionsAll]
   );
-  const fullToggleSections = fullScheduleSections ?? timeSectionsAll;
+  /** הזמנים לפי בחירת הגבאי ללוח המלא; התפילות תמיד, כי בטלפון זה גם המסך הראשי */
+  const fullToggleSections = useMemo(
+    () =>
+      (fullScheduleSections ?? timeSectionsAll).map((section, index) => ({
+        ...section,
+        items: [
+          ...section.items.filter((item) => item.kind !== "prayer"),
+          ...(prayerOnlySections[index]?.items ?? [])
+        ]
+      })),
+    [fullScheduleSections, timeSectionsAll, prayerOnlySections]
+  );
   const visibleTimeSections = showFullSchedule ? fullToggleSections : prayerOnlySections;
   const dayOffset = daysBetweenIso(jerusalemTodayIso, viewDate);
   const canGoPrev = dayOffset > -VIEW_DATE_RANGE_DAYS;
@@ -375,8 +386,7 @@ export function MobileDisplayRotator({
   );
 
   const netzConfigured = screens.some((s) => s.enabled && s.screenKey === "netz");
-  const netzClock = useDisplayedNetzClock(previewNetz, netzConfigured, snapshot.zmanimSourceTimes);
-  const netzVisible = netzClock != null;
+  const netzVisible = useNetzWindowOpen(previewNetz, netzConfigured, snapshot.zmanimSourceTimes);
 
   const enabledScreens = useMemo(() => {
     if (previewNetz) return [{ screenKey: "netz" as const, durationSeconds: 600, enabled: true }];
@@ -472,7 +482,9 @@ export function MobileDisplayRotator({
         {screenKey === "fast" && (
           <FastDayScreen snapshot={snapshot} prayerSchedule={prayerSchedule} onOpenSiddur={setSiddurPrayer} />
         )}
-        {screenKey === "netz" && netzClock ? <NetzBoard clock={netzClock} variant="mobile" /> : null}
+        {screenKey === "netz" ? (
+          <NetzBoard previewPhase={previewNetz} sourceTimes={snapshot.zmanimSourceTimes} variant="mobile" />
+        ) : null}
         {screenKey === "dailyLearning" && <DailyLearningScreen lines={dailyLearning} />}
         {screenKey === "prayerTimes" && (
           <PrayerTimesScreen

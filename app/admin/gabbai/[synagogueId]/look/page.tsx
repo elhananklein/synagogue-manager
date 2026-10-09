@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { GabbaiLoadingPanel } from "@/components/admin/gabbai-loading";
 import { GabbaiMinyanSwitch } from "@/components/admin/gabbai-minyan-switch";
 import { GabbaiSaveBar } from "@/components/admin/gabbai-save-bar";
+import { GabbaiSection } from "@/components/admin/gabbai-section";
 import {
   DISPLAY_FONTS,
   resolveDisplayFont
@@ -64,14 +65,75 @@ function moveScreen(screens: ScreenSetting[], index: number, direction: -1 | 1):
   return renumberScreens(copy);
 }
 
+function ZmanimCheckboxes({ keys, onChange }: { keys: string[]; onChange: (keys: string[]) => void }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {ZMANIM_CATALOG.map((zman) => (
+        <label
+          key={zman.key}
+          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"
+        >
+          <input
+            type="checkbox"
+            checked={keys.includes(zman.key)}
+            onChange={(e) =>
+              onChange(e.target.checked ? [...keys, zman.key] : keys.filter((k) => k !== zman.key))
+            }
+          />
+          {zman.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function designSummary(minyan: GabbaiMinyan) {
+  const parts = [
+    DISPLAY_STYLE_LABELS[minyan.displayStyle],
+    DISPLAY_FONTS.find((item) => item.id === minyan.displayFont)?.label
+  ];
+  if (styleUsesPalettes(minyan.displayStyle)) {
+    parts.push(DISPLAY_PALETTES.find((item) => item.id === minyan.displayPalette)?.label);
+  }
+  return parts.filter(Boolean).join(" · ");
+}
+
+function screensSummary(screens: ScreenSetting[]) {
+  const shown = screens.filter((s) => s.enabled && s.screenKey).length;
+  const unsaved = screens.some((s) => s.unsaved);
+  return `${shown} מסכים מוצגים מתוך ${screens.length}${unsaved ? " · יש מסך חדש שלא נשמר" : ""}`;
+}
+
+function mainSummary(minyan: GabbaiMinyan) {
+  if (minyan.scheduleTimesListMode === "prayers_only") return "רק תפילות";
+  return `תפילות ו־${minyan.scheduleZmanimKeys.length} זמני היום`;
+}
+
+function fullScheduleSummary(minyan: GabbaiMinyan) {
+  const keys = minyan.fullScheduleZmanimKeys;
+  if (minyan.fullScheduleShowPrayers) {
+    if (keys == null) return "תפילות, וזמנים כמו במסך הראשי";
+    return keys.length ? `תפילות ו־${keys.length} זמני היום` : "רק תפילות";
+  }
+  if (keys == null) return "רק זמני היום, כמו במסך הראשי";
+  return keys.length ? `רק ${keys.length} זמני היום, בלי תפילות` : "ריק — לא סומנו זמנים";
+}
+
 export default function GabbaiLookPage({
   params
 }: {
   params: Promise<{ synagogueId: string }>;
 }) {
   const { synagogueId } = use(params);
-  const { minyanim, setMinyanim, fullScheduleReady, isLoading, error: loadError, reload } =
-    useGabbaiWorkspace(synagogueId);
+  const {
+    minyanim,
+    setMinyanim,
+    fullScheduleReady,
+    fullSchedulePrayersReady,
+    isLoading,
+    error: loadError,
+    reload
+  } = useGabbaiWorkspace(synagogueId);
   const [minyanIndex, setMinyanIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -99,7 +161,7 @@ export default function GabbaiLookPage({
     setError(null);
     if (minyan.screens.some((s) => !s.screenKey)) {
       setSaving(false);
-      setError("יש לבחור סוג לכל מסך חדש");
+      setError("יש לבחור סוג לכל מסך חדש (בחלק «מסכים מתחלפים»)");
       return;
     }
     const payload = await saveGabbaiSection(synagogueId, {
@@ -111,6 +173,7 @@ export default function GabbaiLookPage({
       scheduleTimesListMode: minyan.scheduleTimesListMode,
       scheduleZmanimKeys: minyan.scheduleZmanimKeys,
       ...(fullScheduleReady ? { fullScheduleZmanimKeys: minyan.fullScheduleZmanimKeys } : {}),
+      ...(fullSchedulePrayersReady ? { fullScheduleShowPrayers: minyan.fullScheduleShowPrayers } : {}),
       dailyLearningKeys: minyan.dailyLearningKeys,
       footerText: minyan.footerText,
       screens: screensForSave(minyan.screens)
@@ -128,10 +191,12 @@ export default function GabbaiLookPage({
   if (loadError) return <p className="gabbai-err">{loadError}</p>;
   if (!minyan) return <p className="gabbai-hint">אין מניין. הוסיפו מניין בהגדרות בית הכנסת.</p>;
 
+  const mainHasZmanim = minyan.scheduleTimesListMode !== "prayers_only";
+
   return (
     <>
       <h1 className="gabbai-page-title">מראה המסך</h1>
-      <p className="gabbai-page-desc">איך המסך נראה על הקיר: סגנון, צבעים, פונט, ואילו מסכים מתחלפים.</p>
+      <p className="gabbai-page-desc">איך המסך נראה על הקיר. כל חלק נפתח בלחיצה על הכותרת שלו.</p>
       <GabbaiMinyanSwitch
         names={minyanim.map((m) => m.name)}
         index={Math.min(minyanIndex, minyanim.length - 1)}
@@ -147,224 +212,76 @@ export default function GabbaiLookPage({
         </a>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label>
-          <span className="mb-1 block text-sm font-medium">סגנון</span>
-          <select
-            className="h-11 w-full rounded-md border border-border bg-background px-3"
-            value={minyan.displayStyle}
-            onChange={(e) => {
-              const displayStyle = e.target.value as DisplayStyle;
-              update({
-                displayStyle,
-                displayPalette: styleUsesPalettes(displayStyle)
-                  ? resolveDisplayPalette(displayStyle, minyan.displayPalette)
-                  : minyan.displayPalette
-              });
-            }}
-          >
-            {DISPLAY_STYLES.map((style) => (
-              <option key={style} value={style}>
-                {DISPLAY_STYLE_LABELS[style]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="mb-1 block text-sm font-medium">פונט</span>
-          <select
-            className="h-11 w-full rounded-md border border-border bg-background px-3"
-            value={minyan.displayFont}
-            onChange={(e) => update({ displayFont: resolveDisplayFont(e.target.value) })}
-          >
-            {DISPLAY_FONTS.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        {styleUsesPalettes(minyan.displayStyle) ? (
+      <GabbaiSection title="עיצוב" summary={designSummary(minyan)}>
+        <div className="grid gap-4 sm:grid-cols-2">
           <label>
-            <span className="mb-1 block text-sm font-medium">צבעים</span>
+            <span className="mb-1 block text-sm font-medium">סגנון</span>
             <select
               className="h-11 w-full rounded-md border border-border bg-background px-3"
-              value={minyan.displayPalette}
-              onChange={(e) => update({ displayPalette: e.target.value as DisplayPalette })}
+              value={minyan.displayStyle}
+              onChange={(e) => {
+                const displayStyle = e.target.value as DisplayStyle;
+                update({
+                  displayStyle,
+                  displayPalette: styleUsesPalettes(displayStyle)
+                    ? resolveDisplayPalette(displayStyle, minyan.displayPalette)
+                    : minyan.displayPalette
+                });
+              }}
             >
-              {DISPLAY_PALETTES.map((item) => (
+              {DISPLAY_STYLES.map((style) => (
+                <option key={style} value={style}>
+                  {DISPLAY_STYLE_LABELS[style]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="mb-1 block text-sm font-medium">פונט</span>
+            <select
+              className="h-11 w-full rounded-md border border-border bg-background px-3"
+              value={minyan.displayFont}
+              onChange={(e) => update({ displayFont: resolveDisplayFont(e.target.value) })}
+            >
+              {DISPLAY_FONTS.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.label}
                 </option>
               ))}
             </select>
           </label>
-        ) : null}
-        <label className="sm:col-span-2">
-          <span className="mb-1 block text-sm font-medium">הודעה בתחתית המסך</span>
-          <input
-            className="h-11 w-full rounded-md border border-border bg-background px-3"
-            value={minyan.footerText}
-            maxLength={120}
-            placeholder="לדוגמה: ברוכים הבאים"
-            onChange={(e) => update({ footerText: e.target.value })}
-          />
-        </label>
-      </div>
-
-      <div className="mt-8">
-        <h2 className="mb-1 text-base font-extrabold">מה מוצג במסך הראשי</h2>
-        <p className="mb-3 text-sm text-muted-foreground">רק תפילות, או גם זמני היום (זריחה, שקיעה וכו׳).</p>
-        <select
-          className="h-11 w-full max-w-md rounded-md border border-border bg-background px-3"
-          value={minyan.scheduleTimesListMode}
-          onChange={(e) =>
-            update({ scheduleTimesListMode: e.target.value === "prayers_only" ? "prayers_only" : "all" })
-          }
-        >
-          <option value="all">תפילות וגם זמני היום</option>
-          <option value="prayers_only">רק זמני תפילות</option>
-        </select>
-        {minyan.scheduleTimesListMode !== "prayers_only" ? (
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {ZMANIM_CATALOG.map((zman) => {
-              const checked = minyan.scheduleZmanimKeys.includes(zman.key);
-              return (
-                <label key={zman.key} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) =>
-                      update({
-                        scheduleZmanimKeys: e.target.checked
-                          ? [...minyan.scheduleZmanimKeys, zman.key]
-                          : minyan.scheduleZmanimKeys.filter((k) => k !== zman.key)
-                      })
-                    }
-                  />
-                  {zman.label}
-                </label>
-              );
-            })}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="mt-8">
-        <h2 className="mb-1 text-base font-extrabold">מה מוצג בלוח זמנים מלא</h2>
-        <p className="mb-3 text-sm text-muted-foreground">
-          מסך «לוח זמנים מלא» על הקיר, וגם «לוח מלא» בטלפון. אפשר להציג בו זמנים אחרים מאשר במסך הראשי.
-        </p>
-        {fullScheduleReady ? (
-          <>
-            <select
-              className="h-11 w-full max-w-md rounded-md border border-border bg-background px-3"
-              value={minyan.fullScheduleZmanimKeys == null ? "same" : "custom"}
-              onChange={(e) =>
-                update({
-                  fullScheduleZmanimKeys:
-                    e.target.value === "custom"
-                      ? minyan.scheduleTimesListMode === "prayers_only"
-                        ? []
-                        : [...minyan.scheduleZmanimKeys]
-                      : null
-                })
-              }
-            >
-              <option value="same">כמו במסך הראשי</option>
-              <option value="custom">בחירה נפרדת</option>
-            </select>
-            {minyan.fullScheduleZmanimKeys != null ? (
-              <>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {ZMANIM_CATALOG.map((zman) => {
-                    const keys = minyan.fullScheduleZmanimKeys ?? [];
-                    return (
-                      <label
-                        key={zman.key}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={keys.includes(zman.key)}
-                          onChange={(e) =>
-                            update({
-                              fullScheduleZmanimKeys: e.target.checked
-                                ? [...keys, zman.key]
-                                : keys.filter((k) => k !== zman.key)
-                            })
-                          }
-                        />
-                        {zman.label}
-                      </label>
-                    );
-                  })}
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">בלי סימון — יוצגו רק זמני התפילות.</p>
-              </>
-            ) : null}
-          </>
-        ) : (
-          <p className="gabbai-hint">
-            כדי להפעיל, הריצו ב-Supabase את הקובץ supabase/full-schedule-zmanim-keys-migration.sql
-          </p>
-        )}
-      </div>
-
-      <div className="mt-8">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-base font-extrabold">לימוד יומי</h2>
-            <p className="text-sm text-muted-foreground">אילו ספרים יופיעו במסך הלימוד היומי על הקיר ובמובייל.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => update({ dailyLearningKeys: [...DEFAULT_DAILY_LEARNING_KEYS] })}
-            >
-              הכל
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => update({ dailyLearningKeys: [] })}>
-              נקה
-            </Button>
-          </div>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {DAILY_LEARNING_CATALOG.map((book) => {
-            const checked = minyan.dailyLearningKeys.includes(book.id);
-            return (
-              <label
-                key={book.id}
-                className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"
+          {styleUsesPalettes(minyan.displayStyle) ? (
+            <label>
+              <span className="mb-1 block text-sm font-medium">צבעים</span>
+              <select
+                className="h-11 w-full rounded-md border border-border bg-background px-3"
+                value={minyan.displayPalette}
+                onChange={(e) => update({ displayPalette: e.target.value as DisplayPalette })}
               >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) =>
-                    update({
-                      dailyLearningKeys: e.target.checked
-                        ? DAILY_LEARNING_CATALOG.filter(
-                            (item) => item.id === book.id || minyan.dailyLearningKeys.includes(item.id)
-                          ).map((item) => item.id)
-                        : minyan.dailyLearningKeys.filter((k) => k !== book.id)
-                    })
-                  }
-                />
-                {book.title}
-              </label>
-            );
-          })}
+                {DISPLAY_PALETTES.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <label className="sm:col-span-2">
+            <span className="mb-1 block text-sm font-medium">הודעה בתחתית המסך</span>
+            <input
+              className="h-11 w-full rounded-md border border-border bg-background px-3"
+              value={minyan.footerText}
+              maxLength={120}
+              placeholder="לדוגמה: ברוכים הבאים"
+              onChange={(e) => update({ footerText: e.target.value })}
+            />
+          </label>
         </div>
-      </div>
+      </GabbaiSection>
 
-      <div className="mt-8">
+      <GabbaiSection title="מסכים מתחלפים" summary={screensSummary(minyan.screens)}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-base font-extrabold">מסכים מתחלפים</h2>
-            <p className="text-sm text-muted-foreground">מה יופיע על הקיר, ובאיזה סדר. החצים משנים סדר.</p>
-          </div>
+          <p className="text-sm text-muted-foreground">מה יופיע על הקיר, ובאיזה סדר. החצים משנים סדר.</p>
           <Button
             type="button"
             variant="outline"
@@ -497,7 +414,149 @@ export default function GabbaiLookPage({
             </div>
           ))}
         </div>
-      </div>
+      </GabbaiSection>
+
+      <GabbaiSection title="מסך ראשי — מה מוצג" summary={mainSummary(minyan)}>
+        <p className="mb-3 text-sm text-muted-foreground">רק תפילות, או גם זמני היום (זריחה, שקיעה וכו׳).</p>
+        <select
+          className="h-11 w-full max-w-md rounded-md border border-border bg-background px-3"
+          value={minyan.scheduleTimesListMode}
+          onChange={(e) =>
+            update({ scheduleTimesListMode: e.target.value === "prayers_only" ? "prayers_only" : "all" })
+          }
+        >
+          <option value="all">תפילות וגם זמני היום</option>
+          <option value="prayers_only">רק זמני תפילות</option>
+        </select>
+        {mainHasZmanim ? (
+          <div className="mt-3">
+            <ZmanimCheckboxes keys={minyan.scheduleZmanimKeys} onChange={(keys) => update({ scheduleZmanimKeys: keys })} />
+          </div>
+        ) : null}
+      </GabbaiSection>
+
+      <GabbaiSection title="לוח זמנים מלא — מה מוצג" summary={fullScheduleSummary(minyan)}>
+        <p className="mb-3 text-sm text-muted-foreground">
+          «לוח זמנים מלא» הוא מסך שמתחלף על הקיר ומציג רשימה של היום ושל מחר. כאן קובעים מה תהיה ברשימה.
+        </p>
+        <div className="grid gap-4">
+          <div>
+            <span className="mb-1 block text-sm font-medium">1. זמני התפילות של המניין</span>
+            {fullSchedulePrayersReady ? (
+              <label className="inline-flex min-h-11 items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={minyan.fullScheduleShowPrayers}
+                  onChange={(e) => update({ fullScheduleShowPrayers: e.target.checked })}
+                />
+                להציג בלוח גם את התפילות (שחרית, מנחה, ערבית…)
+              </label>
+            ) : (
+              <span className="block text-sm text-muted-foreground">
+                כדי להפעיל, הריצו ב-Supabase את הקובץ supabase/full-schedule-show-prayers-migration.sql
+              </span>
+            )}
+          </div>
+          <label className="max-w-md">
+            <span className="mb-1 block text-sm font-medium">2. זמני היום (עלות השחר, זריחה, שקיעה…)</span>
+            {fullScheduleReady ? (
+              <select
+                className="h-11 w-full rounded-md border border-border bg-background px-3"
+                value={minyan.fullScheduleZmanimKeys == null ? "same" : "custom"}
+                onChange={(e) =>
+                  update({
+                    fullScheduleZmanimKeys:
+                      e.target.value === "custom"
+                        ? mainHasZmanim
+                          ? [...minyan.scheduleZmanimKeys]
+                          : []
+                        : null
+                  })
+                }
+              >
+                <option value="same">אותם זמנים שנבחרו למסך הראשי</option>
+                <option value="custom">לבחור זמנים אחרים ללוח הזה</option>
+              </select>
+            ) : (
+              <span className="block text-sm text-muted-foreground">
+                כדי להפעיל, הריצו ב-Supabase את הקובץ supabase/full-schedule-zmanim-keys-migration.sql
+              </span>
+            )}
+          </label>
+        </div>
+        {fullScheduleReady && minyan.fullScheduleZmanimKeys != null ? (
+          <div className="mt-3">
+            <ZmanimCheckboxes
+              keys={minyan.fullScheduleZmanimKeys}
+              onChange={(keys) => update({ fullScheduleZmanimKeys: keys })}
+            />
+          </div>
+        ) : null}
+        {!minyan.fullScheduleShowPrayers && minyan.fullScheduleZmanimKeys == null && !mainHasZmanim ? (
+          <p className="mt-2 text-sm font-semibold text-[#8a2a1a]">
+            התפילות כבויות, ובמסך הראשי לא נבחרו זמני היום — הלוח יהיה ריק. בחרו «לבחור זמנים אחרים ללוח הזה» וסמנו
+            זמנים.
+          </p>
+        ) : null}
+        {minyan.fullScheduleZmanimKeys != null && minyan.fullScheduleZmanimKeys.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {minyan.fullScheduleShowPrayers
+              ? "לא סומן אף זמן — בלוח יופיעו רק התפילות."
+              : "לא סומן אף זמן, והתפילות כבויות — הלוח יהיה ריק."}
+          </p>
+        ) : null}
+        <p className="mt-3 text-xs text-muted-foreground">
+          בטלפון, במסך «לוח מלא», מופיעים זמני היום שנבחרו כאן, והתפילות מופיעות שם תמיד.
+        </p>
+      </GabbaiSection>
+
+      <GabbaiSection
+        title="לימוד יומי"
+        summary={minyan.dailyLearningKeys.length ? `${minyan.dailyLearningKeys.length} ספרים` : "לא נבחרו ספרים"}
+      >
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">אילו ספרים יופיעו במסך הלימוד היומי על הקיר ובמובייל.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => update({ dailyLearningKeys: [...DEFAULT_DAILY_LEARNING_KEYS] })}
+            >
+              הכל
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => update({ dailyLearningKeys: [] })}>
+              נקה
+            </Button>
+          </div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {DAILY_LEARNING_CATALOG.map((book) => {
+            const checked = minyan.dailyLearningKeys.includes(book.id);
+            return (
+              <label
+                key={book.id}
+                className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) =>
+                    update({
+                      dailyLearningKeys: e.target.checked
+                        ? DAILY_LEARNING_CATALOG.filter(
+                            (item) => item.id === book.id || minyan.dailyLearningKeys.includes(item.id)
+                          ).map((item) => item.id)
+                        : minyan.dailyLearningKeys.filter((k) => k !== book.id)
+                    })
+                  }
+                />
+                {book.title}
+              </label>
+            );
+          })}
+        </div>
+      </GabbaiSection>
 
       <GabbaiSaveBar label="שמירת מראה המסך" saving={saving} message={message} error={error} onSave={() => void save()} />
     </>

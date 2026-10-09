@@ -177,6 +177,16 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     ])
   );
 
+  const fullSchedulePrayersRes = minyanIds.length
+    ? await supabase.from("minyanim").select("id, full_schedule_show_prayers").in("id", minyanIds)
+    : { data: [] as Array<{ id: string; full_schedule_show_prayers: boolean | null }>, error: null };
+  const fullSchedulePrayers = new Map(
+    (fullSchedulePrayersRes.error ? [] : (fullSchedulePrayersRes.data ?? [])).map((row) => [
+      String(row.id),
+      row.full_schedule_show_prayers !== false
+    ])
+  );
+
   if (minyanRes.error || prayerRes.error || screensRes.error || halachaSettingsRes.error) {
     return NextResponse.json({ ok: false, error: "failed_loading_settings" }, { status: 500 });
   }
@@ -204,6 +214,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
       (minyan as { schedule_zmanim_keys?: string[] | null }).schedule_zmanim_keys
     ),
     fullScheduleZmanimKeys: fullScheduleKeys.get(String(minyan.id)) ?? null,
+    fullScheduleShowPrayers: fullSchedulePrayers.get(String(minyan.id)) ?? true,
     dailyLearningKeys: sanitizeDailyLearningKeys(
       (minyan as { daily_learning_keys?: string[] | null }).daily_learning_keys
     ),
@@ -277,7 +288,8 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
         aliyahMessageTemplate: messagingRow?.aliyah_message_template ?? "",
         messagingReady: !messagingRes.error,
         minyanDonationReady: !minyanDonationRes.error,
-        fullScheduleReady: !fullScheduleRes.error
+        fullScheduleReady: !fullScheduleRes.error,
+        fullSchedulePrayersReady: !fullSchedulePrayersRes.error
       },
       minyanim: minyanimWithAgenda,
       halachaSettings,
@@ -317,6 +329,7 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     scheduleTimesListMode?: "all" | "prayers_only";
     scheduleZmanimKeys?: string[] | null;
     fullScheduleZmanimKeys?: string[] | null;
+    fullScheduleShowPrayers?: boolean;
     dailyLearningKeys?: string[] | null;
     footerText?: string | null;
     shabbatAgendaItems?: ShabbatAgendaItemInput[];
@@ -431,6 +444,20 @@ export async function POST(request: Request, context: { params: Promise<{ synago
         const missing = /full_schedule_zmanim_keys/i.test(fullScheduleError.message);
         return NextResponse.json(
           { ok: false, error: missing ? "missing_full_schedule_column" : fullScheduleError.message },
+          { status: 500 }
+        );
+      }
+    }
+    if (payload.fullScheduleShowPrayers !== undefined) {
+      const { error: fullPrayersError } = await supabase
+        .from("minyanim")
+        .update({ full_schedule_show_prayers: payload.fullScheduleShowPrayers !== false })
+        .eq("id", minyanId)
+        .eq("synagogue_id", synagogueId);
+      if (fullPrayersError) {
+        const missing = /full_schedule_show_prayers/i.test(fullPrayersError.message);
+        return NextResponse.json(
+          { ok: false, error: missing ? "missing_full_schedule_prayers_column" : fullPrayersError.message },
           { status: 500 }
         );
       }

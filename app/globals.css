@@ -412,6 +412,7 @@ optgroup {
     }
     .display-main-grid--info-only .display-main-additions--four,
     .display-main-grid--info-only .display-main-additions--many,
+    .display-main-grid--info-only .display-main-additions--shabbat-zmanim,
     .display-main-grid--info-only .display-main-additions[data-addition-count="4"] {
       grid-template-columns: 1fr 1fr;
     }
@@ -668,6 +669,37 @@ optgroup {
     grid-column: 1 / -1;
     justify-self: stretch;
     width: 100%;
+  }
+
+  .display-main-primary-stack .display-main-shabbat-zman-content {
+    flex-direction: column;
+    gap: clamp(0.15rem, 0.8vmin, 0.5rem);
+  }
+  .display-main-shabbat-zman-heading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    font-size: clamp(1.1rem, 2.8vmin, 2.1rem);
+    font-weight: 700;
+    opacity: 0.88;
+  }
+  .display-main-shabbat-zman-icon {
+    width: 1.1em;
+    height: 1.1em;
+    flex-shrink: 0;
+  }
+  .display-main-shabbat-zman-time {
+    font-size: clamp(1.9rem, 6vmin, 4.4rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .display-main-grid--info-only .display-main-shabbat-zman-heading {
+    font-size: clamp(1.4rem, 3.6vmin, 2.8rem);
+  }
+  .display-main-grid--info-only .display-main-shabbat-zman-time {
+    font-size: clamp(2.4rem, 8vmin, 6rem);
   }
 
   .display-addition-content {

@@ -39,6 +39,8 @@ export type GabbaiMinyan = {
   scheduleZmanimKeys: string[];
   /** זמנים למסך «לוח זמנים מלא». null = כמו במסך הראשי */
   fullScheduleZmanimKeys: string[] | null;
+  /** «לוח זמנים מלא» מציג גם תפילות. false = רק זמני היום */
+  fullScheduleShowPrayers: boolean;
   dailyLearningKeys: string[];
   footerText: string;
   prayerSettings: PrayerSetting[];
@@ -111,6 +113,7 @@ export function createDefaultMinyan(): GabbaiMinyan {
     scheduleTimesListMode: "all",
     scheduleZmanimKeys: [...DEFAULT_SCHEDULE_ZMANIM_KEYS],
     fullScheduleZmanimKeys: null,
+    fullScheduleShowPrayers: true,
     dailyLearningKeys: [...DEFAULT_DAILY_LEARNING_KEYS],
     footerText: "",
     prayerSettings: [
@@ -159,6 +162,9 @@ export function mapGabbaiSaveError(error?: string) {
   if (error === "missing_full_schedule_column") {
     return "חסר שדה זמנים ללוח זמנים מלא. הריצו ב-Supabase את הקובץ supabase/full-schedule-zmanim-keys-migration.sql";
   }
+  if (error === "missing_full_schedule_prayers_column") {
+    return "חסר שדה תפילות ללוח זמנים מלא. הריצו ב-Supabase את הקובץ supabase/full-schedule-show-prayers-migration.sql";
+  }
   if (error === "missing_messaging_columns") {
     return "חסרים שדות הודעות לעולים. הריצו ב-Supabase את הקובץ supabase/aliyah-messages-migration.sql";
   }
@@ -186,6 +192,7 @@ export function useGabbaiWorkspace(synagogueId: string) {
   const [messagingReady, setMessagingReady] = useState(false);
   const [minyanDonationReady, setMinyanDonationReady] = useState(false);
   const [fullScheduleReady, setFullScheduleReady] = useState(false);
+  const [fullSchedulePrayersReady, setFullSchedulePrayersReady] = useState(false);
   const [minyanim, setMinyanim] = useState<GabbaiMinyan[]>([]);
   const [halachaSettings, setHalachaSettings] = useState<HalachaSettingsModel>({
     startDate: new Date().toISOString().slice(0, 10),
@@ -217,6 +224,7 @@ export function useGabbaiWorkspace(synagogueId: string) {
             messagingReady?: boolean;
             minyanDonationReady?: boolean;
             fullScheduleReady?: boolean;
+            fullSchedulePrayersReady?: boolean;
           };
           minyanim: GabbaiMinyan[];
           halachaSettings: HalachaSettingsModel;
@@ -237,6 +245,7 @@ export function useGabbaiWorkspace(synagogueId: string) {
       setMessagingReady(Boolean(payload.data.synagogue.messagingReady));
       setMinyanDonationReady(Boolean(payload.data.synagogue.minyanDonationReady));
       setFullScheduleReady(Boolean(payload.data.synagogue.fullScheduleReady));
+      setFullSchedulePrayersReady(Boolean(payload.data.synagogue.fullSchedulePrayersReady));
       setMinyanim(
         (payload.data.minyanim.length ? payload.data.minyanim : [createDefaultMinyan()]).map((m) => {
           const displayStyle = isDisplayStyle(m.displayStyle) ? m.displayStyle : "classic";
@@ -253,6 +262,7 @@ export function useGabbaiWorkspace(synagogueId: string) {
               ? m.scheduleZmanimKeys
               : [...DEFAULT_SCHEDULE_ZMANIM_KEYS],
             fullScheduleZmanimKeys: Array.isArray(m.fullScheduleZmanimKeys) ? m.fullScheduleZmanimKeys : null,
+            fullScheduleShowPrayers: m.fullScheduleShowPrayers !== false,
             dailyLearningKeys: resolveDailyLearningKeys(m.dailyLearningKeys),
             prayerSettings: withClientIds(m.prayerSettings ?? []),
             screens: [...(m.screens ?? [])].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => ({ ...s, unsaved: false })),
@@ -291,6 +301,7 @@ export function useGabbaiWorkspace(synagogueId: string) {
     messagingReady,
     minyanDonationReady,
     fullScheduleReady,
+    fullSchedulePrayersReady,
     minyanim,
     setMinyanim,
     halachaSettings,
