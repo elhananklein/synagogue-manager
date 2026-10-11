@@ -1,5 +1,4 @@
-import { unlink } from "fs/promises";
-import path from "path";
+import { deleteBulletinImage, isManagedBulletinImageUrl } from "@/lib/bulletin-image-storage";
 import { todayJerusalemIso } from "@/lib/bulletin-board-dates";
 import type { BulletinItem, BulletinItemInput } from "@/lib/bulletin-board-types";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase-server";
@@ -39,22 +38,6 @@ function mapRow(row: DbRow): BulletinItem {
   };
 }
 
-function localBulletinImageAbsPath(imageUrl: string | null | undefined): string | null {
-  if (!imageUrl?.startsWith("/uploads/bulletin/")) return null;
-  const rel = imageUrl.replace(/^\//, "").replace(/\//g, path.sep);
-  return path.join(process.cwd(), "public", rel);
-}
-
-async function deleteLocalBulletinImage(imageUrl: string | null | undefined) {
-  const abs = localBulletinImageAbsPath(imageUrl);
-  if (!abs) return;
-  try {
-    await unlink(abs);
-  } catch {
-    /* הקובץ כבר לא קיים */
-  }
-}
-
 export type PurgeExpiredResult = {
   deletedRows: number;
   deletedImages: number;
@@ -81,8 +64,8 @@ async function purgeExpiredBulletinItemsInternal(synagogueId?: string): Promise<
 
   let deletedImages = 0;
   for (const row of expiredRes.data) {
-    if (row.image_url?.startsWith("/uploads/bulletin/")) {
-      await deleteLocalBulletinImage(row.image_url);
+    if (isManagedBulletinImageUrl(row.image_url)) {
+      await deleteBulletinImage(row.image_url);
       deletedImages += 1;
     }
   }
@@ -134,7 +117,7 @@ async function deleteOrphanedBulletinImages(
   for (const row of existingRes.data) {
     const url = row.image_url;
     if (url && !keepUrls.has(url)) {
-      await deleteLocalBulletinImage(url);
+      await deleteBulletinImage(url);
     }
   }
 }

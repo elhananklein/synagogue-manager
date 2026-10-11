@@ -27,6 +27,40 @@ function createEmptyItem(kind: "text" | "image" = "text"): BulletinItemModel {
   };
 }
 
+const UPLOAD_MAX_EDGE = 1920;
+
+const UPLOAD_ERRORS: Record<string, string> = {
+  unauthorized: "פג תוקף הכניסה. התחברו מחדש ונסו שוב.",
+  forbidden: "אין הרשאה לבית הכנסת הזה.",
+  file_too_large: "התמונה גדולה מדי. נסו תמונה קטנה יותר.",
+  invalid_file_type: "סוג הקובץ לא נתמך. אפשר JPG, PNG, WEBP או GIF.",
+  missing_file: "לא נבחר קובץ.",
+  storage_failed: "שמירת התמונה בשרת נכשלה. נסו שוב בעוד רגע.",
+  missing_service_role_key: "השרת לא מוגדר לשמירת קבצים (חסר מפתח Supabase)."
+};
+
+/** מקטין בדפדפן — תמונות מהטלפון עוברות את מגבלת הגודל של השרת */
+async function shrinkImageForUpload(file: File): Promise<Blob> {
+  if (file.type === "image/gif") return file;
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const scale = Math.min(1, UPLOAD_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
+    return blob && blob.size < file.size ? blob : file;
+  } catch {
+    return file;
+  }
+}
+
 function bulletinScheduleLabel(displayFrom: string, displayUntil: string) {
   const today = todayJerusalemIso();
   if (displayUntil < today) return "פג תוקף";
@@ -70,18 +104,25 @@ export function BulletinBoardEditor({
   async function uploadImage(localKey: string, file: File) {
     setUploadingKey(localKey);
     try {
+      const upload = await shrinkImageForUpload(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", upload, upload === file ? file.name : "image.jpg");
       const response = await fetch(`/api/admin/gabbai/${encodeURIComponent(synagogueId)}/bulletin/upload`, {
         method: "POST",
         body: formData
       });
-      const payload = (await response.json()) as { ok: boolean; url?: string; error?: string };
-      if (!payload.ok || !payload.url) {
-        alert(payload.error ?? "העלאת התמונה נכשלה");
+      if (response.status === 413) {
+        alert(UPLOAD_ERRORS.file_too_large);
+        return;
+      }
+      const payload = (await response.json().catch(() => null)) as { ok: boolean; url?: string; error?: string } | null;
+      if (!payload?.ok || !payload.url) {
+        alert((payload?.error && UPLOAD_ERRORS[payload.error]) || `העלאת התמונה נכשלה (${response.status}). נסו שוב.`);
         return;
       }
       updateItem(localKey, { kind: "image", imageUrl: payload.url });
+    } catch {
+      alert("העלאת התמונה נכשלה. בדקו את החיבור לאינטרנט ונסו שוב.");
     } finally {
       setUploadingKey(null);
     }
@@ -180,7 +221,7 @@ export function BulletinBoardEditor({
                     className="h-10 w-full rounded-md border border-border bg-background px-3"
                     value={item.imageUrl ?? ""}
                     onChange={(e) => updateItem(item.localKey, { imageUrl: e.target.value })}
-                    placeholder="https://… או /uploads/bulletin/…"
+                    placeholder="https://…"
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-3">

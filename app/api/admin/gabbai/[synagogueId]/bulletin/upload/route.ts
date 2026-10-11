@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
 import { canManageSynagogue, getAdminContext } from "@/lib/auth";
+import { storeBulletinImage } from "@/lib/bulletin-image-storage";
+import { sniffImageMime } from "@/lib/synagogue-logo-files";
 
-const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+/** Vercel חוסם גוף בקשה מעל 4.5MB — הדפדפן מקטין לפני השליחה */
+const MAX_BYTES = 4.5 * 1024 * 1024;
+
+function isGif(buffer: Buffer) {
+  return buffer.length >= 6 && buffer.toString("ascii", 0, 3) === "GIF";
+}
 
 export async function POST(request: Request, context: { params: Promise<{ synagogueId: string }> }) {
   const { synagogueId } = await context.params;
@@ -25,26 +32,29 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     return NextResponse.json({ ok: false, error: "synagogue_not_found" }, { status: 404 });
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
+  let file: FormDataEntryValue | null;
+  try {
+    file = (await request.formData()).get("file");
+  } catch {
     return NextResponse.json({ ok: false, error: "missing_file" }, { status: 400 });
   }
-  if (!ALLOWED.has(file.type)) {
-    return NextResponse.json({ ok: false, error: "invalid_file_type" }, { status: 400 });
+  if (!(file instanceof File)) {
+    return NextResponse.json({ ok: false, error: "missing_file" }, { status: 400 });
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ ok: false, error: "file_too_large" }, { status: 400 });
   }
-
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : file.type === "image/gif" ? "gif" : "jpg";
-  const filename = `${crypto.randomUUID()}.${ext}`;
-  const relDir = path.join("uploads", "bulletin", synagogueId);
-  const absDir = path.join(process.cwd(), "public", relDir);
-  await mkdir(absDir, { recursive: true });
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(absDir, filename), buffer);
+  if (!sniffImageMime(buffer, file.type) && !isGif(buffer)) {
+    return NextResponse.json({ ok: false, error: "invalid_file_type" }, { status: 400 });
+  }
 
-  const url = `/${relDir.replace(/\\/g, "/")}/${filename}`;
-  return NextResponse.json({ ok: true, url });
+  try {
+    const url = await storeBulletinImage(synagogueId, buffer);
+    return NextResponse.json({ ok: true, url });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("bulletin upload failed", message);
+    return NextResponse.json({ ok: false, error: "storage_failed" }, { status: 500 });
+  }
 }
