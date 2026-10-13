@@ -47,12 +47,12 @@ export function AliyahMessagesPanel({
   const [error, setError] = useState<string | null>(null);
 
   const seen = new Set<string>();
-  const rows: Array<{ person: AliyahCongregantOption; slotLabel: string }> = [];
+  const rows: Array<{ person: AliyahCongregantOption; slotLabel: string; honorLabel: string | null }> = [];
   for (const slot of slots) {
     const person = slot.congregantId ? byId.get(slot.congregantId) : null;
     if (!person || seen.has(person.id)) continue;
     seen.add(person.id);
-    rows.push({ person, slotLabel: slot.label });
+    rows.push({ person, slotLabel: slot.label, honorLabel: slot.honor ? slot.label : null });
   }
   if (!rows.length) return null;
 
@@ -65,7 +65,7 @@ export function AliyahMessagesPanel({
       ? "שמרו את העליות, ואז אפשר לשלוח הודעות."
       : null;
 
-  function send(person: AliyahCongregantOption) {
+  function send(person: AliyahCongregantOption, honorLabel: string | null) {
     const phone = whatsappPhone(person.phone);
     if (!phone || !messaging || !person.messagesToken) return;
     const text = renderAliyahMessage(messaging.template, {
@@ -76,7 +76,8 @@ export function AliyahMessagesPanel({
       hebrewDate: sheet.hebrewDate,
       synagogueName: messaging.synagogueName,
       donationUrl: messaging.donationUrl,
-      optOutUrl: `${getPublicSiteUrl()}${messagesConsentPath(person.messagesToken)}`
+      optOutUrl: `${getPublicSiteUrl()}${messagesConsentPath(person.messagesToken)}`,
+      honorLabel
     });
     window.open(whatsappLink(phone, text), "_blank", "noopener,noreferrer");
     setError(null);
@@ -96,7 +97,7 @@ export function AliyahMessagesPanel({
   return (
     <section className="aliyah-messages">
       <div className="aliyah-slot-head">
-        <h2>הודעות לעולים</h2>
+        <h2>הודעות לעולים ולמקבלי כיבודים</h2>
       </div>
       <p className="aliyah-slot-hint">
         «שליחה בוואטסאפ» פותח את הוואטסאפ שלכם עם ההודעה מוכנה. נשאר רק ללחוץ «שלח».
@@ -109,7 +110,7 @@ export function AliyahMessagesPanel({
       ) : null}
       {error ? <p className="aliyah-slot-hint aliyah-slot-warn">{error}</p> : null}
       <ul className="aliyah-message-list">
-        {rows.map(({ person, slotLabel }) => {
+        {rows.map(({ person, slotLabel, honorLabel }) => {
           const phone = whatsappPhone(person.phone);
           const sentAt = messaging?.sentAt[person.id];
           const reason = !person.messagesConsent
@@ -132,7 +133,7 @@ export function AliyahMessagesPanel({
               {reason ? (
                 <span className="aliyah-message-reason">{reason}</span>
               ) : (
-                <button type="button" className="aliyah-wa-btn" disabled={disabled} onClick={() => send(person)}>
+                <button type="button" className="aliyah-wa-btn" disabled={disabled} onClick={() => send(person, honorLabel)}>
                   <MessageCircle className="h-4 w-4" aria-hidden />
                   {sentAt ? "שליחה שוב" : "שליחה בוואטסאפ"}
                 </button>

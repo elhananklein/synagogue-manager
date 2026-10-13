@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { CongregantThemeFrame } from "@/components/admin/congregant-theme-frame";
 import { CongregantQuickAddDialog } from "@/components/admin/congregant-quick-add-dialog";
 import { AliyahCongregantPicker, preferredTribeForSlot } from "@/components/admin/aliyah-congregant-picker";
@@ -20,7 +20,7 @@ import {
   type ManualChiyuvEvent,
   type ManualChiyuvKind
 } from "@/lib/aliyah-plan-types";
-import { formatAliyahCivilDate, nextExtraAliyahSlot } from "@/lib/aliyah-slots";
+import { formatAliyahCivilDate, insertBeforeHonors, nextExtraAliyahSlot } from "@/lib/aliyah-slots";
 import { ALIYAH_DAY_KIND_LABELS, toAliyahCongregantOption, type AliyahCongregantOption } from "@/lib/aliyah-types";
 import { CONGREGANT_TRIBE_LABELS, type CongregantMinyanOption, type CongregantRecord } from "@/lib/congregant-types";
 
@@ -210,16 +210,17 @@ export function AliyahPlanner({
 
   function addExtraSlot(congregantId?: string) {
     const def = nextExtraAliyahSlot(slots.map((slot) => slot.key));
-    setSlots((prev) => [
-      ...prev,
-      {
-        ...def,
-        primary: congregantId ? candidateFor(congregantId) : null,
-        backups: [],
-        locked: Boolean(congregantId),
-        note: null
-      }
-    ]);
+    setSlots((prev) =>
+      insertBeforeHonors(prev, [
+        {
+          ...def,
+          primary: congregantId ? candidateFor(congregantId) : null,
+          backups: [],
+          locked: Boolean(congregantId),
+          note: null
+        }
+      ])
+    );
     setDirty(true);
   }
 
@@ -445,6 +446,14 @@ export function AliyahPlanner({
     return person?.prayerName || person?.displayName || "מתפלל";
   };
 
+  const addExtraButton = (
+    <div className="aliyah-extra-row">
+      <Button type="button" variant="outline" onClick={() => addExtraSlot()}>
+        הוספת עלייה
+      </Button>
+    </div>
+  );
+
   return (
     <CongregantThemeFrame minyan={minyan}>
       <GabbaiMinyanSwitch
@@ -537,10 +546,18 @@ export function AliyahPlanner({
             עלייה שבחרתם ידנית ננעלת ונשמרת גם כשמחשבים מחדש. מסגרת זהובה = חיוב.
           </p>
 
-          {slots.map((slot) => {
+          {slots.map((slot, slotIndex) => {
             const chiyuv = Boolean(slot.primary?.chiyuv);
+            const firstHonor = slot.honor && !slots[slotIndex - 1]?.honor;
             return (
-              <section key={slot.key} className={`aliyah-slot aliyah-plan-slot${chiyuv ? " aliyah-plan-chiyuv" : ""}`}>
+              <Fragment key={slot.key}>
+              {firstHonor ? (
+                <>
+                  {addExtraButton}
+                  <h2 className="aliyah-honors-title">כיבודים</h2>
+                </>
+              ) : null}
+              <section className={`aliyah-slot aliyah-plan-slot${chiyuv ? " aliyah-plan-chiyuv" : ""}`}>
                 <div className="aliyah-slot-head">
                   <h2>{slot.label}</h2>
                   <div className="aliyah-plan-head-actions">
@@ -615,14 +632,11 @@ export function AliyahPlanner({
                   </div>
                 ) : null}
               </section>
+              </Fragment>
             );
           })}
 
-          <div className="aliyah-extra-row">
-            <Button type="button" variant="outline" onClick={() => addExtraSlot()}>
-              הוספת עלייה
-            </Button>
-          </div>
+          {!slots.some((slot) => slot.honor) ? addExtraButton : null}
 
           {plan.unplaced.length ? (
             <section className="aliyah-plan-box aliyah-plan-box-warn">
@@ -720,7 +734,7 @@ export function AliyahPlanner({
                   >
                     <option value="">לא משנה</option>
                     {slots
-                      .filter((slot) => !slot.extra)
+                      .filter((slot) => !slot.extra && !slot.honor)
                       .map((slot) => (
                         <option key={slot.key} value={slot.key}>
                           {slot.label}

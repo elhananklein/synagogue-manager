@@ -41,6 +41,29 @@ export const YOM_KIPPUR_ALIYAH_SLOTS: AliyahSlotDef[] = [
   MAFTIR
 ];
 
+export const HONOR_SLOTS: AliyahSlotDef[] = [
+  { key: "honor:petichat", label: "פתיחת הארון", expectedTribe: null, honor: true },
+  { key: "honor:hagbaha", label: "הגבהה", expectedTribe: null, honor: true },
+  { key: "honor:glila", label: "גלילה", expectedTribe: null, honor: true },
+  { key: "honor:hovala", label: "הובלת הספר", expectedTribe: null, honor: true }
+];
+
+export function isHonorSlotKey(key: string) {
+  return HONOR_SLOTS.some((slot) => slot.key === key);
+}
+
+export function honorSlotDef(key: string): AliyahSlotDef | null {
+  return HONOR_SLOTS.find((slot) => slot.key === key) ?? null;
+}
+
+/** עליות נוספות נכנסות אחרי העליות ולפני הכיבודים */
+export function insertBeforeHonors<T extends { key: string }>(slots: T[], extras: T[]): T[] {
+  if (!extras.length) return slots;
+  const at = slots.findIndex((slot) => isHonorSlotKey(slot.key));
+  if (at < 0) return [...slots, ...extras];
+  return [...slots.slice(0, at), ...extras, ...slots.slice(at)];
+}
+
 const EXTRA_LETTERS = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ז׳", "ח׳", "ט׳", "י׳"];
 
 export function jerusalemTodayIso(now = new Date()) {
@@ -112,9 +135,9 @@ export function aliyahDayKind(isoDate: string): AliyahDayKind {
 }
 
 export function slotsForAliyahDay(kind: AliyahDayKind): AliyahSlotDef[] {
-  if (kind === "yom-kippur") return YOM_KIPPUR_ALIYAH_SLOTS;
-  if (kind === "yom-tov") return YOM_TOV_ALIYAH_SLOTS;
-  return SHABBAT_ALIYAH_SLOTS;
+  const aliyot =
+    kind === "yom-kippur" ? YOM_KIPPUR_ALIYAH_SLOTS : kind === "yom-tov" ? YOM_TOV_ALIYAH_SLOTS : SHABBAT_ALIYAH_SLOTS;
+  return [...aliyot, ...HONOR_SLOTS];
 }
 
 export function emptySlotState(def: AliyahSlotDef): AliyahSlotState {
@@ -154,6 +177,7 @@ export function parseExtraSlotKey(key: string) {
 
 export function isAliyahSlotKey(key: string) {
   if (SHABBAT_ALIYAH_SLOTS.some((slot) => slot.key === key)) return true;
+  if (isHonorSlotKey(key)) return true;
   return parseExtraSlotKey(key) != null;
 }
 
@@ -284,5 +308,5 @@ export function mergeAliyahSlots(base: AliyahSlotState[], saved: AliyahSlotState
         notes: slot.notes
       };
     });
-  return [...merged, ...extras];
+  return insertBeforeHonors(merged, extras);
 }

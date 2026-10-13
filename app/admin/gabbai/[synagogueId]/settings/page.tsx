@@ -15,6 +15,7 @@ import {
 } from "@/lib/gabbai-workspace";
 import { HAFTARAH_MINHAGIM, PRAYER_NUSACH_LABELS, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 import {
+  ALIYAH_MESSAGE_ALIYAH_PHRASE,
   ALIYAH_MESSAGE_PLACEHOLDERS,
   ALIYAH_MESSAGE_TEMPLATE_MAX,
   DEFAULT_ALIYAH_MESSAGE_TEMPLATE,
@@ -359,6 +360,24 @@ export default function GabbaiSettingsPage({
               synagogueName,
               donationUrl: donationUrl.trim() || "(קישור התרומה)",
               optOutUrl: "(קישור אישי להסרה)"
+            })}
+          </p>
+        </div>
+        <div className="mt-3 rounded-xl border border-border bg-white p-3">
+          <p className="mb-1 text-xs font-bold text-muted-foreground">
+            למקבל כיבוד — המילים «{ALIYAH_MESSAGE_ALIYAH_PHRASE}» מוחלפות בשם הכיבוד (דוגמה: הגבהה)
+          </p>
+          <p className="whitespace-pre-line text-sm leading-relaxed">
+            {renderAliyahMessage(messageTemplate, {
+              firstName: "משה",
+              kind: "shabbat",
+              parashaLabel: "נח",
+              weekday: "שבת",
+              hebrewDate: "",
+              synagogueName,
+              donationUrl: donationUrl.trim() || "(קישור התרומה)",
+              optOutUrl: "(קישור אישי להסרה)",
+              honorLabel: "הגבהה"
             })}
           </p>
         </div>

@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Copy, FileDown, FileUp, Loader2, Plus, Search } from "lucide-react";
+import { Copy, FileDown, FileSpreadsheet, FileUp, LayoutList, Loader2, Plus, Printer, Search, Table2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CongregantThemeFrame } from "@/components/admin/congregant-theme-frame";
 import { mapCongregantApiError } from "@/lib/congregant-errors";
@@ -16,6 +16,7 @@ import {
   type CongregantRecord
 } from "@/lib/congregant-types";
 import type { CongregantImportIssue } from "@/lib/congregant-excel";
+import { buildRoster, filterRoster, rosterQueryString, type RosterFilter } from "@/lib/congregant-roster";
 
 export function CongregantsManager({
   synagogueId,
@@ -46,16 +47,46 @@ export function CongregantsManager({
   const base = `/admin/gabbai/${encodeURIComponent(synagogueId)}/congregants`;
   const joinHref = congregantJoinPath(synagogueId, minyanFilter || null);
 
-  const visible = useMemo(() => {
-    const q = query.trim();
-    return congregants.filter((row) => {
-      if (!showInactive && !row.isActive) return false;
-      if (minyanFilter && row.minyanId !== minyanFilter) return false;
-      if (!q) return true;
-      const hay = `${congregantDisplayName(row)} ${row.phone} ${row.email} ${row.fatherName}`.includes(q);
-      return hay;
-    });
-  }, [congregants, minyanFilter, query, showInactive]);
+  const [view, setView] = useState<"cards" | "table">("cards");
+  const [exporting, setExporting] = useState(false);
+  const rosterFilter: RosterFilter = useMemo(
+    () => ({ minyanId: minyanFilter || null, includeInactive: showInactive, query }),
+    [minyanFilter, showInactive, query]
+  );
+  const visible = useMemo(() => filterRoster(congregants, rosterFilter), [congregants, rosterFilter]);
+  const roster = useMemo(
+    () => (view === "table" ? buildRoster(congregants, rosterFilter) : null),
+    [view, congregants, rosterFilter]
+  );
+  const exportBase = `/api/admin/gabbai/${encodeURIComponent(synagogueId)}/congregants/export`;
+
+  async function exportExcel() {
+    setExporting(true);
+    setError(null);
+    try {
+      const response = await fetch(`${exportBase}?${rosterQueryString(rosterFilter)}`, { cache: "no-store" });
+      if (!response.ok) {
+        setError("הייצוא לאקסל נכשל");
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "רשימת מתפללים.xlsx";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("הייצוא לאקסל נכשל");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function openPrint() {
+    const qs = rosterQueryString(rosterFilter);
+    window.open(`${exportBase}?format=print${qs ? `&${qs}` : ""}`, "_blank", "noopener");
+  }
 
   const pending = visible.filter((row) => row.registrationStatus === "pending");
   const approved = visible.filter((row) => row.registrationStatus !== "pending");
@@ -276,6 +307,27 @@ export function CongregantsManager({
         />
       </div>
 
+      <div className="congregant-toolbar congregant-view-bar">
+        <div className="congregant-view-toggle" role="group" aria-label="תצוגת הרשימה">
+          <button type="button" aria-pressed={view === "cards"} onClick={() => setView("cards")}>
+            <LayoutList className="h-4 w-4" />
+            כרטיסים
+          </button>
+          <button type="button" aria-pressed={view === "table"} onClick={() => setView("table")}>
+            <Table2 className="h-4 w-4" />
+            טבלה
+          </button>
+        </div>
+        <Button type="button" variant="outline" onClick={() => void exportExcel()} disabled={exporting || !visible.length}>
+          {exporting ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="ml-1 h-4 w-4" />}
+          ייצוא לאקסל
+        </Button>
+        <Button type="button" variant="outline" onClick={openPrint} disabled={!visible.length}>
+          <Printer className="ml-1 h-4 w-4" />
+          הדפסה / PDF
+        </Button>
+      </div>
+
       {message ? <p className="gabbai-ok mb-3">{message}</p> : null}
       {error ? <p className="gabbai-err mb-3">{error}</p> : null}
 
@@ -327,6 +379,42 @@ export function CongregantsManager({
 
       {visible.length === 0 ? (
         <p className="congregant-empty">אין עדיין מתפללים ברשימה. הוסיפו אחד, ייבאו מאקסל, או שלחו את קישור ההרשמה.</p>
+      ) : roster ? (
+        <div className="congregant-table-wrap">
+          <p className="congregant-table-count">
+            {roster.rows.length} מתפללים · לפי א-ב של שם המשפחה
+          </p>
+          <div className="congregant-table-scroll">
+            <table className="congregant-table">
+              <thead>
+                <tr>
+                  {roster.columns.map((col) => (
+                    <th key={col.key}>{col.header}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {roster.rows.map((row) => (
+                  <tr key={row.id} className={row.status ? "is-flagged" : undefined}>
+                    {roster.columns.map((col) => (
+                      <td key={col.key} className={col.key === "lastName" ? "is-last" : undefined}>
+                        {col.key === "lastName" || col.key === "firstName" ? (
+                          <Link href={`${base}/${row.id}`}>{row[col.key] || "—"}</Link>
+                        ) : col.key === "phone" && row.phone ? (
+                          <a href={`tel:${row.phone}`} dir="ltr">
+                            {row.phone}
+                          </a>
+                        ) : (
+                          row[col.key]
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <>
           {pending.length ? (

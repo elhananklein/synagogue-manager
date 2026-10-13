@@ -167,11 +167,11 @@ function weeksPhrase(weeks: number): string {
 }
 
 function isYisraelSlot(slot: AliyahSlotDef) {
-  return slot.key !== "maftir" && slot.expectedTribe !== "kohen" && slot.expectedTribe !== "levi";
+  return !slot.honor && slot.key !== "maftir" && slot.expectedTribe !== "kohen" && slot.expectedTribe !== "levi";
 }
 
 function eligibleFor(person: RecommendPerson, slot: AliyahSlotDef): boolean {
-  if (slot.key === "maftir") return true;
+  if (slot.key === "maftir" || slot.honor) return true;
   if (slot.expectedTribe === "kohen") return person.tribe === "kohen";
   if (slot.expectedTribe === "levi") return person.tribe === "levi";
   return person.tribe === "yisrael";
@@ -334,6 +334,7 @@ export function recommendAliyahPlan(input: RecommendInput): AliyahPlan {
     label: slot.label,
     expectedTribe: slot.expectedTribe,
     extra: slot.extra,
+    honor: slot.honor,
     primary: null,
     backups: [],
     locked: false,
@@ -350,7 +351,9 @@ export function recommendAliyahPlan(input: RecommendInput): AliyahPlan {
   const addExtraSlot = (def?: AliyahSlotDef) => {
     const extra = def ?? nextExtraAliyahSlot(slots.map((slot) => slot.key));
     const slot: WorkingSlot = { ...extra, primary: null, backups: [], locked: false, note: null };
-    slots.push(slot);
+    const at = slots.findIndex((item) => item.honor);
+    if (at < 0) slots.push(slot);
+    else slots.splice(at, 0, slot);
     return slot;
   };
 
@@ -444,6 +447,7 @@ export function recommendAliyahPlan(input: RecommendInput): AliyahPlan {
   const backupUsed = new Set<string>();
   for (const slot of slots) {
     if (settings.backupsCount <= 0) break;
+    if (slot.honor) continue;
     const exclude = new Set(used);
     const chiyuvFirst = [...unplacedIds]
       .map((id) => byId.get(id))
@@ -462,6 +466,7 @@ export function recommendAliyahPlan(input: RecommendInput): AliyahPlan {
     label: slot.label,
     expectedTribe: slot.expectedTribe,
     extra: slot.extra,
+    honor: slot.honor,
     primary: slot.primary,
     backups: slot.backups,
     locked: slot.locked,

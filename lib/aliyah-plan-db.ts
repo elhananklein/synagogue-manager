@@ -1,5 +1,13 @@
 import { getSupabaseAdminClient } from "@/lib/supabase-server";
-import { addDaysIso, aliyahDayMeta, extraAliyahSlot, isAliyahSlotKey, parseExtraSlotKey } from "@/lib/aliyah-slots";
+import {
+  addDaysIso,
+  aliyahDayMeta,
+  extraAliyahSlot,
+  insertBeforeHonors,
+  isAliyahSlotKey,
+  isHonorSlotKey,
+  parseExtraSlotKey
+} from "@/lib/aliyah-slots";
 import { recommendAliyahPlan, type RecommendHistoryRow, type RecommendPerson, type RecommendRelation } from "@/lib/aliyah-recommend";
 import {
   isManualChiyuvKind,
@@ -271,10 +279,10 @@ async function loadAliyahHistory(supabase: Admin, synagogueId: string, beforeIso
   const out: RecommendHistoryRow[] = [];
   for (let i = 0; i < ids.length; i += 150) {
     const chunk = ids.slice(i, i + 150);
-    const res = await supabase.from("aliyah_assignments").select("session_id, congregant_id").in("session_id", chunk);
+    const res = await supabase.from("aliyah_assignments").select("session_id, congregant_id, slot_key").in("session_id", chunk);
     if (res.error) continue;
     for (const row of res.data ?? []) {
-      if (!row.congregant_id) continue;
+      if (!row.congregant_id || isHonorSlotKey(String(row.slot_key))) continue;
       out.push({ serviceDate: dateBySession.get(String(row.session_id)) ?? "", congregantId: String(row.congregant_id) });
     }
   }
@@ -348,7 +356,13 @@ function savedSlotsToPlanSlots(serviceDate: string, rows: PlanSlotRow[]): Aliyah
   }
   const toCandidate = (row: PlanSlotRow | undefined): AliyahPlanCandidate | null =>
     row?.congregant_id ? { congregantId: row.congregant_id, reason: row.reason ?? "", chiyuv: null } : null;
-  const build = (def: { key: string; label: string; expectedTribe: AliyahPlanSlot["expectedTribe"]; extra?: boolean }): AliyahPlanSlot => {
+  const build = (def: {
+    key: string;
+    label: string;
+    expectedTribe: AliyahPlanSlot["expectedTribe"];
+    extra?: boolean;
+    honor?: boolean;
+  }): AliyahPlanSlot => {
     const list = (byKey.get(def.key) ?? []).sort((a, b) => a.rank - b.rank);
     const primaryRow = list.find((row) => row.rank === 0);
     return {
@@ -356,6 +370,7 @@ function savedSlotsToPlanSlots(serviceDate: string, rows: PlanSlotRow[]): Aliyah
       label: def.label,
       expectedTribe: def.expectedTribe,
       extra: def.extra,
+      honor: def.honor,
       primary: toCandidate(primaryRow),
       backups: list
         .filter((row) => row.rank > 0)
@@ -371,7 +386,7 @@ function savedSlotsToPlanSlots(serviceDate: string, rows: PlanSlotRow[]): Aliyah
     .filter((n): n is number => n != null)
     .sort((a, b) => a - b)
     .map((n) => build(extraAliyahSlot(n)));
-  return [...slots, ...extras];
+  return insertBeforeHonors(slots, extras);
 }
 
 /** תכנון שמור אם יש, אחרת חישוב טרי. בתכנון שמור — השכבות וחיובים שלא שובצו מחושבים מחדש. */

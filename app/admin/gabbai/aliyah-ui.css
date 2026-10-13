@@ -233,6 +233,14 @@
   margin: 0.35rem 0 1rem;
 }
 
+.aliyah-honors-title {
+  margin: 1.25rem 0 0.6rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border, #d9d2c4);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
 .aliyah-modal-overlay {
   position: fixed;
   inset: 0;

@@ -51,11 +51,15 @@ export function renderAliyahPlanBody(input: AliyahPlanHtmlInput): string {
   const head = `${cell};background:#eef3f5;font-size:13px;color:${MUTED};font-weight:700`;
 
   const rows = plan.slots
-    .map((slot) => {
+    .map((slot, index) => {
       const chiyuv = Boolean(slot.primary?.chiyuv);
       const rowBg = chiyuv ? `background:${GOLD_BG};` : "";
       const note = slot.note ? `<div style="font-size:12px;color:#b3261e;margin-top:4px">${esc(slot.note)}</div>` : "";
-      return `<tr style="${rowBg}">
+      const honorsHead =
+        slot.honor && !plan.slots[index - 1]?.honor
+          ? `<tr><td colspan="4" style="${head};font-size:15px">כיבודים</td></tr>\n`
+          : "";
+      return `${honorsHead}<tr style="${rowBg}">
   <td style="${cell};font-weight:700;font-size:16px;white-space:nowrap;width:1%">${esc(slot.label)}</td>
   <td style="${cell}">${candidateHtml(slot.primary, people, false)}${note}</td>
   <td style="${cell};width:30%">${slot.backups.length ? slot.backups.map((item) => candidateHtml(item, people, true)).join("") : `<span style="color:${MUTED}">—</span>`}</td>

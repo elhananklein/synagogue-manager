@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { CongregantThemeFrame } from "@/components/admin/congregant-theme-frame";
 import { CongregantQuickAddDialog } from "@/components/admin/congregant-quick-add-dialog";
 import { AliyahCongregantPicker, preferredTribeForSlot } from "@/components/admin/aliyah-congregant-picker";
@@ -13,6 +13,7 @@ import { mapAliyahApiError } from "@/lib/aliyah-errors";
 import {
   extraAliyahSlot,
   formatAliyahCivilDate,
+  insertBeforeHonors,
   listAliyahOccasionOptions,
   nextExtraAliyahSlot,
   parseExtraSlotKey,
@@ -152,7 +153,7 @@ export function AliyahSheetEditor({
         noKohenResolution: null,
         notes: ""
       }));
-    setSlots([...filled, ...extras]);
+    setSlots(insertBeforeHonors(filled, extras));
     setPlanPrefill(null);
     setDirty(true);
     setMessage("מולא לפי התכנון — תקנו את מי שלא עלה בפועל ושמרו");
@@ -227,6 +228,24 @@ export function AliyahSheetEditor({
   }
 
   const addSlot = addForKey ? slots.find((slot) => slot.key === addForKey) : null;
+
+  const addExtraButton = (
+    <div className="aliyah-extra-row">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          const extra = nextExtraAliyahSlot(slots.map((slot) => slot.key));
+          setSlots((prev) =>
+            insertBeforeHonors(prev, [{ ...extra, congregantId: null, noKohenResolution: null, notes: "" }])
+          );
+          setDirty(true);
+        }}
+      >
+        הוספת עלייה
+      </Button>
+    </div>
+  );
 
   return (
     <CongregantThemeFrame minyan={minyan}>
@@ -305,8 +324,9 @@ export function AliyahSheetEditor({
       {loading ? <GabbaiLoadingPanel title="טוען עליות…" /> : null}
 
       {!loading
-        ? slots.map((slot) => {
+        ? slots.map((slot, slotIndex) => {
             const person = slot.congregantId ? byId.get(slot.congregantId) : null;
+            const firstHonor = slot.honor && !slots[slotIndex - 1]?.honor;
             const mismatch =
               slot.expectedTribe && person && person.tribe !== slot.expectedTribe
                 ? slot.key === "kohen" && person.tribe === "yisrael"
@@ -314,7 +334,14 @@ export function AliyahSheetEditor({
                   : `בדרך כלל כאן ${CONGREGANT_TRIBE_LABELS[slot.expectedTribe]}`
                 : null;
             return (
-              <section key={slot.key} className="aliyah-slot">
+              <Fragment key={slot.key}>
+              {firstHonor ? (
+                <>
+                  {addExtraButton}
+                  <h2 className="aliyah-honors-title">כיבודים</h2>
+                </>
+              ) : null}
+              <section className="aliyah-slot">
                 <div className="aliyah-slot-head">
                   <h2>{slot.label}</h2>
                   {slot.extra ? (
@@ -348,33 +375,12 @@ export function AliyahSheetEditor({
                 ) : null}
                 {mismatch ? <p className={`aliyah-slot-hint ${slot.key === "kohen" ? "" : "aliyah-slot-warn"}`}>{mismatch}</p> : null}
               </section>
+              </Fragment>
             );
           })
         : null}
 
-      {!loading ? (
-        <div className="aliyah-extra-row">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              const extra = nextExtraAliyahSlot(slots.map((slot) => slot.key));
-              setSlots((prev) => [
-                ...prev,
-                {
-                  ...extra,
-                  congregantId: null,
-                  noKohenResolution: null,
-                  notes: ""
-                }
-              ]);
-              setDirty(true);
-            }}
-          >
-            הוספת עלייה
-          </Button>
-        </div>
-      ) : null}
+      {!loading && !slots.some((slot) => slot.honor) ? addExtraButton : null}
 
       {!loading && sheet ? (
         <AliyahMessagesPanel

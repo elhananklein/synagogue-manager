@@ -27,6 +27,8 @@ export type AliyahSlotDef = {
   label: string;
   expectedTribe: AliyahExpectedTribe;
   extra?: boolean;
+  /** כיבוד (פתיחת הארון, הגבהה…) — לא עלייה: לא נספר בסבב העליות ולא מקבל הודעת «יישר כוח על העלייה» */
+  honor?: boolean;
 };
 
 export type AliyahNoKohenResolution = "yisrael" | "skip";

@@ -31,7 +31,11 @@ export type AliyahMessageValues = {
   synagogueName: string;
   donationUrl: string;
   optOutUrl: string;
+  /** למקבל כיבוד: «העלייה לתורה» בנוסח מוחלף בשם הכיבוד (הגבהה, גלילה…) */
+  honorLabel?: string | null;
 };
+
+export const ALIYAH_MESSAGE_ALIYAH_PHRASE = "העלייה לתורה";
 
 export function aliyahMessageGreeting(kind: AliyahDayKind) {
   if (kind === "shabbat") return "שבוע טוב";
@@ -67,7 +71,10 @@ export function renderAliyahMessage(template: string | null | undefined, values:
     "{קישור_תרומה}": values.donationUrl.trim(),
     "{קישור_הסרה}": values.optOutUrl
   };
-  return resolveAliyahMessageTemplate(template).replace(/\{[^{}\s]+\}/g, (token) => replacements[token] ?? token);
+  const honor = values.honorLabel?.trim();
+  const base = resolveAliyahMessageTemplate(template);
+  const text = honor ? base.split(ALIYAH_MESSAGE_ALIYAH_PHRASE).join(honor) : base;
+  return text.replace(/\{[^{}\s]+\}/g, (token) => replacements[token] ?? token);
 }
 
 export function validateAliyahMessageTemplate(template: string) {

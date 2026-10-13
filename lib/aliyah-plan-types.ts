@@ -110,6 +110,7 @@ export type AliyahPlanSlot = {
   label: string;
   expectedTribe: AliyahExpectedTribe;
   extra?: boolean;
+  honor?: boolean;
   primary: AliyahPlanCandidate | null;
   backups: AliyahPlanCandidate[];
   locked: boolean;
