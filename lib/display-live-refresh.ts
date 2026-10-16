@@ -29,6 +29,7 @@ export function pickDisplayLiveFields(view: DisplayView) {
     shabbatMevarchimText: view.shabbatMevarchimText,
     halacha: view.halacha,
     prayerSchedule: view.prayerSchedule,
+    tonightPrayers: view.tonightPrayers ?? [],
     timeSections: view.timeSections,
     timeSectionsAll: view.timeSectionsAll,
     fullScheduleSections: view.fullScheduleSections ?? null,

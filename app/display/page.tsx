@@ -66,6 +66,7 @@ export default async function DisplayPage({
         shabbatMevarchimText={view.shabbatMevarchimText}
         halacha={view.halacha}
         prayerSchedule={view.prayerSchedule}
+        tonightPrayers={view.tonightPrayers}
         timeSections={view.timeSections}
         fullScheduleSections={view.fullScheduleSections}
         shabbat={view.shabbat}

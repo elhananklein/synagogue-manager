@@ -80,12 +80,21 @@ type Snapshot = {
 
 /** Auto-scroll for "זמני היום ותפילות" — set here so deploys always pick up pace changes (inline beats stale CSS). */
 const TIMES_LIST_SCROLL_DURATION_SEC = 120;
+const TONIGHT_PRAYER_GRACE_MINUTES = 15;
 
 /**
  * WoodSilver בלבד: כותרת יום|שעון|תאריך עברי במסגרת עגולה, תוספות+דף במסגרת עגולה, ללא רשימת זמני תפילה.
  * ל־false — חוזרים לכותרת הקלאסית (שם בית כנסת, נקודות, שעון) ולרשימת הזמנים גם ב־woodSilver.
  */
 const ENABLE_WOOD_SILVER_REVOLUTION_LAYOUT = true;
+
+function jerusalemMinutesOfIso(iso: string | null): number | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const local = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
+  return local.getHours() * 60 + local.getMinutes();
+}
 
 function sortedSectionItemsWithMinutes(
   items: Array<{ label: string; time: string; details?: string; kind: "zman" | "prayer" }>
@@ -98,38 +107,43 @@ function sortedSectionItemsWithMinutes(
     .sort((a, b) => a.totalMinutes - b.totalMinutes);
 }
 
-/** חלון קבוע ללוח זמנים: הזמן הקודם + 9 קדימה (10 סה״כ, 5 בכל שורה). */
+/**
+ * חלון של 10 קוביות ללוח זמנים (5 בכל שורה):
+ * עד השקיעה — כל זמני היום (אם אין מקום, נעלמים הראשונים שעברו), ומשלימים מזמני מחר;
+ * מהשקיעה — 5 האחרונים של היום בשורה העליונה, וזמני מחר בשורה התחתונה;
+ * אחרי הזמן האחרון של היום — רק זמני מחר.
+ */
 function fullScheduleWindow<T extends { totalMinutes: number; dayOffset: number }>(
   rows: T[],
   nowMinutes: number,
+  sunsetMinutes: number | null,
   windowSize = 10
 ): { visible: T[]; nextLocalIdx: number } {
   if (!rows.length) return { visible: [], nextLocalIdx: -1 };
 
-  const nextIdx = rows.findIndex(
-    (row) => row.dayOffset > 0 || row.totalMinutes >= nowMinutes
-  );
-  const effectiveNext = nextIdx === -1 ? rows.length : nextIdx;
+  const today = rows.filter((row) => row.dayOffset === 0);
+  const tomorrow = rows.filter((row) => row.dayOffset > 0);
+  const pastCount = today.filter((row) => row.totalMinutes < nowMinutes).length;
+  const afterSunset = sunsetMinutes !== null && nowMinutes >= sunsetMinutes;
+  const keepToday = afterSunset ? Math.ceil(windowSize / 2) : windowSize;
 
-  let start = Math.max(0, effectiveNext - 1);
-  if (start + windowSize > rows.length) {
-    start = Math.max(0, rows.length - windowSize);
-  }
-  const visible = rows.slice(start, start + windowSize);
+  const todayShown =
+    pastCount >= today.length ? [] : today.slice(Math.min(pastCount, Math.max(0, today.length - keepToday)));
+  const visible = [...todayShown, ...tomorrow].slice(0, windowSize);
   const nextLocalIdx = visible.findIndex(
     (row) => row.dayOffset > 0 || row.totalMinutes >= nowMinutes
   );
   return { visible, nextLocalIdx };
 }
 
-type PrayerTimesGroupedRow = PrayerSlot & { totalMinutes: number; group: PrayerDisplayGroupId };
+type PrayerTimesGroupedRow = PrayerSlot & { totalMinutes: number; group: PrayerDisplayGroupId; tonight?: boolean };
 
 function PrayerTimesGroupedRows({
   groups,
   nextHighlight
 }: {
   groups: Array<{ group: PrayerDisplayGroupId; title: string; rows: PrayerTimesGroupedRow[] }>;
-  nextHighlight: { label: string; time: string } | null;
+  nextHighlight: { label: string; time: string; tonight?: boolean } | null;
 }) {
   return (
     <div className="display-prayer-times-groups">
@@ -141,7 +155,8 @@ function PrayerTimesGroupedRows({
               const isNext =
                 nextHighlight !== null &&
                 nextHighlight.label === item.label &&
-                nextHighlight.time === item.time;
+                nextHighlight.time === item.time &&
+                Boolean(nextHighlight.tonight) === Boolean(item.tonight);
               return (
                 <div
                   key={`${group}-${item.label}-${item.time}-${idx}`}
@@ -554,6 +569,7 @@ export function DisplayRotator({
   snapshot: snapshotProp,
   halacha: halachaProp,
   prayerSchedule: prayerScheduleProp,
+  tonightPrayers: tonightPrayersProp = [],
   timeSections: timeSectionsProp,
   fullScheduleSections: fullScheduleSectionsProp = null,
   footerText: footerTextProp,
@@ -583,6 +599,8 @@ export function DisplayRotator({
     segments?: string[];
   } | null;
   prayerSchedule: PrayerSlot[];
+  /** תפילות היום האזרחי אחרי שהקיר עבר ליום הבא (צאת הכוכבים) */
+  tonightPrayers?: PrayerSlot[];
   timeSections: TimeSection[];
   /** מסך «לוח זמנים מלא» עם זמנים נפרדים. null = כמו timeSections */
   fullScheduleSections?: TimeSection[] | null;
@@ -625,6 +643,7 @@ export function DisplayRotator({
     snapshot: snapshotProp,
     halacha: halachaProp,
     prayerSchedule: prayerScheduleProp,
+    tonightPrayers: tonightPrayersProp,
     timeSections: timeSectionsProp,
     fullScheduleSections: fullScheduleSectionsProp as TimeSection[] | null,
     footerText: footerTextProp ?? null,
@@ -644,6 +663,7 @@ export function DisplayRotator({
     snapshot,
     halacha,
     prayerSchedule,
+    tonightPrayers,
     timeSections,
     fullScheduleSections,
     footerText,
@@ -900,6 +920,17 @@ export function DisplayRotator({
           havdalahLabel: shabbat?.havdalahLabel ?? "צאת שבת"
         }
       : null;
+  /** אחרי צאת הכוכבים: תפילות הערב של היום שנגמר נשארות עד רבע שעה אחרי זמנן */
+  const tonightSlots = useMemo(
+    () =>
+      scheduleNow !== -1
+        ? []
+        : sortedSectionItemsWithMinutes(
+            tonightPrayers.map((slot) => ({ ...slot, kind: "prayer" as const }))
+          ).filter((row) => row.totalMinutes >= nowMinutes - TONIGHT_PRAYER_GRACE_MINUTES),
+    [tonightPrayers, scheduleNow, nowMinutes]
+  );
+  const tonightNextIdx = tonightSlots.findIndex((row) => row.totalMinutes >= nowMinutes);
   const todaySectionItems = timeSections[0]?.items ?? [
     ...snapshot.zmanim.map((row) => ({ label: row.label, time: row.time, kind: "zman" as const })),
     ...prayerSchedule.map((row) => ({ label: row.label, time: row.time, details: row.details, kind: "prayer" as const }))
@@ -918,6 +949,7 @@ export function DisplayRotator({
       nextSlotIndexInSection = alotTomorrowIdx;
     }
   }
+  if (tonightNextIdx >= 0) nextSectionIndex = -1;
 
   const todayPrayerTimes = todayMergedTimes.filter((item) => item.kind === "prayer");
   const tomorrowPrayerTimes = timeSections[1]?.items?.length
@@ -928,6 +960,7 @@ export function DisplayRotator({
     section.items.some((item) => item.kind === "prayer")
   );
   const nextPrayer = (() => {
+    if (tonightNextIdx >= 0) return tonightSlots[tonightNextIdx];
     if (todayPrayerTimes.length) {
       const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= scheduleNow);
       if (idx !== -1) return todayPrayerTimes[idx];
@@ -937,15 +970,29 @@ export function DisplayRotator({
   })();
   /** להדגשה במסך «זמני תפילות» בלבד — רק תפילה עתידית באותו יום לפי שעון ירושלים */
   const nextTodayPrayerHighlight =
-    todayPrayerTimes.length === 0
-      ? null
-      : (() => {
-          const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= scheduleNow);
-          if (idx === -1) return null;
-          const p = todayPrayerTimes[idx];
-          return { label: p.label, time: p.time };
-        })();
-  const prayerTimesScreenGroups = useMemo(() => groupPrayersForDisplay(prayerSchedule), [prayerSchedule]);
+    tonightNextIdx >= 0
+      ? { label: tonightSlots[tonightNextIdx].label, time: tonightSlots[tonightNextIdx].time, tonight: true }
+      : todayPrayerTimes.length === 0
+        ? null
+        : (() => {
+            const idx = todayPrayerTimes.findIndex((item) => item.totalMinutes >= scheduleNow);
+            if (idx === -1) return null;
+            const p = todayPrayerTimes[idx];
+            return { label: p.label, time: p.time };
+          })();
+  const prayerTimesScreenGroups = useMemo(() => {
+    const groups = groupPrayersForDisplay(prayerSchedule);
+    if (!tonightSlots.length) return groups;
+    const shown = tonightPrayers.filter((slot) =>
+      tonightSlots.some((row) => row.label === slot.label && row.time === slot.time)
+    );
+    const tonightGroups = groupPrayersForDisplay(shown).map((group) => ({
+      ...group,
+      title: group.title ? `${group.title} הערב` : "הערב",
+      rows: group.rows.map((row) => ({ ...row, tonight: true }))
+    }));
+    return [...tonightGroups, ...groups];
+  }, [prayerSchedule, tonightPrayers, tonightSlots]);
   const prayerTimesNextBanner =
     nextTodayPrayerHighlight &&
     (() => {
@@ -1023,7 +1070,35 @@ export function DisplayRotator({
     const rowCenter = rowRect.top - listRect.top + rowRect.height / 2;
     const containerCenter = listEl.clientHeight / 2;
     setTimesStartOffset(Math.max(0, rowCenter - containerCenter));
-  }, [shouldAutoScroll, nextSectionIndex, nextSlotIndexInSection, timeSections, index]);
+  }, [shouldAutoScroll, nextSectionIndex, nextSlotIndexInSection, timeSections, index, tonightSlots, tonightNextIdx]);
+
+  const renderTonightSection = (duplicate: boolean) =>
+    tonightSlots.length ? (
+      <div className="display-time-section">
+        <div className="display-time-section-title">הערב</div>
+        {tonightSlots.map((item, idx) => {
+          const isNext = idx === tonightNextIdx;
+          return (
+            <div
+              key={`${duplicate ? "dup-" : ""}tonight-${item.label}-${item.time}-${idx}`}
+              data-next-anchor={isNext && !duplicate ? "true" : undefined}
+              className={`display-time-row display-time-row--prayer ${isNext ? "display-time-row--next" : ""}`}
+            >
+              <div className="display-time-main">
+                <span className="display-time-label display-time-label--prayer">{`תפילת ${item.label}`}</span>
+                <span className="display-time-value-wrap">
+                  <span className={isNext ? "display-time-value display-time-value--next" : "display-time-value"}>
+                    {item.time}
+                  </span>
+                </span>
+              </div>
+              {item.details ? <div className="display-time-details">{item.details}</div> : null}
+            </div>
+          );
+        })}
+        <div className="display-times-section-gap" />
+      </div>
+    ) : null;
 
   return (
     <main
@@ -1400,7 +1475,22 @@ export function DisplayRotator({
                 if (!timeline.length) {
                   return <p className="display-daily-learning-empty">אין זמנים להצגה.</p>;
                 }
-                const { visible, nextLocalIdx } = fullScheduleWindow(timeline, scheduleNow, 10);
+                const tonightTiles = fullScheduleHasPrayers
+                  ? tonightSlots.map((row) => ({ ...row, dayOffset: 0 as const, dayTag: "הערב" as string | null }))
+                  : [];
+                const dayWindow = fullScheduleWindow(
+                  timeline,
+                  scheduleNow,
+                  jerusalemMinutesOfIso(snapshot.zmanimSourceTimes?.sunset ?? null),
+                  10 - tonightTiles.length
+                );
+                const visible = [...tonightTiles, ...dayWindow.visible];
+                const nextLocalIdx =
+                  tonightTiles.length && tonightNextIdx >= 0
+                    ? tonightNextIdx
+                    : dayWindow.nextLocalIdx >= 0
+                      ? tonightTiles.length + dayWindow.nextLocalIdx
+                      : -1;
                 return (
                   <AutoFit
                     className="display-full-schedule-fit"
@@ -1520,6 +1610,7 @@ export function DisplayRotator({
                     className={isAutoScrollReady ? "display-times-track display-times-track--auto" : "display-times-track"}
                     style={timesTrackStyle}
                   >
+                  {renderTonightSection(false)}
                   {timeSections.map((section, sectionIndex) => (
                     <div key={`section-${sectionIndex}`} className="display-time-section">
                       <div className="display-time-section-title">{section.title}</div>
@@ -1555,6 +1646,7 @@ export function DisplayRotator({
                     </div>
                   ))}
                   {shouldAutoScroll ? <div className="display-times-loop-gap" /> : null}
+                  {shouldAutoScroll ? renderTonightSection(true) : null}
                   {shouldAutoScroll ? timeSections.map((section, sectionIndex) => (
                     <div key={`dup-section-${sectionIndex}`} className="display-time-section">
                       <div className="display-time-section-title">{section.title}</div>

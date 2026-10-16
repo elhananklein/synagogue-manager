@@ -103,6 +103,8 @@ export type DisplayView = {
     segments?: string[];
   } | null;
   prayerSchedule: DisplayPrayerSlot[];
+  /** אחרי צאת הכוכבים התצוגה כבר על היום הבא — אלה תפילות היום האזרחי, כדי שערבית של הערב לא תיעלם */
+  tonightPrayers: DisplayPrayerSlot[];
   timeSections: DisplayTimeSection[];
   /** תמיד כולל זמנים הלכתיים — למתג המובייל, בלי לשנות את הגדרת הגבאי לקיר */
   timeSectionsAll: DisplayTimeSection[];
@@ -224,13 +226,18 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
   const todayIsoDate =
     requestedIso === jerusalemTodayIso ? seedSnap.liturgicalIso || requestedIso : requestedIso;
   const tomorrowIsoDate = getTomorrowIsoDateFrom(todayIsoDate);
+  const tonightIsoDate = requestedIso === jerusalemTodayIso && todayIsoDate !== requestedIso ? requestedIso : null;
 
   const todaySundayIso = addDaysIsoDate(todayIsoDate, -jsWeekdayFromIsoDate(todayIsoDate));
   const tomorrowSundayIso = addDaysIsoDate(tomorrowIsoDate, -jsWeekdayFromIsoDate(tomorrowIsoDate));
+  const tonightSundayIso = tonightIsoDate
+    ? addDaysIsoDate(tonightIsoDate, -jsWeekdayFromIsoDate(tonightIsoDate))
+    : null;
   const extraSundayIsos: string[] = [];
   if (settingsNeedSundayZmanim(displayConfig.prayerSettings)) {
-    for (const iso of [todaySundayIso, tomorrowSundayIso]) {
-      if (iso !== todayIsoDate && iso !== tomorrowIsoDate && !extraSundayIsos.includes(iso)) {
+    for (const iso of [todaySundayIso, tomorrowSundayIso, tonightSundayIso]) {
+      if (!iso) continue;
+      if (iso !== todayIsoDate && iso !== tomorrowIsoDate && iso !== tonightIsoDate && !extraSundayIsos.includes(iso)) {
         extraSundayIsos.push(iso);
       }
     }
@@ -245,7 +252,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
           )
         );
 
-  const [[snapshot, tomorrowSnapshot, publicData, bulletinItems, shabbatAgendaItems], sundaySnaps] =
+  const [[snapshot, tomorrowSnapshot, publicData, bulletinItems, shabbatAgendaItems, tonightSnapshot], sundaySnaps] =
     await Promise.all([
       Promise.all([
         seedSnap.liturgicalIso === todayIsoDate
@@ -254,7 +261,10 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
         getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, lockCivilIso: true, ...snapshotOptions }),
         getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
         getPublishedBulletinItems(synagogueId),
-        getPublishedShabbatAgendaItems(displayConfig.minyanId)
+        getPublishedShabbatAgendaItems(displayConfig.minyanId),
+        tonightIsoDate
+          ? getDisplaySnapshot(tonightIsoDate, { omitDailyLearning: true, lockCivilIso: true, ...snapshotOptions })
+          : Promise.resolve(null)
       ]),
       extraSundayPromise
     ]);
@@ -273,56 +283,44 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     : resolveDisplayFont(displayConfig.displayFont);
 
   const todayJsDay = jsWeekdayFromIsoDate(todayIsoDate);
-  const tomorrowJsDay = jsWeekdayFromIsoDate(tomorrowIsoDate);
-  const isShabbatToday = todayJsDay === 6;
 
   const zmanimByIso = (iso: string): Record<string, string> => {
     if (iso === todayIsoDate) return snapshot.zmanimSourceTimes;
     if (iso === tomorrowIsoDate) return tomorrowSnapshot.zmanimSourceTimes;
+    if (iso === tonightIsoDate && tonightSnapshot) return tonightSnapshot.zmanimSourceTimes;
     const extraIndex = extraSundayIsos.indexOf(iso);
     if (extraIndex >= 0) return sundaySnaps[extraIndex]?.zmanimSourceTimes ?? snapshot.zmanimSourceTimes;
     return snapshot.zmanimSourceTimes;
   };
 
   const fridayAgendaMinchaTime = erevMinchaTimeFromShabbatAgenda(shabbatAgendaItems);
-  const prayerSchedule = applyFridayAgendaMinchaTime(
-    buildPrayerScheduleForDay(
-      displayConfig.prayerSettings,
-      snapshot.zmanimSourceTimes,
-      todayJsDay,
-      isShabbatToday,
-      snapshot.parashaCatalogKey,
-      zmanimByIso(todaySundayIso),
-      displayConfig.parashaCatalog,
-    {
-      treatAsErev: isErevShabbatonDate(todayIsoDate),
-      isChag: isChagOnDate(tomorrowIsoDate),
-      isChagDay: isChagOnDate(todayIsoDate)
-    }
-    ),
-    isErevShabbatonDate(todayIsoDate),
-    fridayAgendaMinchaTime,
-    isChagOnDate(tomorrowIsoDate)
-  );
-  const tomorrowPrayerSchedule = applyFridayAgendaMinchaTime(
-    buildPrayerScheduleForDay(
-      displayConfig.prayerSettings,
-      tomorrowSnapshot.zmanimSourceTimes,
-      tomorrowJsDay,
-      tomorrowJsDay === 6,
-      tomorrowSnapshot.parashaCatalogKey,
-      zmanimByIso(tomorrowSundayIso),
-      displayConfig.parashaCatalog,
-    {
-      treatAsErev: isErevShabbatonDate(tomorrowIsoDate),
-      isChag: isChagOnDate(addDaysIsoDate(tomorrowIsoDate, 1)),
-      isChagDay: isChagOnDate(tomorrowIsoDate)
-    }
-    ),
-    isErevShabbatonDate(tomorrowIsoDate),
-    fridayAgendaMinchaTime,
-    isChagOnDate(addDaysIsoDate(tomorrowIsoDate, 1))
-  );
+  const prayerScheduleForIso = (iso: string, daySnapshot: DisplaySnapshot) => {
+    const jsDay = jsWeekdayFromIsoDate(iso);
+    const nextIso = addDaysIsoDate(iso, 1);
+    return applyFridayAgendaMinchaTime(
+      buildPrayerScheduleForDay(
+        displayConfig.prayerSettings,
+        daySnapshot.zmanimSourceTimes,
+        jsDay,
+        jsDay === 6,
+        daySnapshot.parashaCatalogKey,
+        zmanimByIso(addDaysIsoDate(iso, -jsDay)),
+        displayConfig.parashaCatalog,
+        {
+          treatAsErev: isErevShabbatonDate(iso),
+          isChag: isChagOnDate(nextIso),
+          isChagDay: isChagOnDate(iso)
+        }
+      ),
+      isErevShabbatonDate(iso),
+      fridayAgendaMinchaTime,
+      isChagOnDate(nextIso)
+    );
+  };
+  const prayerSchedule = prayerScheduleForIso(todayIsoDate, snapshot);
+  const tomorrowPrayerSchedule = prayerScheduleForIso(tomorrowIsoDate, tomorrowSnapshot);
+  const tonightPrayerSchedule =
+    tonightIsoDate && tonightSnapshot ? prayerScheduleForIso(tonightIsoDate, tonightSnapshot) : [];
 
   const forceYaalehRaw = singleQueryParam(params.forceYaaleh);
   const forceYaaleh = forceYaalehRaw === "1" || forceYaalehRaw === "true";
@@ -519,6 +517,10 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     shabbat?.agendaDays.length
       ? applyPublishedAgendaToDaySlots(tomorrowPrayerSchedule, shabbat.agendaDays, shabbat.erevIso, tomorrowIsoDate)
       : tomorrowPrayerSchedule;
+  const tonightSlots =
+    tonightIsoDate && shabbat?.agendaDays.length
+      ? applyPublishedAgendaToDaySlots(tonightPrayerSchedule, shabbat.agendaDays, shabbat.erevIso, tonightIsoDate)
+      : tonightPrayerSchedule;
 
   const todayZmanimItems = [
     ...fastZmanItems(snapshot),
@@ -609,6 +611,7 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
         }
       : null,
     prayerSchedule: todaySlots,
+    tonightPrayers: tonightSlots,
     timeSections,
     timeSectionsAll,
     fullScheduleSections,
