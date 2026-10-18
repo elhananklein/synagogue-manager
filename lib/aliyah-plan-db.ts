@@ -299,6 +299,7 @@ function toRecommendPerson(row: CongregantRecord, yahrzeits: CongregantYahrzeit[
     minyanId: row.minyanId,
     isActive: row.isActive,
     receivesAliyah: row.receivesAliyah,
+    isGuest: Boolean(row.isGuest),
     approved: row.registrationStatus !== "pending",
     hebrewBirth: isValidHebrewDate(birth) ? birth : null,
     yahrzeits: yahrzeits?.length ? yahrzeits : row.yahrzeits

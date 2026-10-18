@@ -10,6 +10,9 @@ export function mapCongregantApiError(error?: string) {
   if (error === "missing_messages_consent") {
     return "חסרים שדות אישור הודעות. הריצו ב-Supabase את הקובץ supabase/aliyah-messages-migration.sql";
   }
+  if (error === "missing_guest_column") {
+    return "חסרת תמיכה באורחים. הריצו ב-Supabase את הקובץ supabase/congregants-guest-migration.sql";
+  }
   if (error === "missing_family_yahrzeit") {
     return "חסרים שדות משפחה ויארצייט. הריצו ב-Supabase את הקובץ supabase/congregants-family-yahrzeit-migration.sql";
   }

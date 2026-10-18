@@ -61,6 +61,7 @@ function hebrewBirthLabel(row: CongregantRecord) {
 }
 
 function statusLabel(row: CongregantRecord) {
+  if (row.isGuest) return "אורח";
   if (row.registrationStatus === "pending") return "ממתין לאישור";
   if (!row.isActive) return "לא פעיל";
   return "";

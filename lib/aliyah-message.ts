@@ -33,9 +33,16 @@ export type AliyahMessageValues = {
   optOutUrl: string;
   /** למקבל כיבוד: «העלייה לתורה» בנוסח מוחלף בשם הכיבוד (הגבהה, גלילה…) */
   honorLabel?: string | null;
+  /** לעולה: «העלייה לתורה» מוחלף ב־עליית «שלישי» (או שם העלייה) */
+  aliyahLabel?: string | null;
 };
 
 export const ALIYAH_MESSAGE_ALIYAH_PHRASE = "העלייה לתורה";
+
+export function aliyahMessageAliyahPhrase(slotLabel: string) {
+  const label = slotLabel.trim();
+  return label ? `עליית «${label}»` : ALIYAH_MESSAGE_ALIYAH_PHRASE;
+}
 
 export function aliyahMessageGreeting(kind: AliyahDayKind) {
   if (kind === "shabbat") return "שבוע טוב";
@@ -72,8 +79,10 @@ export function renderAliyahMessage(template: string | null | undefined, values:
     "{קישור_הסרה}": values.optOutUrl
   };
   const honor = values.honorLabel?.trim();
+  const aliyah = values.aliyahLabel?.trim();
   const base = resolveAliyahMessageTemplate(template);
-  const text = honor ? base.split(ALIYAH_MESSAGE_ALIYAH_PHRASE).join(honor) : base;
+  const phrase = honor ? honor : aliyah ? aliyahMessageAliyahPhrase(aliyah) : null;
+  const text = phrase ? base.split(ALIYAH_MESSAGE_ALIYAH_PHRASE).join(phrase) : base;
   return text.replace(/\{[^{}\s]+\}/g, (token) => replacements[token] ?? token);
 }
 

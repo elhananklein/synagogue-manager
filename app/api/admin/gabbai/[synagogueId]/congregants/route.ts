@@ -28,13 +28,24 @@ export async function POST(request: Request, context: { params: Promise<{ synago
 
   const minyanim = await listSynagogueMinyanOptions(access.synagogueId);
   const minyanIds = new Set(minyanim.map((item) => item.id));
-  const payload = (await request.json()) as Partial<CongregantInput>;
+  const payload = (await request.json()) as Partial<CongregantInput> & { guest?: boolean };
+  const asGuest = payload.guest === true || payload.isGuest === true;
   const input: CongregantInput = {
-    ...emptyCongregantInput(),
+    ...emptyCongregantInput(typeof payload.minyanId === "string" ? payload.minyanId : null),
     ...payload,
-    registrationStatus: "approved"
+    isGuest: asGuest,
+    registrationStatus: "approved",
+    ...(asGuest
+      ? {
+          gender: payload.gender === "female" ? "female" : "male",
+          tribe: payload.tribe === "kohen" || payload.tribe === "levi" ? payload.tribe : "yisrael",
+          messagesConsent: payload.messagesConsent !== false,
+          receivesAliyah: true,
+          isActive: true
+        }
+      : {})
   };
-  const validated = validateCongregantInput(input, minyanIds);
+  const validated = validateCongregantInput(input, minyanIds, { guest: asGuest });
   if (validated.errors.length) {
     return NextResponse.json({ ok: false, error: validated.errors[0], errors: validated.errors }, { status: 400 });
   }

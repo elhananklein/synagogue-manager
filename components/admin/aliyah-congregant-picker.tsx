@@ -39,7 +39,8 @@ export function AliyahCongregantPicker({
   usedIds,
   preferTribe = null,
   onSelect,
-  onAddNew
+  onAddNew,
+  onAddGuest
 }: {
   congregants: AliyahCongregantOption[];
   minyanId: string | null;
@@ -49,6 +50,7 @@ export function AliyahCongregantPicker({
   preferTribe?: CongregantTribe | null;
   onSelect: (id: string | null) => void;
   onAddNew: (query: string) => void;
+  onAddGuest?: (query: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -87,8 +89,9 @@ export function AliyahCongregantPicker({
       <div>
         <div className="aliyah-picked">
           <strong>{selected.displayName}</strong>
+          {selected.isGuest ? <span className="aliyah-tribe">אורח</span> : null}
           <span className="aliyah-tribe">{CONGREGANT_TRIBE_LABELS[selected.tribe]}</span>
-          {selected.prayerName ? <span>{selected.prayerName}</span> : null}
+          {selected.prayerName && !selected.isGuest ? <span>{selected.prayerName}</span> : null}
           <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
             שינוי
           </Button>
@@ -160,9 +163,10 @@ export function AliyahCongregantPicker({
                   {row.displayName}
                   {usedIds.has(row.id) && row.id !== selectedId ? " · כבר בעלייה אחרת" : ""}
                   <small>
+                    {row.isGuest ? "אורח · " : ""}
                     {CONGREGANT_TRIBE_LABELS[row.tribe]}
                     {row.minyanId && row.minyanId !== minyanId && row.minyanName ? ` · ${row.minyanName}` : ""}
-                    {row.prayerName ? ` · ${row.prayerName}` : ""}
+                    {row.prayerName && !row.isGuest ? ` · ${row.prayerName}` : ""}
                     {row.registrationStatus === "pending" ? " · ממתין לאישור" : ""}
                     {!row.receivesAliyah ? " · לא מסומן כעולה" : ""}
                   </small>
@@ -182,11 +186,26 @@ export function AliyahCongregantPicker({
           >
             הוספת מתפלל חדש{query.trim() ? ` — ${query.trim()}` : ""}
           </button>
+          {onAddGuest ? (
+            <button
+              type="button"
+              className="aliyah-picker-add"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => onAddGuest(query)}
+            >
+              עליית אורח{query.trim() ? ` — ${query.trim()}` : ""}
+            </button>
+          ) : null}
         </div>
       ) : null}
       <button type="button" className="aliyah-add-link" onClick={() => onAddNew(query)}>
         העולה לא ברשימה — הוספת מתפלל
       </button>
+      {onAddGuest ? (
+        <button type="button" className="aliyah-add-link" onClick={() => onAddGuest(query)}>
+          עליית אורח (שם ומשפחה בלבד)
+        </button>
+      ) : null}
     </div>
   );
 }

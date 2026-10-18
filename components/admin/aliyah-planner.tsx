@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { CongregantThemeFrame } from "@/components/admin/congregant-theme-frame";
 import { CongregantQuickAddDialog } from "@/components/admin/congregant-quick-add-dialog";
+import { AliyahGuestAddDialog } from "@/components/admin/aliyah-guest-add-dialog";
 import { AliyahCongregantPicker, preferredTribeForSlot } from "@/components/admin/aliyah-congregant-picker";
 import { GabbaiLoadingPanel } from "@/components/admin/gabbai-loading";
 import { GabbaiMinyanSwitch } from "@/components/admin/gabbai-minyan-switch";
@@ -88,6 +89,7 @@ export function AliyahPlanner({
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [addTarget, setAddTarget] = useState<AddTarget | null>(null);
+  const [addMode, setAddMode] = useState<"full" | "guest">("full");
   const [addQuery, setAddQuery] = useState("");
   const [eventDraft, setEventDraft] = useState<{
     congregantId: string | null;
@@ -599,6 +601,12 @@ export function AliyahPlanner({
                   onSelect={(id) => setPrimary(slot.key, id)}
                   onAddNew={(query) => {
                     setAddTarget({ kind: "slot", key: slot.key });
+                    setAddMode("full");
+                    setAddQuery(query);
+                  }}
+                  onAddGuest={(query) => {
+                    setAddTarget({ kind: "slot", key: slot.key });
+                    setAddMode("guest");
                     setAddQuery(query);
                   }}
                 />
@@ -709,6 +717,12 @@ export function AliyahPlanner({
                 onSelect={(id) => setEventDraft((prev) => ({ ...prev, congregantId: id }))}
                 onAddNew={(query) => {
                   setAddTarget({ kind: "event" });
+                  setAddMode("full");
+                  setAddQuery(query);
+                }}
+                onAddGuest={(query) => {
+                  setAddTarget({ kind: "event" });
+                  setAddMode("guest");
                   setAddQuery(query);
                 }}
               />
@@ -780,7 +794,7 @@ export function AliyahPlanner({
         onSave={() => void save()}
       />
 
-      {addTarget ? (
+      {addTarget && addMode === "full" ? (
         <CongregantQuickAddDialog
           synagogueId={synagogueId}
           minyanim={minyanim}
@@ -788,6 +802,23 @@ export function AliyahPlanner({
           nameQuery={addQuery}
           onClose={() => {
             setAddTarget(null);
+            setAddMode("full");
+            setAddQuery("");
+          }}
+          onCreated={handleCreated}
+        />
+      ) : null}
+      {addTarget && addMode === "guest" ? (
+        <AliyahGuestAddDialog
+          synagogueId={synagogueId}
+          minyanId={minyan.id}
+          nameQuery={addQuery}
+          preferredTribe={
+            addTarget.kind === "slot" ? preferredTribeForSlot(addTarget.key) : null
+          }
+          onClose={() => {
+            setAddTarget(null);
+            setAddMode("full");
             setAddQuery("");
           }}
           onCreated={handleCreated}

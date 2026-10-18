@@ -65,7 +65,7 @@ export function AliyahMessagesPanel({
       ? "שמרו את העליות, ואז אפשר לשלוח הודעות."
       : null;
 
-  function send(person: AliyahCongregantOption, honorLabel: string | null) {
+  function send(person: AliyahCongregantOption, honorLabel: string | null, aliyahLabel: string | null) {
     const phone = whatsappPhone(person.phone);
     if (!phone || !messaging || !person.messagesToken) return;
     const text = renderAliyahMessage(messaging.template, {
@@ -77,7 +77,8 @@ export function AliyahMessagesPanel({
       synagogueName: messaging.synagogueName,
       donationUrl: messaging.donationUrl,
       optOutUrl: `${getPublicSiteUrl()}${messagesConsentPath(person.messagesToken)}`,
-      honorLabel
+      honorLabel,
+      aliyahLabel: honorLabel ? null : aliyahLabel
     });
     window.open(whatsappLink(phone, text), "_blank", "noopener,noreferrer");
     setError(null);
@@ -133,7 +134,12 @@ export function AliyahMessagesPanel({
               {reason ? (
                 <span className="aliyah-message-reason">{reason}</span>
               ) : (
-                <button type="button" className="aliyah-wa-btn" disabled={disabled} onClick={() => send(person, honorLabel)}>
+                <button
+                  type="button"
+                  className="aliyah-wa-btn"
+                  disabled={disabled}
+                  onClick={() => send(person, honorLabel, honorLabel ? null : slotLabel)}
+                >
                   <MessageCircle className="h-4 w-4" aria-hidden />
                   {sentAt ? "שליחה שוב" : "שליחה בוואטסאפ"}
                 </button>

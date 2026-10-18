@@ -52,6 +52,7 @@ export type AliyahCongregantOption = {
   phone: string;
   isActive: boolean;
   receivesAliyah: boolean;
+  isGuest: boolean;
   registrationStatus: CongregantRegistrationStatus;
   messagesConsent: boolean;
   messagesToken: string;
@@ -104,6 +105,7 @@ export function toAliyahCongregantOption(row: CongregantRecord): AliyahCongregan
     phone: row.phone,
     isActive: row.isActive,
     receivesAliyah: row.receivesAliyah,
+    isGuest: Boolean(row.isGuest),
     registrationStatus: row.registrationStatus,
     messagesConsent: row.messagesConsent,
     messagesToken: row.messagesToken

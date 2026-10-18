@@ -460,6 +460,7 @@ export function CongregantsManager({
                     </p>
                   </span>
                   <span className="congregant-badges">
+                    {row.isGuest ? <span className="congregant-badge">אורח</span> : null}
                     {row.messagesConsent ? (
                       <span className="congregant-badge congregant-badge--consent" title="אישר לקבל הודעות">
                         הודעות

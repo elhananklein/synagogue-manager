@@ -34,11 +34,12 @@ type CongregantRow = {
   mother_name: string | null;
   gender?: string | null;
   tribe: string;
-  gregorian_birth_date: string;
-  hebrew_birth_year: number;
-  hebrew_birth_month: number;
-  hebrew_birth_day: number;
+  gregorian_birth_date: string | null;
+  hebrew_birth_year: number | null;
+  hebrew_birth_month: number | null;
+  hebrew_birth_day: number | null;
   born_after_sunset: boolean;
+  is_guest?: boolean | null;
   father_died_gregorian_date?: string | null;
   father_died_hebrew_year?: number | null;
   father_died_hebrew_month?: number | null;
@@ -83,11 +84,12 @@ export function inputToRow(synagogueId: string, input: CongregantInput) {
     mother_name: trimToNull(input.motherName),
     gender: input.gender,
     tribe: input.tribe,
-    gregorian_birth_date: input.gregorianBirthDate,
-    hebrew_birth_year: input.hebrewBirthYear,
-    hebrew_birth_month: input.hebrewBirthMonth,
-    hebrew_birth_day: input.hebrewBirthDay,
+    gregorian_birth_date: isIsoDate(input.gregorianBirthDate) ? input.gregorianBirthDate : null,
+    hebrew_birth_year: input.hebrewBirthYear > 0 ? input.hebrewBirthYear : null,
+    hebrew_birth_month: input.hebrewBirthYear > 0 ? input.hebrewBirthMonth : null,
+    hebrew_birth_day: input.hebrewBirthYear > 0 ? input.hebrewBirthDay : null,
     born_after_sunset: input.bornAfterSunset,
+    is_guest: input.isGuest === true,
     father_died_gregorian_date: fatherDeath.gregorianDate,
     father_died_hebrew_year: fatherDeath.year,
     father_died_hebrew_month: fatherDeath.month,
@@ -123,16 +125,17 @@ export function rowToRecord(row: CongregantRow): CongregantRecord {
     motherName: row.mother_name ?? "",
     gender: isCongregantGender(row.gender) ? row.gender : "male",
     tribe: isCongregantTribe(row.tribe) ? row.tribe : "yisrael",
-    gregorianBirthDate: String(row.gregorian_birth_date).slice(0, 10),
-    hebrewBirthYear: row.hebrew_birth_year,
-    hebrewBirthMonth: row.hebrew_birth_month,
-    hebrewBirthDay: row.hebrew_birth_day,
+    gregorianBirthDate: row.gregorian_birth_date ? String(row.gregorian_birth_date).slice(0, 10) : "",
+    hebrewBirthYear: row.hebrew_birth_year ?? 0,
+    hebrewBirthMonth: row.hebrew_birth_month ?? 7,
+    hebrewBirthDay: row.hebrew_birth_day ?? 1,
     bornAfterSunset: Boolean(row.born_after_sunset),
     yahrzeits: yahrzeitsFromParentColumns(row),
     phone: row.phone ?? "",
     email: row.email ?? "",
     isActive: row.is_active,
     receivesAliyah: row.receives_aliyah,
+    isGuest: Boolean(row.is_guest),
     registrationStatus: row.registration_status === "pending" ? "pending" : "approved",
     notes: row.notes ?? "",
     messagesConsent: Boolean(row.messages_consent),
@@ -164,9 +167,12 @@ export async function listSynagogueMinyanOptions(synagogueId: string): Promise<C
 }
 
 const SELECT_BASE =
-  "id, synagogue_id, minyan_id, first_name, middle_name, last_name, nickname, father_name, mother_name, gender, tribe, gregorian_birth_date, hebrew_birth_year, hebrew_birth_month, hebrew_birth_day, born_after_sunset, father_died_gregorian_date, father_died_hebrew_year, father_died_hebrew_month, father_died_hebrew_day, father_died_after_sunset, mother_died_gregorian_date, mother_died_hebrew_year, mother_died_hebrew_month, mother_died_hebrew_day, mother_died_after_sunset, phone, email, is_active, receives_aliyah, notes, created_at, updated_at, minyanim(name)";
+  "id, synagogue_id, minyan_id, first_name, middle_name, last_name, nickname, father_name, mother_name, gender, tribe, gregorian_birth_date, hebrew_birth_year, hebrew_birth_month, hebrew_birth_day, born_after_sunset, father_died_gregorian_date, father_died_hebrew_year, father_died_hebrew_month, father_died_hebrew_day, father_died_after_sunset, mother_died_gregorian_date, mother_died_hebrew_year, mother_died_hebrew_month, mother_died_hebrew_day, mother_died_after_sunset, phone, email, is_active, receives_aliyah, is_guest, notes, created_at, updated_at, minyanim(name)";
+const SELECT_BASE_NO_GUEST = SELECT_BASE.replace(", is_guest", "");
 const SELECT_NO_CONSENT = `${SELECT_BASE}, registration_status`;
+const SELECT_NO_CONSENT_NO_GUEST = `${SELECT_BASE_NO_GUEST}, registration_status`;
 const SELECT_FIELDS = `${SELECT_NO_CONSENT}, messages_consent, messages_consent_at, messages_consent_source, messages_token`;
+const SELECT_FIELDS_NO_GUEST = `${SELECT_NO_CONSENT_NO_GUEST}, messages_consent, messages_consent_at, messages_consent_source, messages_token`;
 
 function missingStatusColumn(message: string) {
   return /registration_status/i.test(message) && (/does not exist|schema cache|could not find/i.test(message) || /column/i.test(message));
@@ -174,6 +180,14 @@ function missingStatusColumn(message: string) {
 
 function missingConsentColumns(message: string) {
   return /messages_consent|messages_token/i.test(message) && /does not exist|schema cache|could not find|column/i.test(message);
+}
+
+function missingGuestColumn(message: string) {
+  return /is_guest/i.test(message) && /does not exist|schema cache|could not find|column/i.test(message);
+}
+
+function missingBirthNullability(message: string) {
+  return /gregorian_birth_date|hebrew_birth_year|hebrew_birth_month|hebrew_birth_day|null value/i.test(message);
 }
 
 function consentColumns(consent: boolean, source: MessagesConsentSource) {
@@ -223,16 +237,18 @@ export async function listCongregants(synagogueId: string): Promise<{ rows: Cong
       .order("last_name", { ascending: true })
       .order("first_name", { ascending: true });
   let res = await listQuery(SELECT_FIELDS);
+  if (res.error && missingGuestColumn(res.error.message)) res = await listQuery(SELECT_FIELDS_NO_GUEST);
   if (res.error && missingConsentColumns(res.error.message)) res = await listQuery(SELECT_NO_CONSENT);
+  if (res.error && missingGuestColumn(res.error.message)) res = await listQuery(SELECT_NO_CONSENT_NO_GUEST);
   if (res.error && missingStatusColumn(res.error.message)) {
     const fallback = await supabase
       .from("congregants")
-      .select(SELECT_BASE)
+      .select(SELECT_BASE_NO_GUEST)
       .eq("synagogue_id", synagogueId)
       .order("last_name", { ascending: true })
       .order("first_name", { ascending: true });
     if (fallback.error) return { rows: [], error: mapDbError(fallback.error.message) };
-    const rows = ((fallback.data ?? []) as CongregantRow[]).map(rowToRecord);
+    const rows = ((fallback.data ?? []) as unknown as CongregantRow[]).map(rowToRecord);
     return { rows: sortListedCongregants(rows) };
   }
   if (res.error) return { rows: [], error: mapDbError(res.error.message) };
@@ -245,7 +261,9 @@ export async function getCongregant(synagogueId: string, congregantId: string) {
   const getQuery = (fields: string) =>
     supabase.from("congregants").select(fields).eq("synagogue_id", synagogueId).eq("id", congregantId).maybeSingle();
   let res = await getQuery(SELECT_FIELDS);
+  if (res.error && missingGuestColumn(res.error.message)) res = await getQuery(SELECT_FIELDS_NO_GUEST);
   if (res.error && missingConsentColumns(res.error.message)) res = await getQuery(SELECT_NO_CONSENT);
+  if (res.error && missingGuestColumn(res.error.message)) res = await getQuery(SELECT_NO_CONSENT_NO_GUEST);
   if (res.error) return { row: null, error: mapDbError(res.error.message) };
   if (!res.data) return { row: null, error: "not_found" };
   const record = rowToRecord(res.data as unknown as CongregantRow);
@@ -267,17 +285,25 @@ export async function insertCongregant(
     ...inputToRow(synagogueId, input),
     ...(input.messagesConsent ? consentColumns(true, consentSource) : {})
   };
-  const res = await supabase.from("congregants").insert(payload).select(SELECT_FIELDS).single();
+  let res = await supabase.from("congregants").insert(payload).select(SELECT_FIELDS).single();
+  if (res.error && missingGuestColumn(res.error.message)) {
+    if (input.isGuest) return { row: null, error: "missing_guest_column" };
+    const withoutGuest = Object.fromEntries(Object.entries(payload).filter(([key]) => key !== "is_guest"));
+    res = await supabase.from("congregants").insert(withoutGuest).select(SELECT_FIELDS_NO_GUEST).single();
+  }
   if (res.error && missingStatusColumn(res.error.message) && payload.registration_status === "approved") {
     const withoutStatus = Object.fromEntries(
-      Object.entries(payload).filter(([key]) => key !== "registration_status")
+      Object.entries(payload).filter(([key]) => key !== "registration_status" && key !== "is_guest")
     );
-    const fallback = await supabase.from("congregants").insert(withoutStatus).select(SELECT_BASE).single();
+    const fallback = await supabase.from("congregants").insert(withoutStatus).select(SELECT_BASE_NO_GUEST).single();
     if (fallback.error) return { row: null, error: mapDbError(fallback.error.message, input) };
-    const fallbackRecord = rowToRecord(fallback.data as CongregantRow);
+    const fallbackRecord = rowToRecord(fallback.data as unknown as CongregantRow);
     const fallbackYahrzeits = await replaceCongregantYahrzeits(synagogueId, fallbackRecord.id, input.yahrzeits);
     if (fallbackYahrzeits.error) return { row: { ...fallbackRecord, yahrzeits: [] }, error: fallbackYahrzeits.error };
     return { row: { ...fallbackRecord, yahrzeits: fallbackYahrzeits.rows } };
+  }
+  if (res.error && input.isGuest && missingBirthNullability(res.error.message)) {
+    return { row: null, error: "missing_guest_column" };
   }
   if (res.error) return { row: null, error: mapDbError(res.error.message, input) };
   const record = rowToRecord(res.data as CongregantRow);
@@ -382,6 +408,7 @@ export function mapDbError(message: string, input?: CongregantInput) {
     return "missing_registration_status";
   }
   if (missingConsentColumns(message)) return "missing_messages_consent";
+  if (missingGuestColumn(message) || (input?.isGuest && missingBirthNullability(message))) return "missing_guest_column";
   if (
     lower.includes("congregant_yahrzeits") &&
     (lower.includes("does not exist") || lower.includes("schema cache") || lower.includes("could not find"))

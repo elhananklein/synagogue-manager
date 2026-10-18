@@ -117,6 +117,8 @@ export type CongregantInput = {
   email: string;
   isActive: boolean;
   receivesAliyah: boolean;
+  /** אורח לעלייה — פרטים דלים, בלי תאריך לידה */
+  isGuest: boolean;
   registrationStatus: CongregantRegistrationStatus;
   notes: string;
   familyMembers: CongregantFamilyLink[];
@@ -210,6 +212,7 @@ export function emptyCongregantInput(minyanId: string | null = null): Congregant
     email: "",
     isActive: true,
     receivesAliyah: true,
+    isGuest: false,
     registrationStatus: "approved",
     notes: "",
     familyMembers: [],
@@ -450,9 +453,10 @@ export const BIRTH_DATE_PATCH_KEYS = [
 export function validateCongregantInput(
   input: CongregantInput,
   minyanIds: Set<string>,
-  options?: { requirePhone?: boolean }
+  options?: { requirePhone?: boolean; guest?: boolean }
 ) {
   const errors: string[] = [];
+  const isGuest = options?.guest === true || input.isGuest === true;
   if (!input.firstName.trim()) errors.push("יש למלא שם פרטי");
   if (!input.lastName.trim()) errors.push("יש למלא שם משפחה");
   if (!isCongregantGender(input.gender)) errors.push("יש לבחור גבר או אשה");
@@ -462,6 +466,28 @@ export function validateCongregantInput(
   const phone = normalizePhone(input.phone);
   if (options?.requirePhone && !phone) errors.push("יש למלא מספר טלפון");
   else if (input.phone.trim() && phone.length < 8) errors.push("מספר הטלפון קצר מדי");
+  if (isGuest) {
+    const familyMembers = normalizeFamilyMembers(input.familyMembers);
+    return {
+      errors,
+      next: {
+        ...input,
+        phone,
+        email: input.email.trim().toLowerCase(),
+        gregorianBirthDate: "",
+        hebrewBirthYear: 0,
+        hebrewBirthMonth: 7,
+        hebrewBirthDay: 1,
+        bornAfterSunset: false,
+        yahrzeits: [],
+        familyMembers,
+        isGuest: true,
+        receivesAliyah: true,
+        isActive: true,
+        messagesConsent: input.messagesConsent === true
+      }
+    };
+  }
   const dates = completeBirthDates(input, isIsoDate(input.gregorianBirthDate) ? "gregorian" : "hebrew");
   if (dates.error) errors.push(dates.error);
   const death = completeYahrzeits(dates.next);
@@ -475,7 +501,10 @@ export function validateCongregantInput(
     }
     seen.add(link.relatedId);
   }
-  return { errors, next: { ...death.next, familyMembers, messagesConsent: input.messagesConsent === true } };
+  return {
+    errors,
+    next: { ...death.next, familyMembers, isGuest: false, messagesConsent: input.messagesConsent === true }
+  };
 }
 
 export function normalizeFamilyMembers(raw: CongregantFamilyLink[] | null | undefined): CongregantFamilyLink[] {

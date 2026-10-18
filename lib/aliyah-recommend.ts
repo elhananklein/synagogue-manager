@@ -45,6 +45,7 @@ export type RecommendPerson = {
   minyanId: string | null;
   isActive: boolean;
   receivesAliyah: boolean;
+  isGuest?: boolean;
   approved: boolean;
   hebrewBirth: HebrewBirthDate | null;
   yahrzeits: CongregantYahrzeit[];
@@ -240,6 +241,7 @@ export function recommendAliyahPlan(input: RecommendInput): AliyahPlan {
       person.isActive &&
       person.approved &&
       person.receivesAliyah &&
+      !person.isGuest &&
       inMinyan(person) &&
       isAdultOn(person, serviceDate)
   );

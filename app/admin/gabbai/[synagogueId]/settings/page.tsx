@@ -349,7 +349,9 @@ export default function GabbaiSettingsPage({
           ))}
         </ul>
         <div className="rounded-xl border border-border bg-white p-3">
-          <p className="mb-1 text-xs font-bold text-muted-foreground">כך תיראה ההודעה (דוגמה)</p>
+          <p className="mb-1 text-xs font-bold text-muted-foreground">
+            כך תיראה ההודעה לעולה (דוגמה: עליית שלישי — «{ALIYAH_MESSAGE_ALIYAH_PHRASE}» מוחלף)
+          </p>
           <p className="whitespace-pre-line text-sm leading-relaxed">
             {renderAliyahMessage(messageTemplate, {
               firstName: "משה",
@@ -359,7 +361,8 @@ export default function GabbaiSettingsPage({
               hebrewDate: "",
               synagogueName,
               donationUrl: donationUrl.trim() || "(קישור התרומה)",
-              optOutUrl: "(קישור אישי להסרה)"
+              optOutUrl: "(קישור אישי להסרה)",
+              aliyahLabel: "שלישי"
             })}
           </p>
         </div>

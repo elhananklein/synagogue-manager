@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { CongregantThemeFrame } from "@/components/admin/congregant-theme-frame";
 import { CongregantQuickAddDialog } from "@/components/admin/congregant-quick-add-dialog";
+import { AliyahGuestAddDialog } from "@/components/admin/aliyah-guest-add-dialog";
 import { AliyahCongregantPicker, preferredTribeForSlot } from "@/components/admin/aliyah-congregant-picker";
 import { AliyahMessagesPanel } from "@/components/admin/aliyah-messages-panel";
 import { GabbaiLoadingPanel } from "@/components/admin/gabbai-loading";
@@ -66,6 +67,7 @@ export function AliyahSheetEditor({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [addForKey, setAddForKey] = useState<string | null>(null);
+  const [addMode, setAddMode] = useState<"full" | "guest">("full");
   const [addQuery, setAddQuery] = useState("");
   const [planPrefill, setPlanPrefill] = useState<AliyahPlanPrefill | null>(null);
   const [messaging, setMessaging] = useState<AliyahMessaging | null>(null);
@@ -220,6 +222,7 @@ export function AliyahSheetEditor({
       patchSlot(addForKey, { congregantId: option.id, noKohenResolution: noKohen });
     }
     setAddForKey(null);
+    setAddMode("full");
     setAddQuery("");
   }
 
@@ -367,6 +370,12 @@ export function AliyahSheetEditor({
                   onSelect={(id) => assignCongregant(slot.key, id)}
                   onAddNew={(query) => {
                     setAddForKey(slot.key);
+                    setAddMode("full");
+                    setAddQuery(query);
+                  }}
+                  onAddGuest={(query) => {
+                    setAddForKey(slot.key);
+                    setAddMode("guest");
                     setAddQuery(query);
                   }}
                 />
@@ -405,7 +414,7 @@ export function AliyahSheetEditor({
         onSave={() => void save()}
       />
 
-      {addForKey && addSlot ? (
+      {addForKey && addSlot && addMode === "full" ? (
         <CongregantQuickAddDialog
           synagogueId={synagogueId}
           minyanim={minyanim}
@@ -413,6 +422,21 @@ export function AliyahSheetEditor({
           nameQuery={addQuery}
           onClose={() => {
             setAddForKey(null);
+            setAddMode("full");
+            setAddQuery("");
+          }}
+          onCreated={handleCreated}
+        />
+      ) : null}
+      {addForKey && addSlot && addMode === "guest" ? (
+        <AliyahGuestAddDialog
+          synagogueId={synagogueId}
+          minyanId={minyan.id}
+          nameQuery={addQuery}
+          preferredTribe={preferredTribeForSlot(addSlot.key)}
+          onClose={() => {
+            setAddForKey(null);
+            setAddMode("full");
             setAddQuery("");
           }}
           onCreated={handleCreated}
