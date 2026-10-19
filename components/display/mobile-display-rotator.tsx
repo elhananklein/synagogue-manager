@@ -27,6 +27,7 @@ import { setPreferredSynagogue } from "@/lib/mobile-synagogue-preference";
 import { FAST_END_LABEL, FAST_START_LABEL, WEEKDAY_ONLY_COMPACT_TILES } from "@/lib/liturgical-additions";
 import { useHideMainPrayerTimes } from "@/hooks/use-hide-main-prayer-times";
 import { SiddurReader } from "@/components/mobile/siddur-reader";
+import { MobilePushOptIn } from "@/components/mobile/push-opt-in";
 import { DEFAULT_HAFTARAH_MINHAG, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 import { siddurPrayerFromLabel, type SiddurPrayer } from "@/lib/siddur";
 
@@ -552,6 +553,10 @@ export function MobileDisplayRotator({
             <LiveClock className="m-header-clock-time" showSeconds={false} />
           </div>
         </div>
+        <MobilePushOptIn
+          synagogueId={synagogueId}
+          minyanId={minyanOptions[minyanIndex]?.id ?? null}
+        />
         <div className="m-toolbar">
           <div
             className={cn("m-day-nav", dayLoading && "m-day-nav--loading")}

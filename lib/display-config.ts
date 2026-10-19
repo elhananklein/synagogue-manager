@@ -42,6 +42,7 @@ function isOrdinalToken(s: string) {
 export type MobileMinyanOption = {
   index: number;
   name: string;
+  id?: string | null;
 };
 
 export async function listActiveMinyanim(synagogueId: string): Promise<MobileMinyanOption[]> {
@@ -49,13 +50,14 @@ export async function listActiveMinyanim(synagogueId: string): Promise<MobileMin
   if (!supabase || !synagogueId.trim()) return [];
   const listRes = await supabase
     .from("minyanim")
-    .select("name")
+    .select("id, name")
     .eq("synagogue_id", synagogueId)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
   if (listRes.error || !listRes.data?.length) return [];
   return listRes.data.map((row, i) => ({
     index: i + 1,
+    id: typeof row.id === "string" ? row.id : null,
     name: typeof row.name === "string" && row.name.trim() ? row.name.trim() : `מניין ${i + 1}`
   }));
 }

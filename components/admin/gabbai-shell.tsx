@@ -75,6 +75,7 @@ export function GabbaiShell({
                   pathname.startsWith(`${base}/settings`) ||
                   pathname.startsWith(`${base}/congregants`) ||
                   pathname.startsWith(`${base}/aliyot`) ||
+                  pathname.startsWith(`${base}/push`) ||
                   pathname.startsWith(`${base}/guide`)
                 : pathname.startsWith(base + href);
           return (
@@ -111,6 +112,7 @@ export function GabbaiShell({
                   pathname.startsWith(`${base}/settings`) ||
                   pathname.startsWith(`${base}/congregants`) ||
                   pathname.startsWith(`${base}/aliyot`) ||
+                  pathname.startsWith(`${base}/push`) ||
                   pathname.startsWith(`${base}/guide`)
                 : pathname.startsWith(base + href);
           return (

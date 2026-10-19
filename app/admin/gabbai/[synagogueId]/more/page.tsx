@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { BookOpen, Monitor, ScrollText, Settings, Tv, Users } from "lucide-react";
+import { Bell, BookOpen, Monitor, ScrollText, Settings, Tv, Users } from "lucide-react";
 import { gabbaiWallPreviewHref } from "@/lib/handheld";
+import { isPushNotificationsEnabled } from "@/lib/push-feature";
 
 export default async function GabbaiMorePage({
   params
@@ -9,12 +10,24 @@ export default async function GabbaiMorePage({
 }) {
   const { synagogueId } = await params;
   const base = `/admin/gabbai/${encodeURIComponent(synagogueId)}`;
+  const pushEnabled = isPushNotificationsEnabled(synagogueId);
 
   return (
     <>
       <h1 className="gabbai-lead">עוד פעולות</h1>
       <p className="gabbai-hint">הגדרות שמשנים לעיתים רחוקות יותר.</p>
       <div className="gabbai-task-grid">
+        {pushEnabled ? (
+          <Link href={`${base}/push`} className="gabbai-task-card">
+            <span className="gabbai-task-icon">
+              <Bell className="h-5 w-5" aria-hidden />
+            </span>
+            <span>
+              <h2>התראות לקהל</h2>
+              <p>שליחת הודעת Push למי שהתקין את האפליקציה</p>
+            </span>
+          </Link>
+        ) : null}
         <Link href={`${base}/look`} className="gabbai-task-card">
           <span className="gabbai-task-icon">
             <Monitor className="h-5 w-5" aria-hidden />

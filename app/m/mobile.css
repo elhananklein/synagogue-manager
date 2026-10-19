@@ -1570,3 +1570,157 @@
   font-weight: 800;
 }
 
+/* התראות Push */
+.m-push {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0 0.15rem 0.35rem;
+}
+
+.m-push-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--m-gold) 45%, var(--m-line));
+  background: color-mix(in srgb, var(--m-gold) 16%, var(--m-card));
+}
+
+.m-push-banner-text {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1 1 10rem;
+}
+
+.m-push-banner-text strong {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--m-burgundy-deep);
+}
+
+.m-push-banner-text span {
+  font-size: 0.8rem;
+  color: var(--m-ink-soft);
+  line-height: 1.35;
+}
+
+.m-push-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.m-push-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.1rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--m-line);
+  background: var(--m-card);
+  color: var(--m-ink);
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.m-push-btn--primary {
+  border-color: var(--m-burgundy-deep);
+  background: var(--m-burgundy-deep);
+  color: #fff;
+}
+
+.m-push-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  justify-self: start;
+  min-height: 2rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--m-line);
+  background: var(--m-card);
+  color: var(--m-ink-soft);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.m-push-toggle--on {
+  border-color: color-mix(in srgb, var(--m-gold) 55%, var(--m-line));
+  background: color-mix(in srgb, var(--m-gold) 18%, var(--m-card));
+  color: var(--m-burgundy-deep);
+}
+
+.m-push-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--m-ink-soft);
+  line-height: 1.35;
+}
+
+.m-push-hint--err {
+  color: #9f1239;
+}
+
+.m-message-page {
+  min-height: 100dvh;
+  padding: 1.25rem 1rem 2rem;
+  background: var(--m-bg, #f3ead8);
+  color: var(--m-ink, #1f1216);
+}
+
+.m-message-card {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1.25rem 1.15rem;
+  border-radius: 1.1rem;
+  border: 1px solid color-mix(in srgb, #c4a35a 40%, #ddd);
+  background: #fffdf8;
+  box-shadow: 0 10px 28px rgb(40 20 28 / 0.08);
+}
+
+.m-message-card h1 {
+  margin: 0 0 0.55rem;
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.m-message-meta {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: #6b4a52;
+}
+
+.m-message-body {
+  margin: 0 0 1.25rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.m-message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.m-message-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  background: #6b1a2e;
+  color: #fff;
+  font-weight: 800;
+  text-decoration: none;
+}
+

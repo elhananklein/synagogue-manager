@@ -15,7 +15,6 @@ import {
 } from "@/lib/gabbai-workspace";
 import { HAFTARAH_MINHAGIM, PRAYER_NUSACH_LABELS, type HaftarahMinhag } from "@/lib/haftarah-minhag";
 import {
-  ALIYAH_MESSAGE_ALIYAH_PHRASE,
   ALIYAH_MESSAGE_PLACEHOLDERS,
   ALIYAH_MESSAGE_TEMPLATE_MAX,
   DEFAULT_ALIYAH_MESSAGE_TEMPLATE,
@@ -350,7 +349,7 @@ export default function GabbaiSettingsPage({
         </ul>
         <div className="rounded-xl border border-border bg-white p-3">
           <p className="mb-1 text-xs font-bold text-muted-foreground">
-            כך תיראה ההודעה לעולה (דוגמה: עליית שלישי — «{ALIYAH_MESSAGE_ALIYAH_PHRASE}» מוחלף)
+            כך תיראה ההודעה לעולה (דוגמה: {`{עלייה}`} = עליית «שלישי»)
           </p>
           <p className="whitespace-pre-line text-sm leading-relaxed">
             {renderAliyahMessage(messageTemplate, {
@@ -368,7 +367,7 @@ export default function GabbaiSettingsPage({
         </div>
         <div className="mt-3 rounded-xl border border-border bg-white p-3">
           <p className="mb-1 text-xs font-bold text-muted-foreground">
-            למקבל כיבוד — המילים «{ALIYAH_MESSAGE_ALIYAH_PHRASE}» מוחלפות בשם הכיבוד (דוגמה: הגבהה)
+            למקבל כיבוד (דוגמה: {`{עלייה}`} = הגבהה)
           </p>
           <p className="whitespace-pre-line text-sm leading-relaxed">
             {renderAliyahMessage(messageTemplate, {
