@@ -554,6 +554,7 @@ export function MobileDisplayRotator({
           </div>
         </div>
         <MobilePushOptIn
+          slot="top"
           synagogueId={synagogueId}
           minyanId={minyanOptions[minyanIndex]?.id ?? null}
         />
@@ -666,6 +667,11 @@ export function MobileDisplayRotator({
         })}
         {enabledScreens.some((s) => s.screenKey === "main") ? null : <HalachaFold halacha={halacha} />}
         {footerText ? <footer className="m-footer">{footerText}</footer> : null}
+        <MobilePushOptIn
+          slot="bottom"
+          synagogueId={synagogueId}
+          minyanId={minyanOptions[minyanIndex]?.id ?? null}
+        />
         <nav className="m-bottom-nav" aria-label="ניווט">
           <Link href="/m?pick=1">החלפת בית כנסת</Link>
           <Link href="/admin/login">כניסה כמנהל</Link>

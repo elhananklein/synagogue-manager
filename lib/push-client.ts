@@ -122,19 +122,29 @@ export async function currentPushSubscription() {
   }
 }
 
-const BANNER_DISMISS_KEY = "push-banner-dismissed";
+const BANNER_DISMISS_COOKIE = "push-banner-dismissed";
+const BANNER_DISMISS_MAX_AGE_SEC = 60 * 60 * 24 * 400; // ~13 חודשים
+export const PUSH_BANNER_DISMISSED_EVENT = "synagogue:push-banner-dismissed";
+
+function bannerDismissCookieName(synagogueId: string) {
+  return `${BANNER_DISMISS_COOKIE}-${synagogueId}`;
+}
 
 export function pushBannerDismissed(synagogueId: string) {
+  if (typeof document === "undefined") return false;
   try {
-    return localStorage.getItem(`${BANNER_DISMISS_KEY}:${synagogueId}`) === "1";
+    const name = `${bannerDismissCookieName(synagogueId)}=`;
+    return document.cookie.split(";").some((part) => part.trim().startsWith(name) && part.trim().slice(name.length) === "1");
   } catch {
     return false;
   }
 }
 
 export function dismissPushBanner(synagogueId: string) {
+  if (typeof document === "undefined") return;
   try {
-    localStorage.setItem(`${BANNER_DISMISS_KEY}:${synagogueId}`, "1");
+    document.cookie = `${bannerDismissCookieName(synagogueId)}=1; path=/; max-age=${BANNER_DISMISS_MAX_AGE_SEC}; SameSite=Lax`;
+    window.dispatchEvent(new CustomEvent(PUSH_BANNER_DISMISSED_EVENT, { detail: { synagogueId } }));
   } catch {
     /* ignore */
   }

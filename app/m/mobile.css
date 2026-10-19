@@ -1577,6 +1577,15 @@
   padding: 0 0.15rem 0.35rem;
 }
 
+.m-push--bottom {
+  padding: 0.35rem 0.15rem 0.55rem;
+  justify-items: center;
+}
+
+.m-push--bottom .m-push-toggle {
+  justify-self: center;
+}
+
 .m-push-banner {
   display: flex;
   flex-wrap: wrap;

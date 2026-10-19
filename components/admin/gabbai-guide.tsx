@@ -361,7 +361,7 @@ export function GabbaiGuide({ synagogueId }: { synagogueId: string }) {
             שליחת הודעת Push למי שהתקין את אפליקציית המתפללים ואישר התראות. כרגע פעיל רק בבית הכנסת לבדיקות.
             לחיצה על ההתראה פותחת דף עם תוכן ההודעה.
           </p>
-          <Where phone="באנר וכפתור «התראות» בראש המסך" gabbai="עוד ← התראות לקהל" />
+          <Where phone="באנר «אישור התראות» בראש המסך בפעם הראשונה; אחרי סגירה — כפתור למטה" gabbai="עוד ← התראות לקהל" />
           <div className="guide-links">
             <Link href={`${base}/push`}>פתיחת התראות לקהל</Link>
           </div>
