@@ -306,6 +306,11 @@ export function PushMessagesPanel({ synagogueId }: { synagogueId: string }) {
           <Send className="h-3.5 w-3.5" aria-hidden />
           לחיצה על ההתראה בטלפון פותחת דף עם תוכן ההודעה.
         </p>
+        {mode === "later" ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            תזמון: ההודעה תישלח כשפותחים את המסך הזה אחרי המועד, או ברצת הבוקר היומית בשרת. לשליחה מדויקת לפי השעה — אפשר לשלוח «עכשיו».
+          </p>
+        ) : null}
       </section>
 
       <section className="rounded-xl border border-border bg-white p-4">
