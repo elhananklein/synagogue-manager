@@ -24,6 +24,7 @@
     "react-leaflet": "^5.0.0",
     "sharp": "^0.35.4",
     "tailwind-merge": "^2.5.2",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -32,6 +33,7 @@
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.16.0",
     "eslint-config-next": "15.3.1",

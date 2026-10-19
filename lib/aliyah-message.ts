@@ -7,6 +7,10 @@ export const DONATION_URL_MAX = 500;
 export const ALIYAH_MESSAGE_PLACEHOLDERS = [
   { token: "{ברכה}", label: "«שבוע טוב» אחרי שבת, «חג שמח» אחרי חג" },
   { token: "{שם}", label: "השם הפרטי של העולה" },
+  {
+    token: "{עלייה}",
+    label: "לעולה — «עליית ‹שלישי›» (או שם העלייה); לכיבוד — «הגבהה» / «גלילה» וכו׳"
+  },
   { token: "{מתי}", label: "«בשבת פרשת נח» / «בסוכות» / «ביום שני, ט״ו בחשון»" },
   { token: "{בית_כנסת}", label: "שם בית הכנסת, בלי המילים «בית הכנסת»" },
   { token: "{קישור_תרומה}", label: "הקישור לתרומה מההגדרות" },
@@ -14,9 +18,10 @@ export const ALIYAH_MESSAGE_PLACEHOLDERS = [
 ] as const;
 
 export const ALIYAH_MESSAGE_OPT_OUT_TOKEN = "{קישור_הסרה}";
+export const ALIYAH_MESSAGE_ALIYAH_TOKEN = "{עלייה}";
 
 export const DEFAULT_ALIYAH_MESSAGE_TEMPLATE = [
-  "{ברכה} {שם}, יישר כוח על העלייה לתורה {מתי} בבית הכנסת {בית_כנסת}.",
+  "{ברכה} {שם}, יישר כוח על {עלייה} {מתי} בבית הכנסת {בית_כנסת}.",
   "נשמח לתרומתך לבית הכנסת: {קישור_תרומה}",
   "",
   "להפסקת ההודעות: {קישור_הסרה}"
@@ -31,17 +36,26 @@ export type AliyahMessageValues = {
   synagogueName: string;
   donationUrl: string;
   optOutUrl: string;
-  /** למקבל כיבוד: «העלייה לתורה» בנוסח מוחלף בשם הכיבוד (הגבהה, גלילה…) */
+  /** למקבל כיבוד: {עלייה} = שם הכיבוד (הגבהה, גלילה…) */
   honorLabel?: string | null;
-  /** לעולה: «העלייה לתורה» מוחלף ב־עליית «שלישי» (או שם העלייה) */
+  /** לעולה: {עלייה} = עליית «שלישי» (או שם העלייה) */
   aliyahLabel?: string | null;
 };
 
+/** נוסח ישן בנוסחים שנשמרו לפני המעבר ל־{עלייה} */
 export const ALIYAH_MESSAGE_ALIYAH_PHRASE = "העלייה לתורה";
 
 export function aliyahMessageAliyahPhrase(slotLabel: string) {
   const label = slotLabel.trim();
   return label ? `עליית «${label}»` : ALIYAH_MESSAGE_ALIYAH_PHRASE;
+}
+
+export function resolveAliyahMessagePhrase(values: Pick<AliyahMessageValues, "honorLabel" | "aliyahLabel">) {
+  const honor = values.honorLabel?.trim();
+  if (honor) return honor;
+  const aliyah = values.aliyahLabel?.trim();
+  if (aliyah) return aliyahMessageAliyahPhrase(aliyah);
+  return ALIYAH_MESSAGE_ALIYAH_PHRASE;
 }
 
 export function aliyahMessageGreeting(kind: AliyahDayKind) {
@@ -70,19 +84,21 @@ export function resolveAliyahMessageTemplate(template: string | null | undefined
 }
 
 export function renderAliyahMessage(template: string | null | undefined, values: AliyahMessageValues) {
+  const phrase = resolveAliyahMessagePhrase(values);
   const replacements: Record<string, string> = {
     "{ברכה}": aliyahMessageGreeting(values.kind),
     "{שם}": values.firstName.trim(),
+    "{עלייה}": phrase,
     "{מתי}": aliyahMessageWhen(values.kind, values.parashaLabel, values.weekday, values.hebrewDate),
     "{בית_כנסת}": shortSynagogueName(values.synagogueName),
     "{קישור_תרומה}": values.donationUrl.trim(),
     "{קישור_הסרה}": values.optOutUrl
   };
-  const honor = values.honorLabel?.trim();
-  const aliyah = values.aliyahLabel?.trim();
-  const base = resolveAliyahMessageTemplate(template);
-  const phrase = honor ? honor : aliyah ? aliyahMessageAliyahPhrase(aliyah) : null;
-  const text = phrase ? base.split(ALIYAH_MESSAGE_ALIYAH_PHRASE).join(phrase) : base;
+  let text = resolveAliyahMessageTemplate(template);
+  // תאימות לנוסחים ישנים שעדיין כתוב בהם «העלייה לתורה» במקום {עלייה}
+  if (text.includes(ALIYAH_MESSAGE_ALIYAH_PHRASE) && !text.includes(ALIYAH_MESSAGE_ALIYAH_TOKEN)) {
+    text = text.split(ALIYAH_MESSAGE_ALIYAH_PHRASE).join(phrase);
+  }
   return text.replace(/\{[^{}\s]+\}/g, (token) => replacements[token] ?? token);
 }
 
