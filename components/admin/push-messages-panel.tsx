@@ -45,7 +45,7 @@ function formatWhen(iso: string | null) {
   }).format(date);
 }
 
-export function PushMessagesPanel({ synagogueId }: { synagogueId: string }) {
+export default function PushMessagesPanel({ synagogueId }: { synagogueId: string }) {
   const [data, setData] = useState<PanelData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

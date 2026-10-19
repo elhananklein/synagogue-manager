@@ -7,12 +7,13 @@ import {
   currentPushSubscription,
   dismissPushBanner,
   pushBannerDismissed,
-  pushSupported,
+  pushEnableBlockReason,
+  pushErrorMessage,
   subscribeToPush,
   unsubscribeFromPush
 } from "@/lib/push-client";
 
-type Status = "loading" | "unsupported" | "denied" | "off" | "on";
+type Status = "loading" | "unsupported" | "insecure" | "ios_browser" | "denied" | "off" | "on";
 
 export function MobilePushOptIn({
   synagogueId,
@@ -31,7 +32,22 @@ export function MobilePushOptIn({
     if (!enabled || !synagogueId) return;
     let cancelled = false;
     void (async () => {
-      if (!pushSupported()) {
+      const block = pushEnableBlockReason();
+      if (block === "insecure") {
+        if (!cancelled) {
+          setStatus("insecure");
+          setShowBanner(false);
+        }
+        return;
+      }
+      if (block === "ios_browser") {
+        if (!cancelled) {
+          setStatus("ios_browser");
+          setShowBanner(false);
+        }
+        return;
+      }
+      if (block === "unsupported") {
         if (!cancelled) setStatus("unsupported");
         return;
       }
@@ -68,7 +84,9 @@ export function MobilePushOptIn({
       const code = err instanceof Error ? err.message : "failed";
       if (code === "denied") setStatus("denied");
       else if (code === "unsupported") setStatus("unsupported");
-      else setError("לא הצלחנו להפעיל התראות. נסו שוב.");
+      else if (code === "insecure") setStatus("insecure");
+      else if (code === "ios_browser") setStatus("ios_browser");
+      else setError(pushErrorMessage(code));
     } finally {
       setBusy(false);
     }
@@ -93,6 +111,8 @@ export function MobilePushOptIn({
     setShowBanner(false);
   }
 
+  const blocked = status === "unsupported" || status === "insecure" || status === "ios_browser";
+
   return (
     <div className="m-push">
       {showBanner && status === "off" ? (
@@ -115,15 +135,15 @@ export function MobilePushOptIn({
       <button
         type="button"
         className={`m-push-toggle${status === "on" ? " m-push-toggle--on" : ""}`}
-        disabled={busy || status === "loading" || status === "unsupported"}
+        disabled={busy || status === "loading" || blocked}
         onClick={() => void (status === "on" ? disable() : enable())}
         title={
           status === "on"
             ? "התראות פעילות — לחיצה לביטול"
             : status === "denied"
               ? "ההרשאה חסומה בהגדרות הדפדפן"
-              : status === "unsupported"
-                ? "הדפדפן לא תומך בהתראות"
+              : blocked
+                ? pushErrorMessage(status)
                 : "הפעלת התראות מבית הכנסת"
         }
       >
@@ -131,12 +151,10 @@ export function MobilePushOptIn({
         <span>{status === "on" ? "התראות פעילות" : "התראות"}</span>
       </button>
 
-      {status === "denied" ? (
-        <p className="m-push-hint">ההרשאה להתראות חסומה. אפשר לאפשר בהגדרות הדפדפן/הטלפון.</p>
-      ) : null}
-      {status === "unsupported" ? (
-        <p className="m-push-hint">בדפדפן הזה אין תמיכה בהתראות. באנדרואיד עדיף Chrome אחרי התקנת האפליקציה.</p>
-      ) : null}
+      {status === "denied" ? <p className="m-push-hint">{pushErrorMessage("denied")}</p> : null}
+      {status === "unsupported" ? <p className="m-push-hint">{pushErrorMessage("unsupported")}</p> : null}
+      {status === "insecure" ? <p className="m-push-hint m-push-hint--err">{pushErrorMessage("insecure")}</p> : null}
+      {status === "ios_browser" ? <p className="m-push-hint">{pushErrorMessage("ios_browser")}</p> : null}
       {error ? <p className="m-push-hint m-push-hint--err">{error}</p> : null}
     </div>
   );
