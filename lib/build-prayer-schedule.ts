@@ -132,12 +132,12 @@ function weekdaySettingsForDay(prayerSettings: PrayerSetting[], jsDay: number): 
   return forDay.length ? forDay : weekdaySettings;
 }
 
-function isCatalogParashaMode(setting: PrayerSetting): boolean {
+/** שורת מנחה/ערבית שיכולה לקבל שעה מהקטלוג השנתי (לא override לפרשה בודדת). */
+function canReceiveCatalogOverride(setting: PrayerSetting, prayerType: "מנחה" | "ערבית"): boolean {
   return (
-    setting.mode === "parasha" &&
     setting.category === "weekday" &&
-    !setting.parashaKey?.trim() &&
-    (setting.prayerType === "מנחה" || setting.prayerType === "ערבית")
+    setting.prayerType === prayerType &&
+    !(setting.mode === "parasha" && Boolean(setting.parashaKey?.trim()))
   );
 }
 
@@ -147,7 +147,9 @@ function catalogTimeForType(
   lookupKey: string | null,
   catalog: ParashaPrayerCatalogRow[] | null | undefined
 ): string | null {
-  if (!settings.some((setting) => isCatalogParashaMode(setting) && setting.prayerType === prayerType)) {
+  // תא מלא בקטלוג דורס את הכלל הרגיל (שעה קבועה / יחסית) באותו שבוע.
+  // תא ריק → חוזרים לכלל הרגיל. לא נדרש מצב «לפי פרשה» נפרד.
+  if (!settings.some((setting) => canReceiveCatalogOverride(setting, prayerType))) {
     return null;
   }
   return catalogTimeForLookup(catalog, lookupKey, prayerType);
@@ -367,13 +369,14 @@ export function buildPrayerScheduleForDay(
       continue;
     }
 
+    const prayerType = setting.prayerType;
     const catalogTime =
-      setting.prayerType === "מנחה" || setting.prayerType === "ערבית"
-        ? catalogTimeByType.get(setting.prayerType) ?? null
+      prayerType === "מנחה" || prayerType === "ערבית"
+        ? catalogTimeByType.get(prayerType) ?? null
         : null;
-    if (catalogTime) {
-      if (isCatalogParashaMode(setting) && !emittedCatalog.has(setting.prayerType)) {
-        emittedCatalog.add(setting.prayerType);
+    if (catalogTime && (prayerType === "מנחה" || prayerType === "ערבית")) {
+      if (canReceiveCatalogOverride(setting, prayerType) && !emittedCatalog.has(prayerType)) {
+        emittedCatalog.add(prayerType);
         out.push(builtRow(setting, catalogTime, "", erevIsChag));
       }
       continue;
