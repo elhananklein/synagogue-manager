@@ -10,6 +10,7 @@ import { sanitizeDailyLearningKeys } from "@/lib/daily-learning-catalog";
 import { canManageSynagogue, getAdminContext } from "@/lib/auth";
 import { sortPrayersForSave } from "@/lib/prayer-order";
 import { getParashaPrayerCatalogByMinyanIds } from "@/lib/parasha-prayer-catalog-db";
+import { normalizeClockTime } from "@/lib/parasha-prayer-catalog";
 import {
   isDisplayStyle,
   resolveDisplayPalette,
@@ -232,7 +233,7 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
         prayerType: p.prayer_type,
         daysOfWeek: Array.isArray(p.days_of_week) ? p.days_of_week.map((d) => Number(d)) : [],
         mode: p.mode,
-        fixedTime: p.fixed_time,
+        fixedTime: normalizeClockTime(p.fixed_time),
         zmanAnchor: p.zman_anchor,
         offsetMinutes: p.offset_minutes,
         roundMode: p.round_mode ?? "none",
@@ -398,7 +399,8 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           prayer_type: p.prayerType,
           days_of_week: p.category === "weekday" ? (p.daysOfWeek ?? []) : [],
           mode: p.mode,
-          fixed_time: p.mode === "fixed" || p.mode === "parasha" ? p.fixedTime : null,
+          fixed_time:
+            p.mode === "fixed" || p.mode === "parasha" ? normalizeClockTime(p.fixedTime) : null,
           zman_anchor: p.mode === "relative" ? p.zmanAnchor : null,
           offset_minutes: p.mode === "relative" ? p.offsetMinutes : null,
           round_mode: p.mode === "relative" ? (p.roundMode ?? "none") : "none",
@@ -697,7 +699,8 @@ export async function POST(request: Request, context: { params: Promise<{ synago
           prayer_type: p.prayerType,
           days_of_week: p.category === "weekday" ? (p.daysOfWeek ?? []) : [],
           mode: p.mode,
-          fixed_time: p.mode === "fixed" || p.mode === "parasha" ? p.fixedTime : null,
+          fixed_time:
+            p.mode === "fixed" || p.mode === "parasha" ? normalizeClockTime(p.fixedTime) : null,
           zman_anchor: p.mode === "relative" ? p.zmanAnchor : null,
           offset_minutes: p.mode === "relative" ? p.offsetMinutes : null,
           round_mode: p.mode === "relative" ? (p.roundMode ?? "none") : "none",

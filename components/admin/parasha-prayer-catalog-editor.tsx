@@ -152,7 +152,11 @@ export function ParashaPrayerCatalogEditor({
           }))
         })
       });
-      const payload = (await response.json()) as { ok: boolean; error?: string };
+      const payload = (await response.json()) as {
+        ok: boolean;
+        error?: string;
+        rows?: ParashaPrayerCatalogRow[];
+      };
       if (!payload.ok) {
         setError(
           payload.error === "unknown_parasha"
@@ -162,6 +166,9 @@ export function ParashaPrayerCatalogEditor({
               : "שמירת הקטלוג נכשלה"
         );
         return;
+      }
+      if (Array.isArray(payload.rows)) {
+        setRows(toEditorRows(payload.rows));
       }
       setNeedsConfirm(false);
       setWarnings([]);

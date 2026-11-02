@@ -148,7 +148,8 @@ export type ParashaPrayerParseWarning = {
   message: string;
 };
 
-const TIME_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/;
+/** מקבל HH:MM וגם HH:MM:SS / HH:MM:SS.sss כפי ש־Postgres time מחזיר מ־Supabase. */
+const TIME_RE = /^([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d(?:\.\d+)?)?$/;
 
 export function withParashaCatalogSelectKeys(keys: string[]): string[] {
   const out: string[] = [];
@@ -198,6 +199,9 @@ export function normalizeClockTime(raw: unknown): string | null {
   }
   const text = String(raw).replace(/^\uFEFF/, "").trim();
   if (!text) return null;
+  // לפעמים מגיע ISO מלא (למשל 1970-01-01T17:30:00+00)
+  const iso = /T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?/.exec(text);
+  if (iso) return `${iso[1]}:${iso[2]}`;
   const match = TIME_RE.exec(text);
   if (!match) return null;
   return `${match[1].padStart(2, "0")}:${match[2]}`;
