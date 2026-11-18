@@ -66,6 +66,9 @@ export default async function MobileDisplayPage({
       scheduleTimesListMode={view.scheduleTimesListMode}
       shabbat={view.shabbat}
       bulletinItems={view.bulletinItems}
+      todayLessons={view.todayLessons}
+      tomorrowLessons={view.tomorrowLessons}
+      lessonsScreen={view.lessonsScreen}
       haftarahMinhag={view.haftarahMinhag}
       previewNetz={parseNetzPreviewPhase(singleParam(params.previewNetz))}
     />

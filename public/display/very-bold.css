@@ -304,6 +304,7 @@
 .display.display--veryBold .display-times-title,
 .display.display--veryBold .display-halacha-title,
 .display.display--veryBold .display-daily-learning-title,
+.display.display--veryBold .display-lessons-title,
 .display.display--veryBold .display-shabbat-title,
 .display.display--veryBold .display-time-section-title {
   color: var(--vb-title, var(--vb-ink, #152238));
@@ -315,7 +316,8 @@
 .display.display--veryBold .display-times-title,
 .display.display--veryBold .display-shabbat-title,
 .display.display--veryBold .display-halacha-title,
-.display.display--veryBold .display-daily-learning-title {
+.display.display--veryBold .display-daily-learning-title,
+.display.display--veryBold .display-lessons-title {
   position: relative;
   padding-bottom: 0.2rem;
 }
@@ -328,7 +330,8 @@
 .display.display--veryBold .display-times-title::after,
 .display.display--veryBold .display-shabbat-title::after,
 .display.display--veryBold .display-halacha-title::after,
-.display.display--veryBold .display-daily-learning-title::after {
+.display.display--veryBold .display-daily-learning-title::after,
+.display.display--veryBold .display-lessons-title::after {
   content: "";
   display: block;
   width: min(14rem, 42%);
@@ -1486,4 +1489,143 @@
 .display.display--veryBold .display-empty {
   color: var(--vb-ink, #152238);
   font-weight: 800;
+}
+
+/* מסך שיעורים — אותה שפת קוביות כמו זמני תפילות: פאנל מלא, בלי מסגרת אפורה כפולה */
+.display.display--veryBold .display-lessons-card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--vb-ink, #152238);
+}
+
+.display.display--veryBold .display-lessons-header {
+  padding-bottom: 0.15rem;
+}
+
+.display.display--veryBold .display-lessons-body {
+  padding-top: 0.15rem;
+}
+
+.display.display--veryBold .display-lessons-board {
+  gap: clamp(0.85rem, 2vh, 1.35rem);
+}
+
+.display.display--veryBold .display-lessons-day-title {
+  margin: 0 0 0.45rem;
+  color: var(--vb-panel, #152238);
+  font-size: clamp(1.45rem, 3.2vh, 2.35rem);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.display.display--veryBold .display-lessons-day-blocks {
+  gap: clamp(0.65rem, 1.6vh, 1rem);
+}
+
+.display.display--veryBold .display-lessons-frame {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.display.display--veryBold .display-lessons-frame-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.45rem;
+  padding: 0.2rem 0.15rem 0.35rem;
+  border-bottom: 2px solid color-mix(in srgb, var(--vb-gold, #b8923a) 75%, transparent);
+}
+
+.display.display--veryBold .display-lessons-frame-title {
+  margin: 0;
+  color: var(--vb-ink, #152238);
+  font-size: clamp(1.25rem, 2.8vh, 1.85rem);
+  font-weight: 800;
+}
+
+.display.display--veryBold .display-lessons-frame-subtitle {
+  margin: 0;
+  color: var(--vb-ink-soft, #2a3b58);
+  font-size: clamp(0.95rem, 2vh, 1.2rem);
+  font-weight: 700;
+}
+
+.display.display--veryBold .display-lessons-block-body {
+  gap: 0.45rem;
+}
+
+.display.display--veryBold .display-lessons-row {
+  gap: 0.45rem;
+}
+
+.display.display--veryBold .display-lessons-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 0.2em;
+  min-height: clamp(5.2rem, 14vh, 8.5rem);
+  padding: clamp(0.55rem, 1.4vh, 0.9rem) clamp(0.55rem, 1.4vw, 1rem);
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 1rem;
+  border-inline-start-width: 1px;
+  background: var(--vb-panel, #152238);
+  color: var(--vb-on-panel, #fff8ea);
+  box-shadow: 0 8px 18px rgb(16 26 44 / 0.16);
+}
+
+.display.display--veryBold .display-lessons-tile-time {
+  color: var(--vb-next, #f3d48a);
+  font-size: clamp(1.55rem, 3.8vh, 2.55rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.display.display--veryBold .display-lessons-tile-title {
+  color: var(--vb-on-panel, #fff8ea);
+  font-size: clamp(1.2rem, 2.8vh, 1.85rem);
+  font-weight: 800;
+  line-height: 1.15;
+  text-shadow: none;
+}
+
+.display.display--veryBold .display-lessons-tile-details {
+  color: color-mix(in srgb, var(--vb-on-panel, #fff8ea) 78%, transparent);
+  font-size: clamp(0.9rem, 2vh, 1.15rem);
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.display.display--veryBold .display-lessons-empty {
+  color: var(--vb-ink-soft, #2a3b58);
+}
+
+.display.display--veryBold.display-palette--classicBurgundy .display-lessons-day-title,
+.display.display--veryBold[data-display-palette="classicBurgundy"] .display-lessons-day-title {
+  color: var(--vb-panel, #6b1a2e);
+}
+
+.display.display--veryBold.display-palette--classicBurgundy .display-lessons-frame-header,
+.display.display--veryBold[data-display-palette="classicBurgundy"] .display-lessons-frame-header {
+  border-bottom-color: color-mix(in srgb, var(--vb-gold, #c9a24a) 80%, transparent);
+}
+
+.display.display--veryBold.display-palette--classicBurgundy .display-lessons-tile,
+.display.display--veryBold[data-display-palette="classicBurgundy"] .display-lessons-tile {
+  background: linear-gradient(180deg, rgb(107 26 46 / 0.96) 0%, rgb(80 18 34 / 0.98) 100%);
+  border-color: color-mix(in srgb, var(--vb-gold, #c9a24a) 55%, transparent);
+  box-shadow:
+    0 8px 18px rgb(63 13 24 / 0.18),
+    inset 0 1px 0 rgb(255 255 255 / 0.1);
+}
+
+.display.display--veryBold.display-palette--azureGold .display-lessons-day-title,
+.display.display--veryBold[data-display-palette="azureGold"] .display-lessons-day-title {
+  color: var(--vb-panel, #1460a8);
 }

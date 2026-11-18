@@ -197,6 +197,35 @@
   color: #6b4e3e;
 }
 
+.gabbai-choice-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.gabbai-choice-toggle {
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border, #d6c4a8) 80%, #6b1a2e);
+  background: #fffdf8;
+  color: #6b1a2e;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gabbai-choice-toggle[aria-pressed="true"] {
+  border-color: #6b1a2e;
+  background: #6b1a2e;
+  color: #fff8ea;
+}
+
+.gabbai-choice-toggle:focus-visible {
+  outline: 2px solid #c9a24a;
+  outline-offset: 2px;
+}
+
 .gabbai-section {
   margin-bottom: 0.75rem;
   border-radius: 1rem;

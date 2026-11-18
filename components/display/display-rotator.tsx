@@ -18,8 +18,10 @@ import { groupPrayersForDisplay, weekdayMinchaClockTimes, type PrayerDisplayGrou
 import { groupShabbatScheduleByPeriod, type ShabbatScheduleRow } from "@/lib/shabbat-schedule-periods";
 import { FAST_END_LABEL, FAST_START_LABEL, WEEKDAY_ONLY_COMPACT_TILES } from "@/lib/liturgical-additions";
 import { NetzBoard, useNetzWindowOpen } from "@/components/display/netz-board";
+import { LessonsScreenBoard } from "@/components/display/lessons-screen-board";
 import { useHideMainPrayerTimes } from "@/hooks/use-hide-main-prayer-times";
 import type { NetzPhase } from "@/lib/netz-board";
+import type { LessonsScreenDay } from "@/lib/lessons-types";
 
 type ScreenKey =
   | "main"
@@ -33,7 +35,8 @@ type ScreenKey =
   | "shabbat"
   | "bulletin"
   | "fullSchedule"
-  | "netz";
+  | "netz"
+  | "lessons";
 
 type RotatorScreen = {
   screenKey: ScreenKey;
@@ -50,7 +53,7 @@ type PrayerSlot = {
 
 type TimeSection = {
   title: string;
-  items: Array<{ label: string; time: string; details?: string; kind: "zman" | "prayer" }>;
+  items: Array<{ label: string; time: string; details?: string; kind: "zman" | "prayer" | "lesson" }>;
 };
 
 type Snapshot = {
@@ -97,7 +100,7 @@ function jerusalemMinutesOfIso(iso: string | null): number | null {
 }
 
 function sortedSectionItemsWithMinutes(
-  items: Array<{ label: string; time: string; details?: string; kind: "zman" | "prayer" }>
+  items: Array<{ label: string; time: string; details?: string; kind: "zman" | "prayer" | "lesson" }>
 ) {
   return items
     .map((row) => {
@@ -578,6 +581,7 @@ export function DisplayRotator({
   shabbatMevarchimText: shabbatMevarchimTextProp = null,
   bulletinItems: bulletinItemsProp = [],
   viewDate: viewDateProp,
+  lessonsScreen: lessonsScreenProp = [],
   disableFullscreen = false,
   previewNetz = null
 }: {
@@ -628,6 +632,7 @@ export function DisplayRotator({
   } | null;
   bulletinItems?: BulletinItem[];
   viewDate?: string;
+  lessonsScreen?: LessonsScreenDay[];
   /** תצוגת קיר לגבאי — בלי מסך מלא אוטומטי */
   disableFullscreen?: boolean;
   /** בדיקה ישירה: לפני הנץ או אחריו, בלי לחכות לחלון הזמן */
@@ -651,7 +656,8 @@ export function DisplayRotator({
     shabbat: shabbatProp,
     shabbatMevarchimText: shabbatMevarchimTextProp,
     bulletinItems: bulletinItemsProp,
-    viewDate: viewDateProp
+    viewDate: viewDateProp,
+    lessonsScreen: lessonsScreenProp
   }));
   const {
     synagogueId,
@@ -671,7 +677,8 @@ export function DisplayRotator({
     shabbat,
     shabbatMevarchimText,
     bulletinItems,
-    viewDate
+    viewDate,
+    lessonsScreen
   } = live;
 
   const refreshLive = useDisplayLiveRefresh((view) => {
@@ -700,9 +707,20 @@ export function DisplayRotator({
       if (s.screenKey === "fast" && !snapshot.fastName) return false;
       if (s.screenKey === "bulletin" && bulletinItems.length === 0) return false;
       if (s.screenKey === "netz" && !netzVisible) return false;
+      if (s.screenKey === "lessons" && lessonsScreen.length === 0) return false;
       return true;
     });
-  }, [previewNetz, screens, snapshot.omerText, snapshot.fastName, shabbat, bulletinItems.length, style, netzVisible]);
+  }, [
+    previewNetz,
+    screens,
+    snapshot.omerText,
+    snapshot.fastName,
+    shabbat,
+    bulletinItems.length,
+    style,
+    netzVisible,
+    lessonsScreen.length
+  ]);
   const [index, setIndex] = useState(0);
   const [halachaSeifIndex, setHalachaSeifIndex] = useState(0);
   const timesScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1420,6 +1438,26 @@ export function DisplayRotator({
           </Card>
         ) : null}
 
+        {currentScreen === "lessons" ? (
+          <Card className="display-card display-lessons-card">
+            <CardHeader className="display-lessons-header">
+              <CardTitle className="display-lessons-title">שיעורים</CardTitle>
+            </CardHeader>
+            <CardContent className="display-lessons-body">
+              <AutoFit
+                className="display-lessons-fit"
+                contentClassName="display-lessons-fit-inner"
+                deps={[currentScreen, lessonsScreen]}
+                grow
+                maxScale={1.2}
+                fillWidth
+              >
+                <LessonsScreenBoard days={lessonsScreen} variant="wall" />
+              </AutoFit>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {currentScreen === "prayerTimes" ? (
           <Card className="display-card display-prayer-times-card">
             <CardHeader className="display-prayer-times-header">
@@ -1504,6 +1542,7 @@ export function DisplayRotator({
                         const isNext = idx === nextLocalIdx;
                         const isPast = nextLocalIdx === -1 ? true : idx < nextLocalIdx;
                         const isPrayer = item.kind === "prayer";
+                        const isLesson = item.kind === "lesson";
                         const label = isPrayer ? `תפילת ${item.label}` : item.label;
                         return (
                           <article
@@ -1511,6 +1550,7 @@ export function DisplayRotator({
                             className={cn(
                               "display-full-schedule-tile",
                               isPrayer && "display-full-schedule-tile--prayer",
+                              isLesson && "display-full-schedule-tile--lesson",
                               isNext && "display-full-schedule-tile--next",
                               isPast && !isNext && "display-full-schedule-tile--past"
                             )}
@@ -1623,14 +1663,15 @@ export function DisplayRotator({
                         .map((item, idx) => {
                           const isNext = sectionIndex === nextSectionIndex && idx === nextSlotIndexInSection;
                           const isPrayer = item.kind === "prayer";
+                          const isLesson = item.kind === "lesson";
                           return (
                             <div
                               key={`${sectionIndex}-${item.kind}-${item.label}-${item.time}-${idx}`}
                               data-next-anchor={isNext ? "true" : undefined}
-                              className={`display-time-row ${isPrayer ? "display-time-row--prayer" : ""} ${isNext ? "display-time-row--next" : ""}`}
+                              className={`display-time-row ${isPrayer ? "display-time-row--prayer" : ""} ${isLesson ? "display-time-row--lesson" : ""} ${isNext ? "display-time-row--next" : ""}`}
                             >
                               <div className="display-time-main">
-                                <span className={isPrayer ? "display-time-label display-time-label--prayer" : "display-time-label"}>
+                                <span className={isPrayer ? "display-time-label display-time-label--prayer" : isLesson ? "display-time-label display-time-label--lesson" : "display-time-label"}>
                                   {isPrayer ? `תפילת ${item.label}` : item.label}
                                 </span>
                                 <span className="display-time-value-wrap">
@@ -1659,13 +1700,14 @@ export function DisplayRotator({
                         .map((item, idx) => {
                           const isNext = sectionIndex === nextSectionIndex && idx === nextSlotIndexInSection;
                           const isPrayer = item.kind === "prayer";
+                          const isLesson = item.kind === "lesson";
                           return (
                             <div
                               key={`dup-${sectionIndex}-${item.kind}-${item.label}-${item.time}-${idx}`}
-                              className={`display-time-row ${isPrayer ? "display-time-row--prayer" : ""} ${isNext ? "display-time-row--next" : ""}`}
+                              className={`display-time-row ${isPrayer ? "display-time-row--prayer" : ""} ${isLesson ? "display-time-row--lesson" : ""} ${isNext ? "display-time-row--next" : ""}`}
                             >
                               <div className="display-time-main">
-                                <span className={isPrayer ? "display-time-label display-time-label--prayer" : "display-time-label"}>
+                                <span className={isPrayer ? "display-time-label display-time-label--prayer" : isLesson ? "display-time-label display-time-label--lesson" : "display-time-label"}>
                                   {isPrayer ? `תפילת ${item.label}` : item.label}
                                 </span>
                                 <span className="display-time-value-wrap">

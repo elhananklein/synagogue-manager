@@ -19,6 +19,15 @@ import { filterDailyLearningByKeys } from "@/lib/daily-learning-catalog";
 import { resolveViewIsoDate } from "@/lib/view-date";
 import { dayOccasionCaption, erevOccasionTitle, isChagOnDate, isErevShabbatonDate, isOccasionScreenDay, preferredOccasionDayIndex, resolveOccasionCluster, resolveOccasionLabel } from "@/lib/sacred-occasion";
 import type { HaftarahMinhag } from "@/lib/haftarah-minhag";
+import { readJerusalemClock } from "@/lib/jerusalem-clock";
+import {
+  getLessonWorkspace,
+  buildLessonDisplayItemsForIso,
+  buildUpcomingLessonsScreen,
+  lessonDisplayToAgendaRows,
+  type LessonDisplayItem,
+  type LessonsScreenDay
+} from "@/lib/lessons";
 
 export type DisplayViewParams = {
   synagogueId?: string | string[];
@@ -40,9 +49,11 @@ export type DisplayViewParams = {
   date?: string | string[];
 };
 
+export type DisplayTimeItemKind = "zman" | "prayer" | "lesson";
+
 export type DisplayTimeSection = {
   title: string;
-  items: Array<{ label: string; time: string; details?: string; kind: "zman" | "prayer" }>;
+  items: Array<{ label: string; time: string; details?: string; kind: DisplayTimeItemKind }>;
 };
 
 export type DisplayPrayerSlot = { label: string; time: string; details: string; prayerType?: string };
@@ -116,6 +127,11 @@ export type DisplayView = {
   bulletinItems: BulletinItem[];
   /** נוסח התפילה/הפטרה של המניין — לסידור במובייל */
   haftarahMinhag: HaftarahMinhag;
+  /** שיעורי היום והמחר לתצוגה (מובייל / לוח מלא) */
+  todayLessons: LessonDisplayItem[];
+  tomorrowLessons: LessonDisplayItem[];
+  /** מסך «שיעורים» — ימים קרובים עם מסגרות וקוביות */
+  lessonsScreen: LessonsScreenDay[];
 };
 
 function slotsFromAgendaRows(rows: Array<{ label: string; time: string }>): DisplayPrayerSlot[] {
@@ -252,22 +268,37 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
           )
         );
 
-  const [[snapshot, tomorrowSnapshot, publicData, bulletinItems, shabbatAgendaItems, tonightSnapshot], sundaySnaps] =
-    await Promise.all([
-      Promise.all([
-        seedSnap.liturgicalIso === todayIsoDate
-          ? Promise.resolve(seedSnap)
-          : getDisplaySnapshot(todayIsoDate, snapshotOptions),
-        getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, lockCivilIso: true, ...snapshotOptions }),
-        getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
-        getPublishedBulletinItems(synagogueId),
-        getPublishedShabbatAgendaItems(displayConfig.minyanId),
-        tonightIsoDate
-          ? getDisplaySnapshot(tonightIsoDate, { omitDailyLearning: true, lockCivilIso: true, ...snapshotOptions })
-          : Promise.resolve(null)
-      ]),
-      extraSundayPromise
-    ]);
+  const [
+    [snapshot, tomorrowSnapshot, publicData, bulletinItems, shabbatAgendaItems, tonightSnapshot, lessonsWorkspace],
+    sundaySnaps
+  ] = await Promise.all([
+    Promise.all([
+      seedSnap.liturgicalIso === todayIsoDate
+        ? Promise.resolve(seedSnap)
+        : getDisplaySnapshot(todayIsoDate, snapshotOptions),
+      getDisplaySnapshot(tomorrowIsoDate, { omitDailyLearning: true, lockCivilIso: true, ...snapshotOptions }),
+      getPublicHomeData(synagogueId, { todayIso: todayIsoDate }),
+      getPublishedBulletinItems(synagogueId),
+      getPublishedShabbatAgendaItems(displayConfig.minyanId),
+      tonightIsoDate
+        ? getDisplaySnapshot(tonightIsoDate, { omitDailyLearning: true, lockCivilIso: true, ...snapshotOptions })
+        : Promise.resolve(null),
+      synagogueId ? getLessonWorkspace(synagogueId) : Promise.resolve({ series: [], lessons: [] })
+    ]),
+    extraSundayPromise
+  ]);
+  const publishedLessonSeries = lessonsWorkspace.series.filter((s) => s.published);
+  const publishedLessons = lessonsWorkspace.lessons.filter((l) => l.published);
+  const lessonsForIso = (iso: string) =>
+    buildLessonDisplayItemsForIso(publishedLessonSeries, publishedLessons, iso);
+  const todayLessons = lessonsForIso(todayIsoDate);
+  const tomorrowLessons = lessonsForIso(tomorrowIsoDate);
+  const clock = readJerusalemClock();
+  const lessonsScreen = buildUpcomingLessonsScreen(publishedLessonSeries, publishedLessons, todayIsoDate, {
+    horizonDays: 7,
+    nowMinutes: clock.hour * 60 + clock.minute,
+    showPrice: displayConfig.lessonsShowPrice
+  });
 
   const styleOverrideRaw = singleQueryParam(params.style);
   const styleOverride = ALLOWED_STYLES.find((s) => s === styleOverrideRaw) ?? null;
@@ -455,15 +486,31 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       const meta = cluster.days[day - 1];
       const dayItems = publishedAgenda.filter((item) => item.occasionDay === day);
       if (!dayItems.length) continue;
+      const dayIso = meta?.iso ?? "";
+      const lessonRows = dayIso
+        ? lessonDisplayToAgendaRows(lessonsForIso(dayIso))
+        : [];
+      // ערב יום א׳: שיעורי ערב היום הראשון (erevIso) נכנסים ליום 1
+      const erevLessonRows =
+        day === 1 && cluster.erevIso
+          ? lessonDisplayToAgendaRows(lessonsForIso(cluster.erevIso))
+          : [];
+      const mergedItems = [
+        ...dayItems.map((item) => ({ itemTime: item.itemTime, content: item.content })),
+        ...erevLessonRows.map((row) => ({ itemTime: row.itemTime, content: row.content })),
+        ...lessonRows.map((row) => ({ itemTime: row.itemTime, content: row.content }))
+      ];
+      // אם אין לוח ידני ליום אבל יש שיעורים — עדיין מציגים את היום
+      if (!mergedItems.length) continue;
       agendaDays.push({
         day: day as 1 | 2 | 3,
-        iso: meta?.iso ?? "",
+        iso: dayIso,
         title: meta?.title ?? "",
         weekdayChag: meta?.weekdayChag ?? false,
         isChag: meta?.isChag ?? false,
         isSaturday: meta?.isSaturday ?? false,
         isLastDay: meta ? meta.isLastDay : day === maxFilled,
-        items: dayItems.map((item) => ({ itemTime: item.itemTime, content: item.content }))
+        items: mergedItems
       });
     }
     const lastDayIsChag = Boolean(cluster.days[cluster.days.length - 1]?.isChag);
@@ -550,7 +597,21 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     details: row.details,
     kind: "prayer" as const
   }));
+  const todayLessonItems = todayLessons.map((row) => ({
+    label: row.label,
+    time: row.time,
+    details: row.details,
+    kind: "lesson" as const
+  }));
+  const tomorrowLessonItems = tomorrowLessons.map((row) => ({
+    label: row.label,
+    time: row.time,
+    details: row.details,
+    kind: "lesson" as const
+  }));
   const includeZmanimInTimesList = displayConfig.scheduleTimesListMode !== "prayers_only";
+  const includePrayersInTimesList = displayConfig.scheduleShowPrayers !== false;
+  const includeLessonsInTimesList = displayConfig.scheduleShowLessons === true;
   const timeSectionsAll: DisplayTimeSection[] = [
     {
       title: `היום (${dayOccasionCaption(todayIsoDate)})`,
@@ -561,31 +622,71 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
       items: [...tomorrowZmanimItems, ...tomorrowPrayerItems]
     }
   ];
-  const timeSections: DisplayTimeSection[] = includeZmanimInTimesList
-    ? timeSectionsAll
-    : [
-        { title: timeSectionsAll[0].title, items: [...fastZmanItems(snapshot), ...todayPrayerItems] },
-        { title: timeSectionsAll[1].title, items: [...fastZmanItems(tomorrowSnapshot), ...tomorrowPrayerItems] }
-      ];
+  const mainDayItems = (
+    daySnapshot: DisplaySnapshot,
+    zmanimItems: typeof todayZmanimItems,
+    prayerItems: typeof todayPrayerItems,
+    lessonItems: typeof todayLessonItems
+  ) => [
+    ...(includeZmanimInTimesList ? zmanimItems : fastZmanItems(daySnapshot)),
+    ...(includePrayersInTimesList ? prayerItems : []),
+    ...(includeLessonsInTimesList ? lessonItems : [])
+  ];
+  const timeSections: DisplayTimeSection[] = [
+    {
+      title: timeSectionsAll[0].title,
+      items: mainDayItems(snapshot, todayZmanimItems, todayPrayerItems, todayLessonItems)
+    },
+    {
+      title: timeSectionsAll[1].title,
+      items: mainDayItems(tomorrowSnapshot, tomorrowZmanimItems, tomorrowPrayerItems, tomorrowLessonItems)
+    }
+  ];
   const fullShowPrayers = displayConfig.fullScheduleShowPrayers;
+  const fullShowLessons = displayConfig.fullScheduleShowLessons;
   /** «רק זמנים» בלי בחירה נפרדת — לוקחים את הזמנים שסומנו למסך הראשי */
   const fullScheduleKeys =
     displayConfig.fullScheduleZmanimKeys ?? (fullShowPrayers ? null : displayConfig.scheduleZmanimKeys);
-  const fullScheduleDay = (daySnapshot: DisplaySnapshot, prayerItems: typeof todayPrayerItems, keys: string[]) => [
+  const fullScheduleDay = (
+    daySnapshot: DisplaySnapshot,
+    prayerItems: typeof todayPrayerItems,
+    lessonItems: typeof todayLessonItems,
+    keys: string[]
+  ) => [
     ...fastZmanItems(daySnapshot),
     ...buildZmanimRows(daySnapshot.zmanimSourceTimes, keys).map((row) => ({
       label: row.label,
       time: row.time,
       kind: "zman" as const
     })),
-    ...(fullShowPrayers ? prayerItems : [])
+    ...(fullShowPrayers ? prayerItems : []),
+    ...(fullShowLessons ? lessonItems : [])
   ];
+  const withLessonsIfNeeded = (
+    base: DisplayTimeSection[],
+    todayExtra: typeof todayLessonItems,
+    tomorrowExtra: typeof tomorrowLessonItems
+  ): DisplayTimeSection[] =>
+    fullShowLessons
+      ? [
+          { title: base[0].title, items: [...base[0].items, ...todayExtra] },
+          { title: base[1].title, items: [...base[1].items, ...tomorrowExtra] }
+        ]
+      : base;
   const fullScheduleSections: DisplayTimeSection[] | null = fullScheduleKeys
     ? [
-        { title: timeSectionsAll[0].title, items: fullScheduleDay(snapshot, todayPrayerItems, fullScheduleKeys) },
-        { title: timeSectionsAll[1].title, items: fullScheduleDay(tomorrowSnapshot, tomorrowPrayerItems, fullScheduleKeys) }
+        {
+          title: timeSectionsAll[0].title,
+          items: fullScheduleDay(snapshot, todayPrayerItems, todayLessonItems, fullScheduleKeys)
+        },
+        {
+          title: timeSectionsAll[1].title,
+          items: fullScheduleDay(tomorrowSnapshot, tomorrowPrayerItems, tomorrowLessonItems, fullScheduleKeys)
+        }
       ]
-    : null;
+    : fullShowLessons
+      ? withLessonsIfNeeded(timeSections, todayLessonItems, tomorrowLessonItems)
+      : null;
 
   return {
     style: effectiveStyle,
@@ -618,6 +719,9 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
     viewDate: todayIsoDate,
     shabbat,
     bulletinItems,
-    haftarahMinhag: displayConfig.haftarahMinhag
+    haftarahMinhag: displayConfig.haftarahMinhag,
+    todayLessons,
+    tomorrowLessons,
+    lessonsScreen
   };
 }

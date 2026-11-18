@@ -72,6 +72,7 @@ export default async function DisplayPage({
         shabbat={view.shabbat}
         bulletinItems={view.bulletinItems}
         viewDate={view.viewDate}
+        lessonsScreen={view.lessonsScreen}
         disableFullscreen={previewWall}
         previewNetz={parseNetzPreviewPhase(singleParam(params.previewNetz))}
       />

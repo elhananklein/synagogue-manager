@@ -11,6 +11,7 @@ import { canManageSynagogue, getAdminContext } from "@/lib/auth";
 import { sortPrayersForSave } from "@/lib/prayer-order";
 import { getParashaPrayerCatalogByMinyanIds } from "@/lib/parasha-prayer-catalog-db";
 import { normalizeClockTime } from "@/lib/parasha-prayer-catalog";
+import { getLessonWorkspace, saveLessonWorkspace, type LessonInput, type LessonSeriesInput } from "@/lib/lessons";
 import {
   isDisplayStyle,
   resolveDisplayPalette,
@@ -61,7 +62,8 @@ type ScreenInput = {
     | "shabbat"
     | "bulletin"
     | "fullSchedule"
-    | "netz";
+    | "netz"
+    | "lessons";
   sortOrder: number;
   durationSeconds: number;
   enabled: boolean;
@@ -187,6 +189,48 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
       row.full_schedule_show_prayers !== false
     ])
   );
+  const fullScheduleLessonsRes = minyanIds.length
+    ? await supabase.from("minyanim").select("id, full_schedule_show_lessons").in("id", minyanIds)
+    : { data: [] as Array<{ id: string; full_schedule_show_lessons: boolean | null }>, error: null };
+  const fullScheduleLessons = new Map(
+    (fullScheduleLessonsRes.error ? [] : (fullScheduleLessonsRes.data ?? [])).map((row) => [
+      String(row.id),
+      row.full_schedule_show_lessons !== false
+    ])
+  );
+  const mainScheduleContentRes = minyanIds.length
+    ? await supabase.from("minyanim").select("id, schedule_show_prayers, schedule_show_lessons").in("id", minyanIds)
+    : {
+        data: [] as Array<{
+          id: string;
+          schedule_show_prayers: boolean | null;
+          schedule_show_lessons: boolean | null;
+        }>,
+        error: null
+      };
+  const mainScheduleContentReady = !mainScheduleContentRes.error;
+  const mainScheduleShowPrayers = new Map(
+    (mainScheduleContentRes.error ? [] : (mainScheduleContentRes.data ?? [])).map((row) => [
+      String(row.id),
+      row.schedule_show_prayers !== false
+    ])
+  );
+  const mainScheduleShowLessons = new Map(
+    (mainScheduleContentRes.error ? [] : (mainScheduleContentRes.data ?? [])).map((row) => [
+      String(row.id),
+      row.schedule_show_lessons === true
+    ])
+  );
+  const lessonsWorkspace = await getLessonWorkspace(synagogueId);
+  const lessonsShowPriceRes = await supabase
+    .from("synagogues")
+    .select("lessons_show_price")
+    .eq("id", synagogueId)
+    .maybeSingle();
+  const lessonsShowPriceReady = !lessonsShowPriceRes.error;
+  const lessonsShowPrice =
+    lessonsShowPriceReady &&
+    (lessonsShowPriceRes.data as { lessons_show_price?: boolean | null } | null)?.lessons_show_price === true;
 
   if (minyanRes.error || prayerRes.error || screensRes.error || halachaSettingsRes.error) {
     return NextResponse.json({ ok: false, error: "failed_loading_settings" }, { status: 500 });
@@ -214,8 +258,11 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
     scheduleZmanimKeys: sanitizeScheduleZmanimKeys(
       (minyan as { schedule_zmanim_keys?: string[] | null }).schedule_zmanim_keys
     ),
+    scheduleShowPrayers: mainScheduleShowPrayers.get(String(minyan.id)) ?? true,
+    scheduleShowLessons: mainScheduleShowLessons.get(String(minyan.id)) ?? false,
     fullScheduleZmanimKeys: fullScheduleKeys.get(String(minyan.id)) ?? null,
     fullScheduleShowPrayers: fullSchedulePrayers.get(String(minyan.id)) ?? true,
+    fullScheduleShowLessons: fullScheduleLessons.get(String(minyan.id)) ?? true,
     dailyLearningKeys: sanitizeDailyLearningKeys(
       (minyan as { daily_learning_keys?: string[] | null }).daily_learning_keys
     ),
@@ -290,11 +337,16 @@ export async function GET(_: Request, context: { params: Promise<{ synagogueId: 
         messagingReady: !messagingRes.error,
         minyanDonationReady: !minyanDonationRes.error,
         fullScheduleReady: !fullScheduleRes.error,
-        fullSchedulePrayersReady: !fullSchedulePrayersRes.error
+        fullSchedulePrayersReady: !fullSchedulePrayersRes.error,
+        fullScheduleLessonsReady: !fullScheduleLessonsRes.error,
+        mainScheduleContentReady,
+        lessonsShowPriceReady,
+        lessonsShowPrice
       },
       minyanim: minyanimWithAgenda,
       halachaSettings,
       bulletinItems,
+      lessons: { ...lessonsWorkspace, showPrice: lessonsShowPrice },
       currentParasha,
       occasionDays
     }
@@ -331,11 +383,17 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     scheduleZmanimKeys?: string[] | null;
     fullScheduleZmanimKeys?: string[] | null;
     fullScheduleShowPrayers?: boolean;
+    fullScheduleShowLessons?: boolean;
+    scheduleShowPrayers?: boolean;
+    scheduleShowLessons?: boolean;
     dailyLearningKeys?: string[] | null;
     footerText?: string | null;
     shabbatAgendaItems?: ShabbatAgendaItemInput[];
     halachaSettings?: HalachaSettingsInput;
     bulletinItems?: BulletinItemInput[];
+    series?: LessonSeriesInput[];
+    lessons?: LessonInput[];
+    lessonsShowPrice?: boolean;
   };
 
   const section = payload.section ?? "full";
@@ -358,6 +416,34 @@ export async function POST(request: Request, context: { params: Promise<{ synago
     const bulletinResult = await saveBulletinItems(synagogueId, payload.bulletinItems);
     if (!bulletinResult.ok) {
       return NextResponse.json({ ok: false, error: bulletinResult.error }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (section === "lessons") {
+    const lessonsResult = await saveLessonWorkspace(synagogueId, {
+      series: payload.series ?? [],
+      lessons: payload.lessons ?? []
+    });
+    if (!lessonsResult.ok) {
+      const status =
+        lessonsResult.error.startsWith("lesson_") || lessonsResult.error.startsWith("lesson_series_")
+          ? 400
+          : 500;
+      return NextResponse.json({ ok: false, error: lessonsResult.error }, { status });
+    }
+    if (payload.lessonsShowPrice !== undefined) {
+      const priceUpdate = await db
+        .from("synagogues")
+        .update({ lessons_show_price: payload.lessonsShowPrice === true })
+        .eq("id", synagogueId);
+      if (priceUpdate.error) {
+        const missing = /lessons_show_price/i.test(priceUpdate.error.message);
+        return NextResponse.json(
+          { ok: false, error: missing ? "missing_lessons_show_price_column" : priceUpdate.error.message },
+          { status: missing ? 400 : 500 }
+        );
+      }
     }
     return NextResponse.json({ ok: true });
   }
@@ -461,6 +547,41 @@ export async function POST(request: Request, context: { params: Promise<{ synago
         return NextResponse.json(
           { ok: false, error: missing ? "missing_full_schedule_prayers_column" : fullPrayersError.message },
           { status: 500 }
+        );
+      }
+    }
+    if (payload.fullScheduleShowLessons !== undefined) {
+      const { error: fullLessonsError } = await supabase
+        .from("minyanim")
+        .update({ full_schedule_show_lessons: payload.fullScheduleShowLessons !== false })
+        .eq("id", minyanId)
+        .eq("synagogue_id", synagogueId);
+      if (fullLessonsError) {
+        const missing = /full_schedule_show_lessons/i.test(fullLessonsError.message);
+        return NextResponse.json(
+          { ok: false, error: missing ? "missing_full_schedule_lessons_column" : fullLessonsError.message },
+          { status: 500 }
+        );
+      }
+    }
+    if (payload.scheduleShowPrayers !== undefined || payload.scheduleShowLessons !== undefined) {
+      const { error: mainContentError } = await supabase
+        .from("minyanim")
+        .update({
+          ...(payload.scheduleShowPrayers !== undefined
+            ? { schedule_show_prayers: payload.scheduleShowPrayers !== false }
+            : {}),
+          ...(payload.scheduleShowLessons !== undefined
+            ? { schedule_show_lessons: payload.scheduleShowLessons === true }
+            : {})
+        })
+        .eq("id", minyanId)
+        .eq("synagogue_id", synagogueId);
+      if (mainContentError) {
+        const missing = /schedule_show_prayers|schedule_show_lessons/i.test(mainContentError.message);
+        return NextResponse.json(
+          { ok: false, error: missing ? "missing_main_schedule_content_columns" : mainContentError.message },
+          { status: missing ? 400 : 500 }
         );
       }
     }

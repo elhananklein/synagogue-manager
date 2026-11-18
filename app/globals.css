@@ -986,6 +986,15 @@ optgroup {
     gap: 0.5rem;
   }
 
+  .display-time-label--lesson {
+    color: var(--display-lesson-accent, #fde047);
+    font-weight: 700;
+  }
+
+  .display-time-row--lesson {
+    border-inline-start: 4px solid var(--display-lesson-tile-border, #facc15);
+  }
+
   .display-prayer-badge {
     border-radius: 999px;
     border: 1px solid rgb(250 204 21 / 0.65);
@@ -1430,6 +1439,185 @@ optgroup {
     opacity: 0.88;
   }
 
+  .display-lessons-card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-width: none;
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  .display-lessons-header {
+    flex-shrink: 0;
+    align-items: center;
+    text-align: center;
+    padding-bottom: 0.35rem;
+  }
+
+  .display-lessons-title {
+    font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+
+  .display-lessons-body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .display-lessons-fit {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .display-lessons-fit-inner {
+    width: 100%;
+    padding: 0.35rem 0.5rem 0.75rem;
+  }
+
+  .display-lessons-board {
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+    width: 100%;
+  }
+
+  .display-lessons-board--mobile {
+    gap: 1rem;
+  }
+
+  /* מסך שיעורים — צבעים לפי סגנון (משתנים; ברירת מחדל לערכת כהה) */
+  .display {
+    --display-lesson-accent: #fde047;
+    --display-lesson-muted: rgb(253 224 71 / 0.85);
+    --display-lesson-frame-bg: rgb(250 204 21 / 0.1);
+    --display-lesson-frame-border: rgb(250 204 21 / 0.45);
+    --display-lesson-tile-bg: rgb(0 0 0 / 0.22);
+    --display-lesson-tile-border: #facc15;
+  }
+
+  .display-lessons-day-title {
+    margin: 0 0 0.55rem;
+    font-size: clamp(1.35rem, 2.4vw, 1.95rem);
+    font-weight: 800;
+    color: var(--display-lesson-accent);
+  }
+
+  .display-lessons-day-blocks {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .display-lessons-frame {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+  }
+
+  .display-lessons-frame-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 0.85rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 2px solid var(--display-lesson-frame-border);
+  }
+
+  .display-lessons-frame-title {
+    margin: 0;
+    font-size: clamp(1.15rem, 2vw, 1.55rem);
+    font-weight: 800;
+  }
+
+  .display-lessons-frame-subtitle {
+    margin: 0;
+    font-size: clamp(0.95rem, 1.5vw, 1.15rem);
+    color: var(--display-lesson-muted);
+    opacity: 1;
+  }
+
+  .display-lessons-block-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .display-lessons-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .display-lessons-row--parallel {
+    align-items: stretch;
+  }
+
+  .display-lessons-row--parallel .display-lessons-tile {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+
+  .display-lessons-standalone .display-lessons-row {
+    width: 100%;
+  }
+
+  .display-lessons-tile {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15em;
+    border-radius: 0.85rem;
+    border: 1px solid var(--display-lesson-frame-border);
+    border-inline-start: 4px solid var(--display-lesson-tile-border);
+    background: var(--display-lesson-tile-bg);
+    padding: 0.7rem 0.85rem;
+    flex: 1 1 auto;
+  }
+
+  .display-lessons-tile-time {
+    font-size: clamp(1.35rem, 2.5vw, 1.9rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    color: var(--display-lesson-accent);
+    line-height: 1.05;
+  }
+
+  .display-lessons-tile-title {
+    margin: 0;
+    font-size: clamp(1.1rem, 1.9vw, 1.45rem);
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .display-lessons-tile-details {
+    margin: 0;
+    font-size: clamp(0.95rem, 1.5vw, 1.15rem);
+    color: var(--display-lesson-muted);
+    opacity: 1;
+    line-height: 1.3;
+  }
+
+  .display-lessons-empty {
+    margin: 0;
+    font-size: clamp(1.15rem, 2vw, 1.55rem);
+    font-weight: 700;
+    text-align: center;
+    padding: 1.5rem 0.75rem;
+    color: var(--display-lesson-muted);
+  }
+
   .display-prayer-times-card {
     flex: 1;
     min-height: 0;
@@ -1663,6 +1851,15 @@ optgroup {
     box-shadow: inset 4px 0 0 rgb(250 204 21 / 0.35);
   }
 
+  .display-full-schedule-tile--lesson {
+    border-inline-start: 5px solid var(--display-lesson-tile-border, #facc15);
+    box-shadow: inset 4px 0 0 color-mix(in srgb, var(--display-lesson-tile-border, #facc15) 35%, transparent);
+  }
+
+  .display-full-schedule-tile--lesson .display-full-schedule-tile-label {
+    color: var(--display-lesson-accent, #fde047);
+  }
+
   .display-full-schedule-tile--past {
     opacity: 0.42;
     filter: grayscale(0.35);
@@ -1750,10 +1947,18 @@ optgroup {
   .display--classic .display-full-schedule-tile--prayer {
     background: linear-gradient(90deg, rgb(100 14 32 / 0.95) 0%, rgb(55 8 20 / 0.96) 100%);
   }
+  .display--classic .display-full-schedule-tile--lesson {
+    background: linear-gradient(90deg, rgb(90 12 30 / 0.95) 0%, rgb(45 6 16 / 0.96) 100%);
+    border-inline-start-color: #facc15;
+    box-shadow: inset 4px 0 0 rgb(250 204 21 / 0.35);
+  }
   .display--classic .display-full-schedule-tile-label {
     color: #fff7ed;
   }
   .display--classic .display-full-schedule-tile--prayer .display-full-schedule-tile-label {
+    color: #fef08a;
+  }
+  .display--classic .display-full-schedule-tile--lesson .display-full-schedule-tile-label {
     color: #fef08a;
   }
   .display--classic .display-full-schedule-tile-time {
@@ -2542,6 +2747,12 @@ optgroup {
   }
 
   .display--modern {
+    --display-lesson-accent: #38bdf8;
+    --display-lesson-muted: #94a3b8;
+    --display-lesson-frame-bg: rgb(14 165 233 / 0.12);
+    --display-lesson-frame-border: rgb(56 189 248 / 0.55);
+    --display-lesson-tile-bg: rgb(2 6 23 / 0.55);
+    --display-lesson-tile-border: #38bdf8;
     background:
       radial-gradient(ellipse 90% 70% at 100% -5%, rgb(29 78 216 / 0.95) 0%, transparent 58%),
       radial-gradient(ellipse 75% 55% at 0% 105%, rgb(30 64 175 / 0.88) 0%, transparent 52%),
@@ -2685,6 +2896,9 @@ optgroup {
   .display--modern .display-daily-learning-empty {
     color: #94a3b8;
   }
+  .display--modern .display-lessons-title {
+    color: #fde047;
+  }
   .display--modern .display-clock-screen {
     flex: 1 1 auto;
     min-height: 0;
@@ -2767,6 +2981,12 @@ optgroup {
   }
 
   .display--minimal {
+    --display-lesson-accent: #0f172a;
+    --display-lesson-muted: #64748b;
+    --display-lesson-frame-bg: #f8fafc;
+    --display-lesson-frame-border: #cbd5e1;
+    --display-lesson-tile-bg: #ffffff;
+    --display-lesson-tile-border: #0f172a;
     background-color: #fff;
     color: #0f172a;
   }
@@ -2807,6 +3027,12 @@ optgroup {
 
   /* Wood & Silver: ניגודיות — טקסט כהה על עץ, "קלף" בהיר בכרטיסים, שעון כהה-מטאלי */
   .display--woodSilver {
+    --display-lesson-accent: #9a3412;
+    --display-lesson-muted: #5c4a3a;
+    --display-lesson-frame-bg: rgb(255 255 255 / 0.4);
+    --display-lesson-frame-border: rgb(100 82 64 / 0.5);
+    --display-lesson-tile-bg: rgb(255 255 255 / 0.55);
+    --display-lesson-tile-border: #b45309;
     background:
       linear-gradient(168deg, rgb(200 162 118) 0%, rgb(158 110 68) 40%, rgb(118 78 46) 100%),
       repeating-linear-gradient(
@@ -3184,11 +3410,40 @@ optgroup {
   }
 
   .display--classic {
+    --display-lesson-accent: #fef08a;
+    --display-lesson-muted: #fcd34d;
+    --display-lesson-frame-bg: linear-gradient(90deg, rgb(70 10 24 / 0.92) 0%, rgb(38 6 14 / 0.95) 100%);
+    --display-lesson-frame-border: rgb(251 191 36 / 0.5);
+    --display-lesson-tile-bg: linear-gradient(90deg, rgb(72 10 26 / 0.92) 0%, rgb(42 6 16 / 0.94) 100%);
+    --display-lesson-tile-border: #facc15;
     background:
       radial-gradient(ellipse 100% 70% at 50% -5%, rgb(220 38 38 / 0.38) 0%, transparent 52%),
       radial-gradient(ellipse 55% 80% at 100% 50%, rgb(185 28 65 / 0.22) 0%, transparent 50%),
       linear-gradient(168deg, #0c0204 0%, #3f0d18 38%, #1a0308 72%, #050102 100%);
     color: #ffffff;
+  }
+  .display--classic .display-lessons-title {
+    color: #fef08a;
+    font-weight: 900;
+  }
+  .display--classic .display-lessons-frame-header {
+    border-bottom-color: rgb(251 191 36 / 0.55);
+  }
+  .display--classic .display-lessons-frame-title {
+    color: #fef08a;
+  }
+  .display--classic .display-lessons-tile {
+    background: linear-gradient(90deg, rgb(72 10 26 / 0.92) 0%, rgb(42 6 16 / 0.94) 100%);
+    border-color: rgb(251 191 36 / 0.45);
+    border-inline-start-color: #facc15;
+  }
+  .display--classic .display-lessons-tile-title {
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+  }
+  .display--classic .display-lessons-tile-time {
+    color: #fef08a;
+    text-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
   }
   .display--classic .display-frame {
     border-color: rgb(251 191 36 / 0.55);
@@ -3588,6 +3843,12 @@ optgroup {
 
   /* ===================== Royal Blue (כחול מלכותי / פרוכת) ===================== */
   .display--royalBlue {
+    --display-lesson-accent: #9a3412;
+    --display-lesson-muted: #6b4e1e;
+    --display-lesson-frame-bg: var(--royal-parchment);
+    --display-lesson-frame-border: rgb(202 162 74 / 0.9);
+    --display-lesson-tile-bg: rgb(255 253 246 / 0.92);
+    --display-lesson-tile-border: #caa24a;
     --royal-gold: linear-gradient(180deg, #fbe9a8 0%, #caa24a 52%, #8a6a22 100%);
     --royal-parchment: linear-gradient(180deg, #fffdf6 0%, #f6ecd2 55%, #ecdcb6 100%);
     --royal-ribbon: linear-gradient(180deg, #b91c3a 0%, #8a1228 100%);
@@ -3671,7 +3932,8 @@ optgroup {
   .display--royalBlue .display-time-section-title,
   .display--royalBlue .display-times-title,
   .display--royalBlue .display-halacha-title,
-  .display--royalBlue .display-daily-learning-title {
+  .display--royalBlue .display-daily-learning-title,
+  .display--royalBlue .display-lessons-title {
     display: inline-block;
     align-self: center;
     color: #fff7e6;

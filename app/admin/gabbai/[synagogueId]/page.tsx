@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, CalendarDays, Megaphone, Monitor, ScrollText, Settings, Sun, Users } from "lucide-react";
+import { BookOpen, CalendarDays, GraduationCap, Megaphone, Monitor, ScrollText, Sun, Users } from "lucide-react";
 
 export default async function GabbaiHomePage({
   params
@@ -29,16 +29,16 @@ export default async function GabbaiHomePage({
       Icon: Sun
     },
     {
+      href: `${base}/lessons`,
+      title: "שיעורים",
+      desc: "לוח שיעורים ומסגרות (ערבי לימוד)",
+      Icon: GraduationCap
+    },
+    {
       href: `${base}/look`,
       title: "מראה המסך",
       desc: "צבעים, פונט, ואילו מסכים יוצגו על הקיר",
       Icon: Monitor
-    },
-    {
-      href: `${base}/settings`,
-      title: "הגדרות בית הכנסת",
-      desc: "שם, מניינים, נוסח והלכה יומית",
-      Icon: Settings
     },
     {
       href: `${base}/congregants`,

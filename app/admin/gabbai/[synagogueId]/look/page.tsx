@@ -39,6 +39,7 @@ const SCREEN_OPTIONS: Array<{ key: ScreenKey; label: string }> = [
   { key: "fast", label: "צום" },
   { key: "halacha", label: "הלכה יומית" },
   { key: "dailyLearning", label: "לימוד יומי" },
+  { key: "lessons", label: "שיעורים — קרובים" },
   { key: "prayerTimes", label: "זמני תפילות" },
   { key: "fullSchedule", label: "לוח זמנים מלא" },
   { key: "shabbat", label: "שבת וחגים" },
@@ -105,18 +106,25 @@ function screensSummary(screens: ScreenSetting[]) {
 }
 
 function mainSummary(minyan: GabbaiMinyan) {
-  if (minyan.scheduleTimesListMode === "prayers_only") return "רק תפילות";
-  return `תפילות ו־${minyan.scheduleZmanimKeys.length} זמני היום`;
+  const parts: string[] = [];
+  if (minyan.scheduleShowPrayers !== false) parts.push("תפילות");
+  if (minyan.scheduleTimesListMode !== "prayers_only") {
+    parts.push(`${minyan.scheduleZmanimKeys.length} זמני היום`);
+  }
+  if (minyan.scheduleShowLessons) parts.push("שיעורים");
+  if (!parts.length) return "ריק — לא סומן כלום";
+  return parts.join(" · ");
 }
 
 function fullScheduleSummary(minyan: GabbaiMinyan) {
   const keys = minyan.fullScheduleZmanimKeys;
-  if (minyan.fullScheduleShowPrayers) {
-    if (keys == null) return "תפילות, וזמנים כמו במסך הראשי";
-    return keys.length ? `תפילות ו־${keys.length} זמני היום` : "רק תפילות";
-  }
-  if (keys == null) return "רק זמני היום, כמו במסך הראשי";
-  return keys.length ? `רק ${keys.length} זמני היום, בלי תפילות` : "ריק — לא סומנו זמנים";
+  const parts: string[] = [];
+  if (minyan.fullScheduleShowPrayers) parts.push("תפילות");
+  if (minyan.fullScheduleShowLessons) parts.push("שיעורים");
+  if (keys == null) parts.push("זמנים כמו במסך הראשי");
+  else if (keys.length) parts.push(`${keys.length} זמני היום`);
+  if (!parts.length) return "ריק — לא סומן כלום";
+  return parts.join(" · ");
 }
 
 export default function GabbaiLookPage({
@@ -130,6 +138,8 @@ export default function GabbaiLookPage({
     setMinyanim,
     fullScheduleReady,
     fullSchedulePrayersReady,
+    fullScheduleLessonsReady,
+    mainScheduleContentReady,
     isLoading,
     error: loadError,
     reload
@@ -172,8 +182,15 @@ export default function GabbaiLookPage({
       displayFont: minyan.displayFont,
       scheduleTimesListMode: minyan.scheduleTimesListMode,
       scheduleZmanimKeys: minyan.scheduleZmanimKeys,
+      ...(mainScheduleContentReady
+        ? {
+            scheduleShowPrayers: minyan.scheduleShowPrayers,
+            scheduleShowLessons: minyan.scheduleShowLessons
+          }
+        : {}),
       ...(fullScheduleReady ? { fullScheduleZmanimKeys: minyan.fullScheduleZmanimKeys } : {}),
       ...(fullSchedulePrayersReady ? { fullScheduleShowPrayers: minyan.fullScheduleShowPrayers } : {}),
+      ...(fullScheduleLessonsReady ? { fullScheduleShowLessons: minyan.fullScheduleShowLessons } : {}),
       dailyLearningKeys: minyan.dailyLearningKeys,
       footerText: minyan.footerText,
       screens: screensForSave(minyan.screens)
@@ -306,6 +323,43 @@ export default function GabbaiLookPage({
             הוספת מסך
           </Button>
         </div>
+        {(() => {
+          const used = new Set(minyan.screens.map((s) => s.screenKey).filter(Boolean));
+          const available = SCREEN_OPTIONS.filter((opt) => !used.has(opt.key));
+          if (!available.length || minyan.screens.length >= SCREEN_OPTIONS.length) return null;
+          return (
+            <div className="mb-3 rounded-xl border border-dashed border-border bg-muted/30 p-3">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">הוספה מהירה של מסך שעדיין לא ברשימה:</p>
+              <div className="flex flex-wrap gap-2">
+                {available.map((opt) => (
+                  <Button
+                    key={opt.key}
+                    type="button"
+                    variant={opt.key === "lessons" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      update((m) => ({
+                        ...m,
+                        screens: renumberScreens([
+                          {
+                            screenKey: opt.key,
+                            sortOrder: 0,
+                            durationSeconds: opt.key === "lessons" ? 25 : 20,
+                            enabled: true,
+                            unsaved: true
+                          },
+                          ...m.screens
+                        ])
+                      }));
+                    }}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
         <div className="space-y-2">
           {minyan.screens.map((screen, screenIndex) => (
             <div
@@ -417,17 +471,56 @@ export default function GabbaiLookPage({
       </GabbaiSection>
 
       <GabbaiSection title="מסך ראשי — מה מוצג" summary={mainSummary(minyan)}>
-        <p className="mb-3 text-sm text-muted-foreground">רק תפילות, או גם זמני היום (זריחה, שקיעה וכו׳).</p>
-        <select
-          className="h-11 w-full max-w-md rounded-md border border-border bg-background px-3"
-          value={minyan.scheduleTimesListMode}
-          onChange={(e) =>
-            update({ scheduleTimesListMode: e.target.value === "prayers_only" ? "prayers_only" : "all" })
-          }
-        >
-          <option value="all">תפילות וגם זמני היום</option>
-          <option value="prayers_only">רק זמני תפילות</option>
-        </select>
+        <p className="mb-3 text-sm text-muted-foreground">
+          בחרו מה יופיע ברשימת הזמנים במסך הראשי. אפשר לשלב כמה אפשרויות.
+        </p>
+        {mainScheduleContentReady ? (
+          <div className="gabbai-choice-toggles" role="group" aria-label="מה מוצג במסך הראשי">
+            <button
+              type="button"
+              className="gabbai-choice-toggle"
+              aria-pressed={minyan.scheduleShowPrayers !== false}
+              onClick={() => update({ scheduleShowPrayers: !(minyan.scheduleShowPrayers !== false) })}
+            >
+              תפילות
+            </button>
+            <button
+              type="button"
+              className="gabbai-choice-toggle"
+              aria-pressed={mainHasZmanim}
+              onClick={() =>
+                update({ scheduleTimesListMode: mainHasZmanim ? "prayers_only" : "all" })
+              }
+            >
+              זמני היום
+            </button>
+            <button
+              type="button"
+              className="gabbai-choice-toggle"
+              aria-pressed={Boolean(minyan.scheduleShowLessons)}
+              onClick={() => update({ scheduleShowLessons: !minyan.scheduleShowLessons })}
+            >
+              שיעורים
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            <select
+              className="h-11 w-full max-w-md rounded-md border border-border bg-background px-3"
+              value={minyan.scheduleTimesListMode}
+              onChange={(e) =>
+                update({ scheduleTimesListMode: e.target.value === "prayers_only" ? "prayers_only" : "all" })
+              }
+            >
+              <option value="all">תפילות וגם זמני היום</option>
+              <option value="prayers_only">רק זמני תפילות</option>
+            </select>
+            <p className="text-sm text-muted-foreground">
+              כדי לבחור גם שיעורים (וכפתורי בחירה), הריצו ב-Supabase את הקובץ
+              supabase/main-schedule-show-migration.sql
+            </p>
+          </div>
+        )}
         {mainHasZmanim ? (
           <div className="mt-3">
             <ZmanimCheckboxes keys={minyan.scheduleZmanimKeys} onChange={(keys) => update({ scheduleZmanimKeys: keys })} />
@@ -454,6 +547,20 @@ export default function GabbaiLookPage({
             ) : (
               <span className="block text-sm text-muted-foreground">
                 כדי להפעיל, הריצו ב-Supabase את הקובץ supabase/full-schedule-show-prayers-migration.sql
+              </span>
+            )}
+            {fullScheduleLessonsReady ? (
+              <label className="mt-2 inline-flex min-h-11 items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={minyan.fullScheduleShowLessons}
+                  onChange={(e) => update({ fullScheduleShowLessons: e.target.checked })}
+                />
+                להציג בלוח גם את השיעורים
+              </label>
+            ) : (
+              <span className="mt-2 block text-sm text-muted-foreground">
+                כדי להפעיל שיעורים בלוח, הריצו ב-Supabase את הקובץ supabase/synagogue-lessons-migration.sql
               </span>
             )}
           </div>

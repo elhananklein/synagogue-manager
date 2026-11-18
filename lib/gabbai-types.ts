@@ -24,7 +24,8 @@ export type ScreenKey =
   | "shabbat"
   | "bulletin"
   | "fullSchedule"
-  | "netz";
+  | "netz"
+  | "lessons";
 
 export type PrayerSetting = {
   category: PrayerCategory;

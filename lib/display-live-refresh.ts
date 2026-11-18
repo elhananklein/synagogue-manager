@@ -36,6 +36,9 @@ export function pickDisplayLiveFields(view: DisplayView) {
     viewDate: view.viewDate,
     shabbat: view.shabbat,
     bulletinItems: view.bulletinItems,
+    todayLessons: view.todayLessons ?? [],
+    tomorrowLessons: view.tomorrowLessons ?? [],
+    lessonsScreen: view.lessonsScreen ?? [],
     haftarahMinhag: view.haftarahMinhag
   };
 }

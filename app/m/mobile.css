@@ -285,6 +285,13 @@
   text-underline-offset: 0.15em;
 }
 
+.m-schedule-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
 .m-schedule-toggle {
   display: flex;
   flex: 0 0 auto;
@@ -1060,6 +1067,85 @@
   background: var(--m-burgundy);
   border-color: var(--m-gold);
   color: var(--m-cream);
+}
+
+.m-schedule-tile--lesson {
+  background: color-mix(in srgb, var(--m-burgundy) 82%, var(--m-card));
+  border-color: color-mix(in srgb, var(--m-gold) 55%, var(--m-line));
+  color: var(--m-cream);
+}
+
+.m-shell .display-lessons-board {
+  gap: 1.1rem;
+  --display-lesson-accent: var(--m-burgundy);
+  --display-lesson-muted: var(--m-muted);
+  --display-lesson-frame-border: color-mix(in srgb, var(--m-gold) 55%, var(--m-line));
+  --display-lesson-tile-bg: var(--m-card);
+  --display-lesson-tile-border: var(--m-gold);
+}
+
+.m-shell .display-lessons-day-title {
+  color: var(--m-burgundy);
+  font-size: 1.15rem;
+}
+
+.m-shell .display-lessons-frame {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.m-shell .display-lessons-frame-header {
+  border-bottom-color: color-mix(in srgb, var(--m-gold) 55%, var(--m-line));
+}
+
+.m-shell .display-lessons-frame-title {
+  color: var(--m-ink);
+  font-size: 1.05rem;
+}
+
+.m-shell .display-lessons-frame-subtitle {
+  color: var(--m-muted);
+  font-size: 0.85rem;
+}
+
+.m-shell .display-lessons-tile {
+  background: var(--m-card);
+  border: 1px solid var(--m-line);
+  border-inline-start: 4px solid var(--m-gold);
+  box-shadow: 0 6px 14px rgb(58 21 32 / 0.05);
+  color: var(--m-ink);
+  text-align: start;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.m-shell .display-lessons-tile-time {
+  color: var(--m-burgundy);
+  font-size: 1.25rem;
+}
+
+.m-shell .display-lessons-tile-title {
+  font-size: 1.05rem;
+  color: var(--m-ink);
+}
+
+.m-shell .display-lessons-tile-details {
+  color: var(--m-muted);
+  font-size: 0.85rem;
+}
+
+.m-shell .display-lessons-empty {
+  color: var(--m-muted);
+  font-size: 1rem;
+}
+
+.m-schedule-details {
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: 0.9;
 }
 
 .m-schedule-tile--next {

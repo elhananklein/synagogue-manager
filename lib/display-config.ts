@@ -91,7 +91,8 @@ export type ScreenKey =
   | "shabbat"
   | "bulletin"
   | "fullSchedule"
-  | "netz";
+  | "netz"
+  | "lessons";
 
 export type HavdalahMode = "tzeit" | "minutes";
 
@@ -166,12 +167,20 @@ export type DisplayConfig = {
   haftarahMinhag: HaftarahMinhag;
   /** לוח זמנים במסך הראשי: כל הזמנים או רק תפילות */
   scheduleTimesListMode: ScheduleTimesListMode;
+  /** מסך ראשי: להציג תפילות ברשימה */
+  scheduleShowPrayers: boolean;
+  /** מסך ראשי: להציג שיעורים ברשימה */
+  scheduleShowLessons: boolean;
   /** אילו זמנים הלכתיים להציג בלוח המסך הראשי (מפתחות Hebcal, בסדר הקטלוג) */
   scheduleZmanimKeys: string[];
   /** זמני היום למסך «לוח זמנים מלא». null = כמו במסך הראשי */
   fullScheduleZmanimKeys: string[] | null;
   /** מסך «לוח זמנים מלא» מציג גם תפילות. false = רק זמני היום */
   fullScheduleShowPrayers: boolean;
+  /** מסך «לוח זמנים מלא» מציג גם שיעורים */
+  fullScheduleShowLessons: boolean;
+  /** מסך «שיעורים» בלבד: האם להציג מחיר */
+  lessonsShowPrice: boolean;
   /** אילו ספרי לימוד יומי להציג במסך הלימוד היומי */
   dailyLearningKeys: string[];
   /** הודעת גבאי בת שורה אחת המוצגת בתחתית כל המסכים, בכל הסגנונות */
@@ -191,9 +200,13 @@ const DEFAULT_CONFIG: DisplayConfig = {
   displayFont: "heebo",
   haftarahMinhag: "ashkenazi",
   scheduleTimesListMode: "all",
+  scheduleShowPrayers: true,
+  scheduleShowLessons: false,
   scheduleZmanimKeys: DEFAULT_SCHEDULE_ZMANIM_KEYS,
   fullScheduleZmanimKeys: null,
   fullScheduleShowPrayers: true,
+  fullScheduleShowLessons: true,
+  lessonsShowPrice: false,
   dailyLearningKeys: DEFAULT_DAILY_LEARNING_KEYS,
   footerText: null,
   screens: [{ screenKey: "main", sortOrder: 1, durationSeconds: 25, enabled: true }],
@@ -215,13 +228,22 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
   const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase || !synagogueId) return DEFAULT_CONFIG;
 
-  const synagogueRes = await supabase
+  let synagogueRes = await supabase
     .from("synagogues")
     .select(
-      "id, name, locality, latitude, longitude, elevation, timezone, candle_lighting_minutes, havdalah_mode, havdalah_minutes"
+      "id, name, locality, latitude, longitude, elevation, timezone, candle_lighting_minutes, havdalah_mode, havdalah_minutes, lessons_show_price"
     )
     .eq("id", synagogueId)
     .maybeSingle();
+  if (synagogueRes.error) {
+    synagogueRes = await supabase
+      .from("synagogues")
+      .select(
+        "id, name, locality, latitude, longitude, elevation, timezone, candle_lighting_minutes, havdalah_mode, havdalah_minutes"
+      )
+      .eq("id", synagogueId)
+      .maybeSingle();
+  }
   if (synagogueRes.error || !synagogueRes.data) return DEFAULT_CONFIG;
 
   const syn = synagogueRes.data as {
@@ -234,7 +256,9 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
     candle_lighting_minutes: number | null;
     havdalah_mode: string | null;
     havdalah_minutes: number | null;
+    lessons_show_price?: boolean | null;
   };
+  const lessonsShowPrice = syn.lessons_show_price === true;
   const location: SynagogueZmanimLocation = {
     locality: syn.locality ?? null,
     latitude: typeof syn.latitude === "number" ? syn.latitude : null,
@@ -294,27 +318,47 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
     return {
       ...DEFAULT_CONFIG,
       synagogueName: syn.name,
-      location
+      location,
+      lessonsShowPrice
     };
   }
-  const [screensRes, prayerRes, fullScheduleRes, fullSchedulePrayersRes] = await Promise.all([
-    supabase
-      .from("minyan_display_screens")
-      .select("screen_key, sort_order, duration_seconds, enabled")
-      .eq("minyan_id", chosenMinyan.id),
-    supabase
-      .from("minyan_prayers")
-      .select(
-        "category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order, parasha_key, lock_to_sunday"
-      )
-      .eq("minyan_id", chosenMinyan.id),
-    supabase.from("minyanim").select("full_schedule_zmanim_keys").eq("id", chosenMinyan.id).maybeSingle(),
-    supabase.from("minyanim").select("full_schedule_show_prayers").eq("id", chosenMinyan.id).maybeSingle()
-  ]);
+  const [screensRes, prayerRes, fullScheduleRes, fullSchedulePrayersRes, fullScheduleLessonsRes, mainScheduleRes] =
+    await Promise.all([
+      supabase
+        .from("minyan_display_screens")
+        .select("screen_key, sort_order, duration_seconds, enabled")
+        .eq("minyan_id", chosenMinyan.id),
+      supabase
+        .from("minyan_prayers")
+        .select(
+          "category, prayer_type, days_of_week, mode, fixed_time, zman_anchor, offset_minutes, round_mode, sort_order, parasha_key, lock_to_sunday"
+        )
+        .eq("minyan_id", chosenMinyan.id),
+      supabase.from("minyanim").select("full_schedule_zmanim_keys").eq("id", chosenMinyan.id).maybeSingle(),
+      supabase.from("minyanim").select("full_schedule_show_prayers").eq("id", chosenMinyan.id).maybeSingle(),
+      supabase.from("minyanim").select("full_schedule_show_lessons").eq("id", chosenMinyan.id).maybeSingle(),
+      supabase
+        .from("minyanim")
+        .select("schedule_show_prayers, schedule_show_lessons")
+        .eq("id", chosenMinyan.id)
+        .maybeSingle()
+    ]);
   const fullScheduleShowPrayers =
     Boolean(fullSchedulePrayersRes.error) ||
     (fullSchedulePrayersRes.data as { full_schedule_show_prayers?: boolean | null } | null)?.full_schedule_show_prayers !==
       false;
+  const fullScheduleShowLessons =
+    Boolean(fullScheduleLessonsRes.error) ||
+    (fullScheduleLessonsRes.data as { full_schedule_show_lessons?: boolean | null } | null)?.full_schedule_show_lessons !==
+      false;
+  const mainScheduleRow = mainScheduleRes.error
+    ? null
+    : (mainScheduleRes.data as {
+        schedule_show_prayers?: boolean | null;
+        schedule_show_lessons?: boolean | null;
+      } | null);
+  const scheduleShowPrayers = mainScheduleRow ? mainScheduleRow.schedule_show_prayers !== false : true;
+  const scheduleShowLessons = mainScheduleRow ? mainScheduleRow.schedule_show_lessons === true : false;
   const fullScheduleZmanimKeys = fullScheduleRes.error
     ? null
     : sanitizeScheduleZmanimKeys(
@@ -371,9 +415,13 @@ export async function getDisplayConfig(synagogueId?: string | null, minyanSelect
     displayFont: resolveDisplayFont(chosenMinyan.display_font),
     haftarahMinhag: resolveHaftarahMinhag(chosenMinyan.haftarah_minhag),
     scheduleTimesListMode: normalizeScheduleTimesListMode(chosenMinyan.schedule_times_list),
+    scheduleShowPrayers,
+    scheduleShowLessons,
     scheduleZmanimKeys: sanitizeScheduleZmanimKeys(chosenMinyan.schedule_zmanim_keys) ?? DEFAULT_SCHEDULE_ZMANIM_KEYS,
     fullScheduleZmanimKeys,
     fullScheduleShowPrayers,
+    fullScheduleShowLessons,
+    lessonsShowPrice,
     dailyLearningKeys: resolveDailyLearningKeys(chosenMinyan.daily_learning_keys),
     footerText,
     screens,

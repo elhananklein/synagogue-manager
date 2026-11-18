@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Sparkles, BookOpen, Clock, Sun, Sunrise, CalendarDays, ScrollText, Megaphone, Flame, MoonStar, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { Sparkles, BookOpen, Clock, Sun, Sunrise, CalendarDays, ScrollText, Megaphone, Flame, MoonStar, ChevronLeft, ChevronRight, ChevronDown, GraduationCap } from "lucide-react";
 import { NetzBoard, useNetzWindowOpen } from "@/components/display/netz-board";
+import { LessonsScreenBoard } from "@/components/display/lessons-screen-board";
 import type { NetzPhase } from "@/lib/netz-board";
 import { AnalogClock } from "@/components/display/analog-clock";
 import { LiveClock } from "@/components/display/live-clock";
 import { cn } from "@/lib/utils";
 import type { DailyLearningLine } from "@/lib/hebcal";
 import type { BulletinItem } from "@/lib/bulletin-board";
+import type { LessonDisplayItem, LessonsScreenDay } from "@/lib/lessons-types";
 import type {
   DisplayPrayerSlot,
   DisplayShabbat,
@@ -48,7 +50,8 @@ type ScreenKey =
   | "shabbat"
   | "bulletin"
   | "fullSchedule"
-  | "netz";
+  | "netz"
+  | "lessons";
 
 type RotatorScreen = {
   screenKey: ScreenKey;
@@ -112,6 +115,9 @@ type MobileDisplayRotatorProps = {
   scheduleTimesListMode?: ScheduleTimesListMode;
   shabbat?: DisplayShabbat | null;
   bulletinItems?: BulletinItem[];
+  todayLessons?: LessonDisplayItem[];
+  tomorrowLessons?: LessonDisplayItem[];
+  lessonsScreen?: LessonsScreenDay[];
   haftarahMinhag?: HaftarahMinhag;
   previewNetz?: NetzPhase | null;
 };
@@ -128,7 +134,8 @@ const SCREEN_META: Record<ScreenKey, { title: string; Icon: typeof Sparkles }> =
   fullSchedule: { title: "לוח זמנים מלא", Icon: CalendarDays },
   shabbat: { title: "שבת וחג", Icon: Sun },
   bulletin: { title: "לוח מודעות", Icon: Megaphone },
-  netz: { title: "לוח הנץ", Icon: Sunrise }
+  netz: { title: "לוח הנץ", Icon: Sunrise },
+  lessons: { title: "שיעורים", Icon: GraduationCap }
 };
 
 function nowJerusalemMinutes() {
@@ -191,6 +198,9 @@ export function MobileDisplayRotator({
   scheduleTimesListMode: scheduleTimesListModeProp = "all",
   shabbat: shabbatProp = null,
   bulletinItems: bulletinItemsProp = [],
+  todayLessons: todayLessonsProp = [],
+  tomorrowLessons: tomorrowLessonsProp = [],
+  lessonsScreen: lessonsScreenProp = [],
   haftarahMinhag: haftarahMinhagProp = DEFAULT_HAFTARAH_MINHAG,
   previewNetz = null
 }: MobileDisplayRotatorProps) {
@@ -214,6 +224,9 @@ export function MobileDisplayRotator({
     scheduleTimesListMode: scheduleTimesListModeProp,
     shabbat: shabbatProp,
     bulletinItems: bulletinItemsProp,
+    todayLessons: todayLessonsProp,
+    tomorrowLessons: tomorrowLessonsProp,
+    lessonsScreen: lessonsScreenProp,
     haftarahMinhag: haftarahMinhagProp
   }));
   const {
@@ -235,9 +248,13 @@ export function MobileDisplayRotator({
     viewDate,
     shabbat,
     bulletinItems,
+    todayLessons,
+    tomorrowLessons,
+    lessonsScreen,
     haftarahMinhag
   } = live;
   const [showFullSchedule, setShowFullSchedule] = useState(false);
+  const [showLessons, setShowLessons] = useState(false);
   const [siddurPrayer, setSiddurPrayer] = useState<SiddurPrayer | null>(null);
   const [minyanIndex, setMinyanIndex] = useState(currentMinyanIndexProp);
   const [dayLoading, setDayLoading] = useState(false);
@@ -266,6 +283,9 @@ export function MobileDisplayRotator({
       scheduleTimesListMode: next.scheduleTimesListMode,
       shabbat: next.shabbat,
       bulletinItems: next.bulletinItems,
+      todayLessons: next.todayLessons ?? [],
+      tomorrowLessons: next.tomorrowLessons ?? [],
+      lessonsScreen: next.lessonsScreen ?? [],
       haftarahMinhag: next.haftarahMinhag ?? DEFAULT_HAFTARAH_MINHAG
     });
     const resolved = next.viewDate ?? toIsoDateJerusalem();
@@ -327,13 +347,43 @@ export function MobileDisplayRotator({
       (fullScheduleSections ?? timeSectionsAll).map((section, index) => ({
         ...section,
         items: [
-          ...section.items.filter((item) => item.kind !== "prayer"),
+          ...section.items.filter((item) => item.kind !== "prayer" && item.kind !== "lesson"),
           ...(prayerOnlySections[index]?.items ?? [])
         ]
       })),
     [fullScheduleSections, timeSectionsAll, prayerOnlySections]
   );
-  const visibleTimeSections = showFullSchedule ? fullToggleSections : prayerOnlySections;
+  const lessonSections = useMemo(
+    () => [
+      {
+        title: timeSections[0]?.title ?? "היום",
+        items: todayLessons.map((row) => ({
+          label: row.label,
+          time: row.time,
+          details: row.details,
+          kind: "lesson" as const
+        }))
+      },
+      {
+        title: timeSections[1]?.title ?? "מחר",
+        items: tomorrowLessons.map((row) => ({
+          label: row.label,
+          time: row.time,
+          details: row.details,
+          kind: "lesson" as const
+        }))
+      }
+    ],
+    [timeSections, todayLessons, tomorrowLessons]
+  );
+  const visibleTimeSections = useMemo(() => {
+    const base = showFullSchedule ? fullToggleSections : prayerOnlySections;
+    if (!showLessons) return base;
+    return base.map((section, index) => ({
+      ...section,
+      items: [...section.items, ...(lessonSections[index]?.items ?? [])]
+    }));
+  }, [showFullSchedule, fullToggleSections, prayerOnlySections, showLessons, lessonSections]);
   const dayOffset = daysBetweenIso(jerusalemTodayIso, viewDate);
   const canGoPrev = dayOffset > -VIEW_DATE_RANGE_DAYS;
   const canGoNext = dayOffset < VIEW_DATE_RANGE_DAYS;
@@ -400,10 +450,20 @@ export function MobileDisplayRotator({
         if (s.screenKey === "fast" && !snapshot.fastName) return false;
         if (s.screenKey === "bulletin" && bulletinItems.length === 0) return false;
         if (s.screenKey === "netz" && !netzVisible) return false;
+        if (s.screenKey === "lessons" && lessonsScreen.length === 0) return false;
         return true;
       })
     );
-  }, [previewNetz, screens, snapshot.omerText, snapshot.fastName, shabbat, bulletinItems.length, netzVisible]);
+  }, [
+    previewNetz,
+    screens,
+    snapshot.omerText,
+    snapshot.fastName,
+    shabbat,
+    bulletinItems.length,
+    netzVisible,
+    lessonsScreen.length
+  ]);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -487,6 +547,7 @@ export function MobileDisplayRotator({
           <NetzBoard previewPhase={previewNetz} sourceTimes={snapshot.zmanimSourceTimes} variant="mobile" />
         ) : null}
         {screenKey === "dailyLearning" && <DailyLearningScreen lines={dailyLearning} />}
+        {screenKey === "lessons" && <LessonsScreenBoard days={lessonsScreen} variant="mobile" />}
         {screenKey === "prayerTimes" && (
           <PrayerTimesScreen
             prayerSchedule={prayerSchedule}
@@ -607,14 +668,24 @@ export function MobileDisplayRotator({
               <ChevronLeft className="h-5 w-5" />
             </button>
           </div>
-          <button
-            type="button"
-            className={cn("m-schedule-toggle", showFullSchedule && "m-schedule-toggle--on")}
-            aria-pressed={showFullSchedule}
-            onClick={() => setShowFullSchedule((value) => !value)}
-          >
-            {showFullSchedule ? "הצג תפילות בלבד" : "הצג לוח זמנים מלא"}
-          </button>
+          <div className="m-schedule-toggles">
+            <button
+              type="button"
+              className={cn("m-schedule-toggle", showFullSchedule && "m-schedule-toggle--on")}
+              aria-pressed={showFullSchedule}
+              onClick={() => setShowFullSchedule((value) => !value)}
+            >
+              {showFullSchedule ? "הצג תפילות בלבד" : "הצג לוח זמנים מלא"}
+            </button>
+            <button
+              type="button"
+              className={cn("m-schedule-toggle", showLessons && "m-schedule-toggle--on")}
+              aria-pressed={showLessons}
+              onClick={() => setShowLessons((value) => !value)}
+            >
+              {showLessons ? "הסתר שיעורים" : "הצג שיעורים"}
+            </button>
+          </div>
         </div>
         {showHeaderShabbatZmanim ? (
           <div className="m-header-shabbat">
@@ -1117,12 +1188,14 @@ function FullScheduleScreen({
     <div className="flex flex-wrap items-stretch justify-center gap-y-3" dir="rtl">
       {timeline.map((row, i) => {
         const isPrayer = row.kind === "prayer";
+        const isLesson = row.kind === "lesson";
         const isNext = i === nextLocalIdx;
         const isPast = nextLocalIdx === -1 ? true : i < nextLocalIdx;
         const siddur = isPrayer ? siddurPrayerFromLabel(row.label) : null;
         const tileClass = cn(
           "m-schedule-tile",
           isPrayer && "m-schedule-tile--prayer",
+          isLesson && "m-schedule-tile--lesson",
           isNext && "m-schedule-tile--next",
           isPast && !isNext && "m-schedule-tile--past",
           siddur && "m-schedule-tile--siddur"
@@ -1132,9 +1205,12 @@ function FullScheduleScreen({
             {isNext ? <span className="m-tag m-tag--next">הבא</span> : null}
             {row.dayTag ? <span className="m-tag m-tag--day">{row.dayTag}</span> : null}
             <div className={cn("m-schedule-label", isNext && "pt-3")}>
-              {isPrayer ? `תפילת ${row.label}` : row.label}
+              {isPrayer ? `תפילת ${row.label}` : isLesson ? row.label : row.label}
             </div>
             <div className="m-schedule-time">{row.time}</div>
+            {isLesson && "details" in row && row.details ? (
+              <div className="m-schedule-details">{row.details}</div>
+            ) : null}
           </>
         );
         return (

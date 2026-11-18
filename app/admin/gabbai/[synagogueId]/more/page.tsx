@@ -28,15 +28,6 @@ export default async function GabbaiMorePage({
             </span>
           </Link>
         ) : null}
-        <Link href={`${base}/look`} className="gabbai-task-card">
-          <span className="gabbai-task-icon">
-            <Monitor className="h-5 w-5" aria-hidden />
-          </span>
-          <span>
-            <h2>מראה המסך</h2>
-            <p>סגנון, צבעים, פונט ומסכים מתחלפים</p>
-          </span>
-        </Link>
         <Link href={`${base}/settings`} className="gabbai-task-card">
           <span className="gabbai-task-icon">
             <Settings className="h-5 w-5" aria-hidden />
@@ -44,6 +35,15 @@ export default async function GabbaiMorePage({
           <span>
             <h2>הגדרות בית הכנסת</h2>
             <p>שם, מניינים, נוסח והלכה יומית</p>
+          </span>
+        </Link>
+        <Link href={`${base}/look`} className="gabbai-task-card">
+          <span className="gabbai-task-icon">
+            <Monitor className="h-5 w-5" aria-hidden />
+          </span>
+          <span>
+            <h2>מראה המסך</h2>
+            <p>סגנון, צבעים, פונט ומסכים מתחלפים</p>
           </span>
         </Link>
         <a href={gabbaiWallPreviewHref(synagogueId)} className="gabbai-task-card">
