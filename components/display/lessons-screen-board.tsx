@@ -28,8 +28,10 @@ function LessonTile({
   return (
     <article className={cn("display-lessons-tile", compact && "display-lessons-tile--compact")}>
       <span className="display-lessons-tile-time">{lesson.time}</span>
-      <h3 className="display-lessons-tile-title">{lesson.label}</h3>
-      {lesson.details ? <p className="display-lessons-tile-details">{lesson.details}</p> : null}
+      <div className="display-lessons-tile-copy">
+        <h3 className="display-lessons-tile-title">{lesson.label}</h3>
+        {lesson.details ? <p className="display-lessons-tile-details">{lesson.details}</p> : null}
+      </div>
     </article>
   );
 }

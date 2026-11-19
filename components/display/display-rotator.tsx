@@ -1449,7 +1449,7 @@ export function DisplayRotator({
                 contentClassName="display-lessons-fit-inner"
                 deps={[currentScreen, lessonsScreen]}
                 grow
-                maxScale={1.2}
+                maxScale={2.35}
                 fillWidth
               >
                 <LessonsScreenBoard days={lessonsScreen} variant="wall" />

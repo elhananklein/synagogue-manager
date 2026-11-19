@@ -1116,23 +1116,24 @@
   box-shadow: 0 6px 14px rgb(58 21 32 / 0.05);
   color: var(--m-ink);
   text-align: start;
-  align-items: stretch;
+  align-items: center;
   min-height: 0;
+  gap: 0.75rem;
 }
 
 .m-shell .display-lessons-tile-time {
   color: var(--m-burgundy);
-  font-size: 1.25rem;
+  font-size: 1.45rem;
 }
 
 .m-shell .display-lessons-tile-title {
-  font-size: 1.05rem;
+  font-size: 1.12rem;
   color: var(--m-ink);
 }
 
 .m-shell .display-lessons-tile-details {
   color: var(--m-muted);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .m-shell .display-lessons-empty {

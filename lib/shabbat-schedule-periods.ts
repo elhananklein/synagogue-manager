@@ -159,10 +159,20 @@ export function groupShabbatScheduleByPeriod(
     buckets[period].push(row);
   }
 
+  const sortRowsByTime = (list: ShabbatScheduleRow[]) =>
+    [...list].sort((a, b) => {
+      const am = parseClockMinutes(a.time);
+      const bm = parseClockMinutes(b.time);
+      if (am == null && bm == null) return 0;
+      if (am == null) return -1;
+      if (bm == null) return 1;
+      return am - bm;
+    });
+
   return PERIOD_DEFS.map((def) => ({
     id: def.id,
     title: periodTitle(def.id, titleOptions),
-    rows: buckets[def.id]
+    rows: sortRowsByTime(buckets[def.id])
   })).filter((column) => column.rows.length > 0);
 }
 

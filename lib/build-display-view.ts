@@ -134,6 +134,25 @@ export type DisplayView = {
   lessonsScreen: LessonsScreenDay[];
 };
 
+function agendaItemMinutes(itemTime: string | null | undefined): number | null {
+  if (!itemTime) return null;
+  const match = /^(\d{1,2}):(\d{2})/.exec(String(itemTime).trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function compareAgendaItemTimes(a: string | null | undefined, b: string | null | undefined): number {
+  const am = agendaItemMinutes(a);
+  const bm = agendaItemMinutes(b);
+  if (am == null && bm == null) return 0;
+  if (am == null) return -1;
+  if (bm == null) return 1;
+  return am - bm;
+}
+
 function slotsFromAgendaRows(rows: Array<{ label: string; time: string }>): DisplayPrayerSlot[] {
   return rows.map((row) => ({
     label: row.label,
@@ -500,6 +519,8 @@ export async function buildDisplayView(params: DisplayViewParams): Promise<Displ
         ...erevLessonRows.map((row) => ({ itemTime: row.itemTime, content: row.content })),
         ...lessonRows.map((row) => ({ itemTime: row.itemTime, content: row.content }))
       ];
+      // שיעורים מצורפים בסוף — ממיינים לפי שעה כדי שיישבו ליד פריטי הלוח הידני
+      mergedItems.sort((a, b) => compareAgendaItemTimes(a.itemTime, b.itemTime));
       // אם אין לוח ידני ליום אבל יש שיעורים — עדיין מציגים את היום
       if (!mergedItems.length) continue;
       agendaDays.push({
